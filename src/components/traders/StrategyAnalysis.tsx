@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   HoverCard,
   HoverCardContent,
@@ -9,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { 
   Target, TrendingUp, Zap, Scale, Info, 
-  Settings2, Shield, Repeat, DollarSign 
+  Settings2, DollarSign 
 } from 'lucide-react';
 
 export interface StrategyProfile {
@@ -213,10 +215,11 @@ export function classifyStrategy(trader: TraderMetrics): StrategyProfile {
 
 interface StrategyAnalysisProps {
   strategy: StrategyProfile;
-  allocatedCapital?: number;
+  onCapitalChange?: (capital: number) => void;
 }
 
-export function StrategyAnalysis({ strategy, allocatedCapital = 1000 }: StrategyAnalysisProps) {
+export function StrategyAnalysis({ strategy, onCapitalChange }: StrategyAnalysisProps) {
+  const [allocatedFunds, setAllocatedFunds] = useState(1000);
   const Icon = strategy.icon;
   
   const metricLabels = {
@@ -227,8 +230,11 @@ export function StrategyAnalysis({ strategy, allocatedCapital = 1000 }: Strategy
     volatility: { low: 'Low', medium: 'Medium', high: 'High' },
   };
 
-  const tradeSizeAmount = (allocatedCapital * strategy.botConfig.tradeSizePercent / 100).toFixed(0);
-  const maxExposureAmount = (allocatedCapital * strategy.botConfig.maxExposurePercent / 100).toFixed(0);
+  const handleFundsChange = (value: string) => {
+    const num = parseFloat(value) || 0;
+    setAllocatedFunds(num);
+    onCapitalChange?.(num);
+  };
 
   return (
     <Card className={`glass-card ${strategy.borderColor} border`}>
@@ -307,58 +313,88 @@ export function StrategyAnalysis({ strategy, allocatedCapital = 1000 }: Strategy
           </div>
         </div>
 
-        {/* Bot Configuration */}
-        <div className="border-t border-border/50 pt-4">
-          <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+        {/* Recommended Bot Configuration */}
+        <div className="border-t border-border/50 pt-4 space-y-4">
+          <h4 className="text-sm font-medium flex items-center gap-2">
             <Settings2 className="h-4 w-4 text-muted-foreground" />
             Recommended Bot Configuration
-            <span className="text-xs text-muted-foreground">(for ${allocatedCapital.toLocaleString()} capital)</span>
           </h4>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-3">
+          {/* Allocated Funds */}
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">How much do you want to allocate to this trader?</p>
+            <div className="bg-muted/30 rounded-lg p-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Trade Size</span>
+                <span className="text-sm">Allocated Funds</span>
+                <div className="flex items-center gap-1">
+                  <Input
+                    type="number"
+                    value={allocatedFunds}
+                    onChange={(e) => handleFundsChange(e.target.value)}
+                    className="w-28 h-8 text-right font-mono bg-background/50 border-border/50"
+                  />
+                  <span className="text-primary font-medium">$</span>
                 </div>
-                <span className="font-mono text-sm font-medium">
-                  {strategy.botConfig.tradeSizePercent}% (${tradeSizeAmount})
+              </div>
+            </div>
+          </div>
+
+          {/* % Size for each trade */}
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">What percent of that should go into each trade?</p>
+            <div className="bg-muted/30 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm">% Size for each trade</span>
+                <span className="text-primary font-mono font-medium">
+                  {strategy.botConfig.tradeSizePercent} %
                 </span>
               </div>
-              <Progress value={strategy.botConfig.tradeSizePercent * 10} className="h-2" />
+              <p className="text-xs text-muted-foreground/70 mt-1">
+                = ${(allocatedFunds * strategy.botConfig.tradeSizePercent / 100).toFixed(2)} per trade
+              </p>
             </div>
+          </div>
 
-            <div className="space-y-3">
+          {/* Max % per trade */}
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">Enter the percentage of each trade to copy</p>
+            <div className="bg-muted/30 rounded-lg p-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Max Exposure / Market</span>
-                </div>
-                <span className="font-mono text-sm font-medium">
-                  {strategy.botConfig.maxExposurePercent}% (${maxExposureAmount})
+                <span className="text-sm">Max % per trade</span>
+                <span className="text-primary font-mono font-medium">
+                  {strategy.botConfig.maxExposurePercent} %
                 </span>
               </div>
-              <Progress value={strategy.botConfig.maxExposurePercent * 5} className="h-2" />
+              <p className="text-xs text-muted-foreground/70 mt-1">
+                = ${(allocatedFunds * strategy.botConfig.maxExposurePercent / 100).toFixed(2)} max exposure per market
+              </p>
             </div>
+          </div>
 
-            <div className="flex items-center justify-between bg-muted/30 rounded-lg p-3">
-              <div className="flex items-center gap-2">
-                <Repeat className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">Follow Exits</span>
-              </div>
-              <Badge variant={strategy.botConfig.followExits ? 'default' : 'secondary'}>
-                {strategy.botConfig.followExits ? 'Enabled' : 'Disabled'}
-              </Badge>
+          {/* Follow Exits */}
+          <div className="bg-muted/30 rounded-lg p-4 space-y-2">
+            <div className="flex items-center gap-3">
+              <Checkbox 
+                id="follow-exits" 
+                checked={strategy.botConfig.followExits}
+                disabled
+                className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+              />
+              <label htmlFor="follow-exits" className="text-sm font-medium cursor-pointer">
+                Follow Exits
+              </label>
             </div>
+            <p className="text-xs text-muted-foreground pl-7">
+              When the trader reduces or closes a position, you sell the same percentage of your copied position.
+            </p>
+          </div>
 
-            <div className="flex items-center justify-between bg-muted/30 rounded-lg p-3">
-              <div className="flex items-center gap-2">
-                <Target className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">Risk Profile</span>
-              </div>
-              <span className="text-xs text-muted-foreground">{strategy.botConfig.riskProfile}</span>
-            </div>
+          {/* Risk Profile Summary */}
+          <div className="bg-muted/20 rounded-lg p-3 flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Risk Profile</span>
+            <Badge variant="outline" className={`${strategy.color}`}>
+              {strategy.botConfig.riskProfile}
+            </Badge>
           </div>
         </div>
       </CardContent>
