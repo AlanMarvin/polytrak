@@ -846,14 +846,14 @@ export default function AnalyzeTrader() {
                   <div className="flex items-center gap-3">
                     <img src={tradefoxLogo} alt="TradeFox" className="h-10 w-10 object-contain" />
                     <div>
+                      <p className="text-xs text-orange-400/80 mb-1">
+                        Calculated from {trader.closedPositions} trades
+                      </p>
                       <CardTitle className="text-xl">
                         <span className="bg-gradient-to-r from-orange-400 to-amber-500 bg-clip-text text-transparent font-bold">
                           AI-Optimized Copy Trading for TheTradeFox
                         </span>
                       </CardTitle>
-                      <p className="text-muted-foreground text-sm mt-1">
-                        Strategy calculated from {trader.closedPositions} trades, {trader.winRate.toFixed(1)}% win rate
-                      </p>
                     </div>
                   </div>
                   {copyStrategy && (
@@ -921,14 +921,14 @@ export default function AnalyzeTrader() {
                       <div className="flex items-start gap-3">
                         <input 
                           type="checkbox" 
-                          checked={copyStrategy.followExits}
+                          checked={true}
                           readOnly
                           className="mt-1 h-5 w-5 rounded border-orange-500 text-orange-500 focus:ring-orange-500 accent-orange-500"
                         />
                         <div>
                           <div className="flex items-center gap-2">
                             <p className="font-medium">Follow Exits</p>
-                            <Badge variant="outline" className="text-xs border-orange-500/50 text-orange-400">AI Recommended</Badge>
+                            <Badge variant="outline" className="text-xs border-green-500/50 text-green-500">Always On</Badge>
                           </div>
                           <p className="text-sm text-muted-foreground">
                             When the trader reduces or closes a position, you sell the same percentage of your copied position.
