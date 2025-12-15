@@ -60,137 +60,90 @@ serve(async (req) => {
     const profile = profileRes.ok ? await profileRes.json() : null;
     console.log('Profile:', profile?.name || profile?.pseudonym || 'anonymous');
 
-    // Fetch all positions (open) and trades
-    // Note: closed-positions API has limited data, so we calculate from positions
-    const [positions, trades] = await Promise.all([
+    // Fetch all data in parallel
+    const [positions, closedPositions, trades] = await Promise.all([
       fetchAllPaginated(`${POLYMARKET_API}/positions?user=${address}`, 5000),
+      fetchAllPaginated(`${POLYMARKET_API}/closed-positions?user=${address}`, 10000),
       fetchAllPaginated(`${POLYMARKET_API}/trades?user=${address}`, 5000),
     ]);
 
-    console.log(`Fetched ${positions.length} positions, ${trades.length} trades`);
+    console.log(`Fetched ${positions.length} positions, ${closedPositions.length} closed, ${trades.length} trades`);
 
     const openPositions = Array.isArray(positions) ? positions : [];
+    const closed = Array.isArray(closedPositions) ? closedPositions : [];
     const allTrades = Array.isArray(trades) ? trades : [];
 
-    // Calculate PnL from positions
-    // Each position has cashPnl (unrealized) and realizedPnl (if partially closed)
+    // Calculate PnL from open positions
+    // cashPnl = unrealized profit/loss
+    // realizedPnl = already realized profit from partial sales
     let totalUnrealizedPnl = 0;
-    let totalRealizedPnlFromPositions = 0;
+    let totalRealizedFromOpen = 0;
     let totalInvested = 0;
     let totalCurrentValue = 0;
 
     openPositions.forEach((pos: any) => {
       totalUnrealizedPnl += pos.cashPnl || 0;
-      totalRealizedPnlFromPositions += pos.realizedPnl || 0;
+      totalRealizedFromOpen += pos.realizedPnl || 0;
       totalInvested += pos.initialValue || 0;
       totalCurrentValue += pos.currentValue || 0;
     });
 
-    // For a more complete picture, we can also look at trade history
-    // Calculate realized PnL from sell trades vs buy trades by market
-    const tradesByMarket: Map<string, { buys: number[], sells: number[] }> = new Map();
+    // Calculate realized PnL from closed positions (fully resolved markets)
+    let totalRealizedFromClosed = 0;
+    closed.forEach((pos: any) => {
+      totalRealizedFromClosed += pos.realizedPnl || 0;
+    });
+
+    // Total PnL = unrealized + all realized
+    const totalRealizedPnl = totalRealizedFromOpen + totalRealizedFromClosed;
+    const totalPnl = totalUnrealizedPnl + totalRealizedPnl;
+
+    console.log(`PnL: Unrealized=${totalUnrealizedPnl.toFixed(2)}, RealizedOpen=${totalRealizedFromOpen.toFixed(2)}, RealizedClosed=${totalRealizedFromClosed.toFixed(2)}, Total=${totalPnl.toFixed(2)}`);
+
+    // Build PnL history from closed positions (sorted by timestamp)
+    const sortedClosed = [...closed].sort((a: any, b: any) => {
+      const timeA = a.timestamp || 0;
+      const timeB = b.timestamp || 0;
+      return timeA - timeB;
+    });
+
+    let cumulativePnl = 0;
+    const pnlHistory: Array<{ timestamp: number; pnl: number; cumulative: number }> = [];
     
-    allTrades.forEach((trade: any) => {
-      const key = `${trade.conditionId}-${trade.outcomeIndex}`;
-      if (!tradesByMarket.has(key)) {
-        tradesByMarket.set(key, { buys: [], sells: [] });
-      }
-      const data = tradesByMarket.get(key)!;
-      const value = (trade.size || 0) * (trade.price || 0);
-      
-      if (trade.side?.toUpperCase() === 'BUY') {
-        data.buys.push(value);
-      } else if (trade.side?.toUpperCase() === 'SELL') {
-        data.sells.push(value);
-      }
+    sortedClosed.forEach((pos: any) => {
+      const pnl = pos.realizedPnl || 0;
+      const timestamp = pos.timestamp ? pos.timestamp * 1000 : Date.now();
+      cumulativePnl += pnl;
+      pnlHistory.push({ timestamp, pnl, cumulative: cumulativePnl });
     });
 
-    // Calculate approximate realized PnL from completed sell trades
-    // This is an estimate since we don't have perfect FIFO matching
-    let tradeBasedRealizedPnl = 0;
-    tradesByMarket.forEach((data) => {
-      const totalBuyValue = data.buys.reduce((a, b) => a + b, 0);
-      const totalSellValue = data.sells.reduce((a, b) => a + b, 0);
-      // If there are sells, calculate the profit/loss
-      if (data.sells.length > 0 && data.buys.length > 0) {
-        // Proportional cost basis
-        const sellRatio = Math.min(1, data.sells.length / data.buys.length);
-        const costBasis = totalBuyValue * sellRatio;
-        tradeBasedRealizedPnl += totalSellValue - costBasis;
-      }
-    });
-
-    // Use the better of position-based or trade-based realized PnL
-    const realizedPnl = Math.abs(totalRealizedPnlFromPositions) > 0 
-      ? totalRealizedPnlFromPositions 
-      : tradeBasedRealizedPnl;
-    
-    const totalPnl = totalUnrealizedPnl + realizedPnl;
-
-    console.log(`PnL: Unrealized=${totalUnrealizedPnl.toFixed(2)}, Realized=${realizedPnl.toFixed(2)}, Total=${totalPnl.toFixed(2)}`);
-
-    // Build PnL history from trades (daily aggregation)
-    const pnlByDay: Map<string, { realized: number, unrealized: number }> = new Map();
-    const now = Date.now();
-    const day = 86400 * 1000;
-    
-    // Track daily trade activity for PnL estimation
-    allTrades.forEach((trade: any) => {
-      const timestamp = trade.timestamp ? trade.timestamp * 1000 : now;
-      const dateKey = new Date(timestamp).toISOString().split('T')[0];
-      
-      if (!pnlByDay.has(dateKey)) {
-        pnlByDay.set(dateKey, { realized: 0, unrealized: 0 });
-      }
-      
-      const data = pnlByDay.get(dateKey)!;
-      const tradeValue = (trade.size || 0) * (trade.price || 0);
-      
-      // For sells at high prices, estimate profit
-      if (trade.side?.toUpperCase() === 'SELL') {
-        const profitEstimate = tradeValue * ((trade.price || 0.5) - 0.5); // vs 0.5 baseline
-        data.realized += profitEstimate;
-      }
-    });
-
-    // Build cumulative history
-    const sortedDays = Array.from(pnlByDay.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-    let cumulative = 0;
-    const pnlHistory = sortedDays.map(([dateStr, data]) => {
-      const dailyPnl = data.realized;
-      cumulative += dailyPnl;
-      return {
-        timestamp: new Date(dateStr).getTime(),
-        pnl: dailyPnl,
-        cumulative
-      };
-    });
-
-    // Add current unrealized to the end
-    if (pnlHistory.length > 0) {
-      pnlHistory[pnlHistory.length - 1].cumulative = cumulative + totalUnrealizedPnl;
+    // Add current unrealized to history if we have open positions
+    if (totalUnrealizedPnl !== 0 && pnlHistory.length > 0) {
+      pnlHistory.push({
+        timestamp: Date.now(),
+        pnl: totalUnrealizedPnl,
+        cumulative: cumulativePnl + totalUnrealizedPnl
+      });
     }
 
-    // Calculate time-based PnL from trades
+    // Calculate time-based PnL from closed positions
+    const now = Date.now();
+    const day = 86400 * 1000;
     let pnl24h = 0, pnl7d = 0, pnl30d = 0;
-    
-    allTrades.forEach((trade: any) => {
-      const timestamp = trade.timestamp ? trade.timestamp * 1000 : 0;
+
+    closed.forEach((pos: any) => {
+      const pnl = pos.realizedPnl || 0;
+      const timestamp = pos.timestamp ? pos.timestamp * 1000 : 0;
       const age = now - timestamp;
       
-      if (trade.side?.toUpperCase() === 'SELL') {
-        const tradeValue = (trade.size || 0) * (trade.price || 0);
-        const profit = tradeValue * ((trade.price || 0.5) - 0.5);
-        
-        if (age <= day) pnl24h += profit;
-        if (age <= day * 7) pnl7d += profit;
-        if (age <= day * 30) pnl30d += profit;
-      }
+      if (age <= day) pnl24h += pnl;
+      if (age <= day * 7) pnl7d += pnl;
+      if (age <= day * 30) pnl30d += pnl;
     });
 
-    // Win rate from positions
-    const profitablePositions = openPositions.filter((p: any) => (p.cashPnl || 0) > 0).length;
-    const winRate = openPositions.length > 0 ? (profitablePositions / openPositions.length) * 100 : 50;
+    // Win rate from closed positions
+    const winningPositions = closed.filter((p: any) => (p.realizedPnl || 0) > 0).length;
+    const winRate = closed.length > 0 ? (winningPositions / closed.length) * 100 : 50;
 
     // Volume from trades
     let totalVolume = 0;
@@ -211,7 +164,7 @@ serve(async (req) => {
       pnl24h,
       pnl7d,
       pnl30d,
-      realizedPnl,
+      realizedPnl: totalRealizedPnl,
       unrealizedPnl: totalUnrealizedPnl,
       winRate,
       totalTrades: allTrades.length,
@@ -219,9 +172,9 @@ serve(async (req) => {
       totalInvested,
       totalCurrentValue,
       positions: openPositions.length,
-      closedPositions: 0, // Can't accurately determine from available data
+      closedPositions: closed.length,
       lastActive,
-      pnlHistory: pnlHistory.slice(-365),
+      pnlHistory: pnlHistory.slice(-100),
       openPositions: openPositions.slice(0, 50).map((pos: any) => ({
         id: pos.conditionId,
         marketTitle: pos.title || 'Unknown Market',
@@ -248,7 +201,7 @@ serve(async (req) => {
       })),
     };
 
-    console.log(`Final PnL=${totalPnl.toFixed(2)}, Positions=${openPositions.length}`);
+    console.log(`Final: PnL=${totalPnl.toFixed(2)}, Open=${openPositions.length}, Closed=${closed.length}`);
 
     return new Response(
       JSON.stringify(traderData),
