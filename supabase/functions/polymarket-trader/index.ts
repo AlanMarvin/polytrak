@@ -59,9 +59,9 @@ serve(async (req) => {
 
     // Fetch all data with pagination for complete history
     const [positions, trades, closedPositions] = await Promise.all([
-      fetchAllPaginated(`${POLYMARKET_API}/positions?user=${address}`, 1000),
-      fetchAllPaginated(`${POLYMARKET_API}/trades?user=${address}`, 1000),
-      fetchAllPaginated(`${POLYMARKET_API}/closed-positions?user=${address}`, 5000), // Get more closed positions for accurate PnL
+      fetchAllPaginated(`${POLYMARKET_API}/positions?user=${address}`, 2000),
+      fetchAllPaginated(`${POLYMARKET_API}/trades?user=${address}`, 5000), // More trades for accurate PnL calculation
+      fetchAllPaginated(`${POLYMARKET_API}/closed-positions?user=${address}`, 5000),
     ]);
 
     console.log(`Fetched ${positions.length} positions, ${trades.length} trades, ${closedPositions.length} closed positions`);
@@ -71,28 +71,36 @@ serve(async (req) => {
     const allTrades = Array.isArray(trades) ? trades : [];
     const closed = Array.isArray(closedPositions) ? closedPositions : [];
 
-    // Calculate total PnL from open positions (unrealized)
+    // Calculate PnL from open positions
+    // The positions endpoint includes BOTH unrealized (cashPnl) AND realized PnL from that position
     let unrealizedPnl = 0;
+    let openRealizedPnl = 0; // Realized PnL from open positions (partial closes)
     let totalInvested = 0;
     let totalCurrentValue = 0;
 
     openPositions.forEach((pos: any) => {
       unrealizedPnl += pos.cashPnl || 0;
+      openRealizedPnl += pos.realizedPnl || 0; // Include realized PnL from open positions too!
       totalInvested += pos.initialValue || 0;
       totalCurrentValue += pos.currentValue || 0;
     });
 
-    // Add realized PnL from ALL closed positions
-    let realizedPnl = 0;
+    // Add realized PnL from closed positions
+    let closedRealizedPnl = 0;
     closed.forEach((pos: any) => {
-      realizedPnl += pos.realizedPnl || 0;
+      closedRealizedPnl += pos.realizedPnl || 0;
     });
 
+    // Total realized = from open positions + from closed positions
+    const realizedPnl = openRealizedPnl + closedRealizedPnl;
     const totalPnl = realizedPnl + unrealizedPnl;
 
-    // Calculate win rate from closed positions
-    const winningTrades = closed.filter((pos: any) => (pos.realizedPnl || 0) > 0).length;
-    const winRate = closed.length > 0 ? (winningTrades / closed.length) * 100 : 0;
+    console.log(`PnL breakdown: openRealized=${openRealizedPnl}, closedRealized=${closedRealizedPnl}, unrealized=${unrealizedPnl}, total=${totalPnl}`);
+
+    // Calculate win rate from all positions that have realized PnL
+    const allPositionsWithPnl = [...openPositions, ...closed].filter((pos: any) => pos.realizedPnl !== undefined && pos.realizedPnl !== 0);
+    const winningPositions = allPositionsWithPnl.filter((pos: any) => (pos.realizedPnl || 0) > 0).length;
+    const winRate = allPositionsWithPnl.length > 0 ? (winningPositions / allPositionsWithPnl.length) * 100 : 0;
 
     // Calculate volume from trades
     let totalVolume = 0;
@@ -156,7 +164,7 @@ serve(async (req) => {
       totalInvested,
       totalCurrentValue,
       positions: openPositions.length,
-      closedPositions: closed.length,
+      closedPositions: openPositions.length + closed.length, // Total positions count
       lastActive,
       pnlHistory: pnlHistory.slice(-100), // Last 100 data points for chart
       // Raw data for detailed views
