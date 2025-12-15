@@ -7,6 +7,32 @@ const corsHeaders = {
 
 const POLYMARKET_API = 'https://data-api.polymarket.com';
 
+// Helper to fetch paginated data
+async function fetchAllPaginated(baseUrl: string, maxItems = 5000): Promise<any[]> {
+  const allItems: any[] = [];
+  let offset = 0;
+  const limit = 500; // Max per request
+  
+  while (allItems.length < maxItems) {
+    const url = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}limit=${limit}&offset=${offset}`;
+    const res = await fetch(url);
+    
+    if (!res.ok) break;
+    
+    const data = await res.json();
+    const items = Array.isArray(data) ? data : [];
+    
+    if (items.length === 0) break;
+    
+    allItems.push(...items);
+    
+    if (items.length < limit) break; // No more data
+    offset += limit;
+  }
+  
+  return allItems;
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -26,47 +52,43 @@ serve(async (req) => {
 
     console.log(`Fetching data for address: ${address}`);
 
-    // Fetch all data in parallel
-    const [positionsRes, tradesRes, profileRes, closedPositionsRes] = await Promise.all([
-      fetch(`${POLYMARKET_API}/positions?user=${address}`),
-      fetch(`${POLYMARKET_API}/trades?user=${address}&limit=100`),
-      fetch(`${POLYMARKET_API}/profiles/${address}`),
-      fetch(`${POLYMARKET_API}/closed-positions?user=${address}&limit=100`),
-    ]);
-
-    const [positions, trades, profile, closedPositions] = await Promise.all([
-      positionsRes.ok ? positionsRes.json() : [],
-      tradesRes.ok ? tradesRes.json() : [],
-      profileRes.ok ? profileRes.json() : null,
-      closedPositionsRes.ok ? closedPositionsRes.json() : [],
-    ]);
-
-    console.log(`Fetched ${positions?.length || 0} positions, ${trades?.length || 0} trades`);
+    // Fetch profile first (quick)
+    const profileRes = await fetch(`${POLYMARKET_API}/profiles/${address}`);
+    const profile = profileRes.ok ? await profileRes.json() : null;
     console.log('Profile data:', JSON.stringify(profile));
+
+    // Fetch all data with pagination for complete history
+    const [positions, trades, closedPositions] = await Promise.all([
+      fetchAllPaginated(`${POLYMARKET_API}/positions?user=${address}`, 1000),
+      fetchAllPaginated(`${POLYMARKET_API}/trades?user=${address}`, 1000),
+      fetchAllPaginated(`${POLYMARKET_API}/closed-positions?user=${address}`, 5000), // Get more closed positions for accurate PnL
+    ]);
+
+    console.log(`Fetched ${positions.length} positions, ${trades.length} trades, ${closedPositions.length} closed positions`);
 
     // Calculate aggregated stats
     const openPositions = Array.isArray(positions) ? positions : [];
     const allTrades = Array.isArray(trades) ? trades : [];
     const closed = Array.isArray(closedPositions) ? closedPositions : [];
 
-    // Calculate total PnL from open positions
-    let totalPnl = 0;
+    // Calculate total PnL from open positions (unrealized)
+    let unrealizedPnl = 0;
     let totalInvested = 0;
     let totalCurrentValue = 0;
 
     openPositions.forEach((pos: any) => {
-      totalPnl += pos.cashPnl || 0;
+      unrealizedPnl += pos.cashPnl || 0;
       totalInvested += pos.initialValue || 0;
       totalCurrentValue += pos.currentValue || 0;
     });
 
-    // Add realized PnL from closed positions
+    // Add realized PnL from ALL closed positions
     let realizedPnl = 0;
     closed.forEach((pos: any) => {
       realizedPnl += pos.realizedPnl || 0;
     });
 
-    totalPnl += realizedPnl;
+    const totalPnl = realizedPnl + unrealizedPnl;
 
     // Calculate win rate from closed positions
     const winningTrades = closed.filter((pos: any) => (pos.realizedPnl || 0) > 0).length;
@@ -78,7 +100,7 @@ serve(async (req) => {
       totalVolume += (trade.size || 0) * (trade.price || 0);
     });
 
-    // Get time-based PnL from closed positions (more accurate)
+    // Get time-based PnL from closed positions
     const now = Date.now();
     const day = 86400 * 1000;
     
@@ -127,7 +149,7 @@ serve(async (req) => {
       pnl7d,
       pnl30d,
       realizedPnl,
-      unrealizedPnl: totalPnl - realizedPnl,
+      unrealizedPnl,
       winRate,
       totalTrades: allTrades.length,
       volume: totalVolume,
@@ -164,7 +186,7 @@ serve(async (req) => {
       })),
     };
 
-    console.log(`Returning trader data: PnL=${totalPnl}, Positions=${openPositions.length}`);
+    console.log(`Returning trader data: PnL=${totalPnl}, RealizedPnL=${realizedPnl}, UnrealizedPnL=${unrealizedPnl}, Positions=${openPositions.length}, Closed=${closed.length}`);
 
     return new Response(
       JSON.stringify(traderData),
