@@ -27,46 +27,45 @@ import {
 type ChartTimeFilter = '1D' | '1W' | '1M' | 'ALL';
 
 // Generate PnL chart data based on time filter
-const generatePnlChartData = (trader: any, timeFilter: ChartTimeFilter) => {
+const generatePnlChartData = (traderData: { address: string; pnl: number; pnl30d: number }, timeFilter: ChartTimeFilter) => {
   const now = Date.now();
   const data = [];
   
   let days: number;
-  let interval: number;
+  let points: number;
   
   switch (timeFilter) {
     case '1D':
       days = 1;
-      interval = 1; // hourly points
+      points = 24;
       break;
     case '1W':
       days = 7;
-      interval = 7;
+      points = 7;
       break;
     case '1M':
       days = 30;
-      interval = 30;
+      points = 30;
       break;
     case 'ALL':
     default:
       days = 90;
-      interval = 90;
+      points = 30;
       break;
   }
   
-  const points = timeFilter === '1D' ? 24 : interval;
-  const basePnl = trader.pnl - (trader.pnl30d * 3); // Approximate starting point
-  const hash = trader.address.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
+  const hash = traderData.address.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
+  const basePnl = traderData.pnl - (traderData.pnl30d * (days / 30));
   
   for (let i = 0; i <= points; i++) {
     const progress = i / points;
-    const volatility = (Math.sin(i * 0.5 + hash) * 0.3 + Math.cos(i * 0.3) * 0.2);
-    const trend = progress * trader.pnl30d * (days / 30);
-    const pnl = basePnl + trend + (volatility * Math.abs(trader.pnl30d) * 0.1);
+    const volatility = Math.sin(i * 0.5 + hash * 0.01) * 0.15 + Math.cos(i * 0.3 + hash * 0.02) * 0.1;
+    const trend = progress * traderData.pnl30d * (days / 30);
+    const pnl = basePnl + trend + (volatility * Math.abs(traderData.pnl30d) * 0.3);
     
     let label: string;
     if (timeFilter === '1D') {
-      label = `${i}:00`;
+      label = `${String(i).padStart(2, '0')}:00`;
     } else if (timeFilter === '1W') {
       const date = new Date(now - (days - (i * days / points)) * 86400000);
       label = date.toLocaleDateString('en-US', { weekday: 'short' });
@@ -401,45 +400,53 @@ export default function AnalyzeTrader() {
               </CardHeader>
               <CardContent>
                 <div className="h-[300px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData}>
-                      <defs>
-                        <linearGradient id="pnlGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                      <XAxis 
-                        dataKey="date" 
-                        stroke="hsl(var(--muted-foreground))"
-                        fontSize={12}
-                        tickLine={false}
-                      />
-                      <YAxis 
-                        stroke="hsl(var(--muted-foreground))"
-                        fontSize={12}
-                        tickLine={false}
-                        tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-                      />
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: 'hsl(var(--card))',
-                          border: '1px solid hsl(var(--border))',
-                          borderRadius: '8px',
-                        }}
-                        labelStyle={{ color: 'hsl(var(--foreground))' }}
-                        formatter={(value: number) => [`$${value.toLocaleString()}`, 'PnL']}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="pnl"
-                        stroke="hsl(var(--primary))"
-                        strokeWidth={2}
-                        fill="url(#pnlGradient)"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                  {chartData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="pnlGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#333" opacity={0.3} />
+                        <XAxis 
+                          dataKey="date" 
+                          stroke="#888"
+                          fontSize={12}
+                          tickLine={false}
+                          axisLine={false}
+                        />
+                        <YAxis 
+                          stroke="#888"
+                          fontSize={12}
+                          tickLine={false}
+                          axisLine={false}
+                          tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                        />
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: '#1a1a1a',
+                            border: '1px solid #333',
+                            borderRadius: '8px',
+                            color: '#fff'
+                          }}
+                          formatter={(value: number) => [`$${value.toLocaleString()}`, 'PnL']}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="pnl"
+                          stroke="#22c55e"
+                          strokeWidth={2}
+                          fill="url(#pnlGradient)"
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-muted-foreground">
+                      No chart data available
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
