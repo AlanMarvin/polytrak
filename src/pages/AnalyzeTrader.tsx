@@ -707,7 +707,11 @@ export default function AnalyzeTrader() {
                     <span className="text-sm">Total Invested</span>
                   </div>
                   <p className="text-2xl font-bold font-mono">
-                    ${(trader.totalInvested / 1000000).toFixed(2)}M
+                    ${trader.totalInvested >= 1000000 
+                      ? `${(trader.totalInvested / 1000000).toFixed(2)}M`
+                      : trader.totalInvested >= 1000 
+                        ? `${(trader.totalInvested / 1000).toFixed(1)}K`
+                        : trader.totalInvested.toFixed(2)}
                   </p>
                 </CardContent>
               </Card>
