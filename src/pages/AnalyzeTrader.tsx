@@ -29,6 +29,7 @@ import {
   Wallet, Activity, Target, Clock, Search, ArrowRight,
   BarChart3, PieChart, Calendar, Zap, Brain, Gauge, Loader2, Info
 } from 'lucide-react';
+import tradefoxLogo from '@/assets/tradefox-logo.png';
 
 type ChartTimeFilter = '1D' | '1W' | '1M' | 'ALL';
 
@@ -842,16 +843,18 @@ export default function AnalyzeTrader() {
             <Card className="mb-8 border-2 border-orange-500/50 bg-gradient-to-br from-orange-500/10 via-background to-amber-500/10 shadow-lg shadow-orange-500/10">
               <CardHeader className="border-b border-orange-500/20 pb-4">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2 text-xl">
-                      <span className="text-3xl">🦊</span>
-                      <span className="bg-gradient-to-r from-orange-400 to-amber-500 bg-clip-text text-transparent font-bold">
-                        AI-Optimized Copy Trading
-                      </span>
-                    </CardTitle>
-                    <p className="text-muted-foreground text-sm mt-1">
-                      Strategy calculated from trader's {trader.closedPositions} trades, {trader.winRate.toFixed(1)}% win rate
-                    </p>
+                  <div className="flex items-center gap-3">
+                    <img src={tradefoxLogo} alt="TradeFox" className="h-10 w-10 object-contain" />
+                    <div>
+                      <CardTitle className="text-xl">
+                        <span className="bg-gradient-to-r from-orange-400 to-amber-500 bg-clip-text text-transparent font-bold">
+                          AI-Optimized Copy Trading for TheTradeFox
+                        </span>
+                      </CardTitle>
+                      <p className="text-muted-foreground text-sm mt-1">
+                        Strategy calculated from {trader.closedPositions} trades, {trader.winRate.toFixed(1)}% win rate
+                      </p>
+                    </div>
                   </div>
                   {copyStrategy && (
                     <Badge className={
@@ -867,27 +870,25 @@ export default function AnalyzeTrader() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-6 pt-6">
-                {/* Allocation Input */}
-                <div>
-                  <label className="text-sm text-muted-foreground mb-2 block">
+                {/* Allocation Input - Centered and Bigger */}
+                <div className="flex flex-col items-center justify-center py-4">
+                  <label className="text-sm text-muted-foreground mb-3">
                     How much do you want to allocate to this trader?
                   </label>
-                  <div className="flex items-center justify-between p-4 rounded-lg bg-background/50 border border-orange-500/30">
-                    <span className="text-muted-foreground">Allocated Funds</span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-orange-400 font-mono text-2xl">$</span>
-                      <input 
-                        type="text"
-                        inputMode="numeric"
-                        value={allocatedFunds}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/[^0-9]/g, '');
-                          setAllocatedFunds(Math.max(100, Number(val) || 100));
-                        }}
-                        className="w-28 text-right bg-transparent border-none font-mono text-2xl text-orange-400 focus:outline-none"
-                      />
-                    </div>
+                  <div className="flex items-center gap-2 p-6 rounded-xl bg-background/50 border-2 border-orange-500/40">
+                    <span className="text-orange-400 font-mono text-4xl font-bold">$</span>
+                    <input 
+                      type="text"
+                      inputMode="numeric"
+                      value={allocatedFunds}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, '');
+                        setAllocatedFunds(Math.max(100, Number(val) || 100));
+                      }}
+                      className="w-36 text-center bg-transparent border-none font-mono text-4xl font-bold text-orange-400 focus:outline-none"
+                    />
                   </div>
+                  <p className="text-xs text-muted-foreground mt-2">Minimum $100</p>
                 </div>
 
                 {/* AI Recommended Settings */}
