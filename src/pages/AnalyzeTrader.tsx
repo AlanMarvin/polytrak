@@ -467,12 +467,12 @@ export default function AnalyzeTrader() {
                     </Button>
                   )}
                   <a 
-                    href={`https://polyhub.bot?copy=${trader.address}`}
+                    href={`https://thetradefox.com?copy=${trader.address}`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
                     <Button className="glow-primary">
-                      Copy on PolyHub
+                      Copy on TheTradeFox
                     </Button>
                   </a>
                 </div>
