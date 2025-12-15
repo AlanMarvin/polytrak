@@ -29,6 +29,7 @@ import {
   Wallet, Activity, Target, Clock, Search, ArrowRight,
   BarChart3, PieChart, Calendar, Zap, Brain, Gauge, Loader2, Info
 } from 'lucide-react';
+import { StrategyAnalysis, classifyStrategy, type StrategyProfile } from '@/components/traders/StrategyAnalysis';
 
 type ChartTimeFilter = '1D' | '1W' | '1M' | 'ALL';
 
@@ -294,6 +295,36 @@ export default function AnalyzeTrader() {
   const sharpeRatio = useMemo(() => trader ? calculateSharpeRatio(trader) : 0, [trader]);
   const smartScoreInfo = getSmartScoreInfo(smartScore);
 
+  const strategy = useMemo<StrategyProfile | null>(() => {
+    if (!trader) return null;
+    return classifyStrategy({
+      totalTrades: trader.totalTrades,
+      winRate: trader.winRate,
+      pnl: trader.pnl,
+      volume: trader.volume,
+      sharpeRatio,
+      positions: trader.positions,
+      closedPositions: trader.closedPositions,
+      avgTradeSize: trader.volume / Math.max(trader.totalTrades, 1),
+      totalInvested: trader.totalInvested,
+      pnlHistory: trader.pnlHistory,
+      openPositions: trader.openPositions,
+    });
+  }, [trader, sharpeRatio]);
+
+  // Build TheTradeFox URL with strategy parameters
+  const tradeFoxUrl = useMemo(() => {
+    if (!trader || !strategy) return '';
+    const params = new URLSearchParams({
+      copy: trader.address,
+      strategy: strategy.name.toLowerCase().replace(/\s+/g, '-'),
+      tradeSize: strategy.botConfig.tradeSizePercent.toString(),
+      maxExposure: strategy.botConfig.maxExposurePercent.toString(),
+      followExits: strategy.botConfig.followExits.toString(),
+    });
+    return `https://thetradefox.com?${params.toString()}`;
+  }, [trader, strategy]);
+
   const watching = trader ? isWatching(trader.address) : false;
 
   const handleAnalyze = (e: React.FormEvent) => {
@@ -470,7 +501,7 @@ export default function AnalyzeTrader() {
                     </Button>
                   )}
                   <a 
-                    href={`https://thetradefox.com?copy=${trader.address}`}
+                    href={tradeFoxUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -753,6 +784,13 @@ export default function AnalyzeTrader() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Strategy Analysis */}
+            {strategy && (
+              <div className="mb-8">
+                <StrategyAnalysis strategy={strategy} allocatedCapital={1000} />
+              </div>
+            )}
 
             {/* Tabs for Positions and Trade History */}
             <Tabs defaultValue="positions">
