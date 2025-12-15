@@ -224,85 +224,175 @@ interface CopyStrategy {
   followExits: boolean;
   riskLevel: 'Conservative' | 'Moderate' | 'Aggressive';
   reasoning: string[];
+  maxDrawdown: number; // Expected max drawdown %
+  expectedMonthlyReturn: number; // Expected monthly return %
 }
 
 const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number): CopyStrategy => {
   const reasoning: string[] = [];
   
-  // Analyze trader metrics
-  const winRate = trader.winRate;
-  const sharpeRatio = calculateSharpeRatio(trader);
-  const avgTradeSize = trader.volume / Math.max(trader.totalTrades, 1);
+  // Core trader metrics
+  const winRate = trader.winRate / 100; // Convert to decimal
+  const totalTrades = Math.max(trader.totalTrades, 1);
+  const avgTradeSize = trader.volume / totalTrades;
   const profitability = trader.pnl > 0;
   const experience = trader.closedPositions;
+  const sharpeRatio = calculateSharpeRatio(trader);
   
-  // Calculate volatility from PnL history
+  // Calculate average win/loss from PnL history
   const history = trader.pnlHistory || [];
+  let avgWin = 0;
+  let avgLoss = 0;
+  let winCount = 0;
+  let lossCount = 0;
   
-  // Determine risk level based on metrics
+  history.forEach(h => {
+    if (h.pnl > 0) {
+      avgWin += h.pnl;
+      winCount++;
+    } else if (h.pnl < 0) {
+      avgLoss += Math.abs(h.pnl);
+      lossCount++;
+    }
+  });
+  
+  avgWin = winCount > 0 ? avgWin / winCount : avgTradeSize * 0.3;
+  avgLoss = lossCount > 0 ? avgLoss / lossCount : avgTradeSize * 0.2;
+  
+  // Calculate profit factor
+  const profitFactor = avgLoss > 0 ? (avgWin * winRate) / (avgLoss * (1 - winRate)) : 1;
+  
+  // Kelly Criterion for optimal position sizing: f* = (bp - q) / b
+  // where b = odds (avg win / avg loss), p = win probability, q = loss probability
+  const odds = avgLoss > 0 ? avgWin / avgLoss : 1.5;
+  const kellyFraction = Math.max(0, (odds * winRate - (1 - winRate)) / odds);
+  
+  // Use fractional Kelly (25-50% of full Kelly) for safety
+  const kellyMultiplier = sharpeRatio > 1.5 ? 0.5 : sharpeRatio > 0.5 ? 0.35 : 0.25;
+  const fractionalKelly = kellyFraction * kellyMultiplier;
+  
+  // Determine risk level based on multiple factors
   let riskLevel: 'Conservative' | 'Moderate' | 'Aggressive' = 'Moderate';
+  let riskScore = 0;
   
-  if (winRate >= 60 && sharpeRatio > 1 && profitability) {
+  // Win rate scoring (0-30 points)
+  if (winRate >= 0.65) riskScore += 30;
+  else if (winRate >= 0.55) riskScore += 20;
+  else if (winRate >= 0.45) riskScore += 10;
+  
+  // Sharpe ratio scoring (0-25 points)
+  if (sharpeRatio > 2) riskScore += 25;
+  else if (sharpeRatio > 1) riskScore += 15;
+  else if (sharpeRatio > 0) riskScore += 5;
+  
+  // Profitability scoring (0-20 points)
+  if (trader.pnl > 100000) riskScore += 20;
+  else if (trader.pnl > 10000) riskScore += 15;
+  else if (trader.pnl > 0) riskScore += 10;
+  
+  // Experience scoring (0-15 points)
+  if (experience > 200) riskScore += 15;
+  else if (experience > 50) riskScore += 10;
+  else if (experience > 20) riskScore += 5;
+  
+  // Profit factor scoring (0-10 points)
+  if (profitFactor > 2) riskScore += 10;
+  else if (profitFactor > 1.5) riskScore += 5;
+  
+  // Set risk level based on score
+  if (riskScore >= 70) {
     riskLevel = 'Aggressive';
-    reasoning.push(`High win rate (${winRate.toFixed(1)}%) supports larger position sizes`);
-  } else if (winRate < 45 || sharpeRatio < 0 || !profitability) {
+    reasoning.push(`Strong trader profile (score: ${riskScore}/100) enables aggressive strategy`);
+  } else if (riskScore >= 40) {
+    riskLevel = 'Moderate';
+    reasoning.push(`Balanced trader metrics (score: ${riskScore}/100) suggest moderate approach`);
+  } else {
     riskLevel = 'Conservative';
-    reasoning.push(`Lower win rate (${winRate.toFixed(1)}%) suggests smaller position sizes`);
-  } else {
-    reasoning.push(`Moderate metrics suggest balanced position sizing`);
+    reasoning.push(`Cautious approach recommended (score: ${riskScore}/100)`);
   }
   
-  // Calculate trade size % (how much of bankroll per trade)
+  // Calculate trade size based on Kelly + bankroll adjustments
   let tradeSize: number;
+  const baseTradeSizeKelly = fractionalKelly * 100; // Convert to percentage
   
+  // Bankroll-based adjustments
+  let bankrollMultiplier = 1;
+  if (allocatedFunds < 500) {
+    bankrollMultiplier = 0.7; // Smaller bankrolls need less risk
+    reasoning.push(`Small bankroll ($${allocatedFunds}) - reducing position sizes for safety`);
+  } else if (allocatedFunds < 2000) {
+    bankrollMultiplier = 0.85;
+  } else if (allocatedFunds > 10000) {
+    bankrollMultiplier = 1.1;
+    reasoning.push(`Larger bankroll allows slightly higher allocation per trade`);
+  }
+  
+  // Apply risk level caps
   if (riskLevel === 'Aggressive') {
-    tradeSize = Math.min(10, Math.max(3, winRate / 10));
-    reasoning.push(`Recommended ${tradeSize.toFixed(0)}% per trade based on strong track record`);
+    tradeSize = Math.min(15, Math.max(5, baseTradeSizeKelly * bankrollMultiplier));
+    reasoning.push(`Kelly-optimized ${tradeSize.toFixed(0)}% per trade (${(kellyFraction * 100).toFixed(1)}% full Kelly × ${(kellyMultiplier * 100).toFixed(0)}%)`);
   } else if (riskLevel === 'Conservative') {
-    tradeSize = Math.min(5, Math.max(1, winRate / 20));
-    reasoning.push(`Recommended ${tradeSize.toFixed(0)}% per trade to limit downside risk`);
+    tradeSize = Math.min(5, Math.max(1, baseTradeSizeKelly * bankrollMultiplier * 0.6));
+    reasoning.push(`Conservative ${tradeSize.toFixed(0)}% per trade to protect capital`);
   } else {
-    tradeSize = Math.min(7, Math.max(2, winRate / 15));
-    reasoning.push(`Recommended ${tradeSize.toFixed(0)}% per trade for balanced exposure`);
+    tradeSize = Math.min(10, Math.max(2, baseTradeSizeKelly * bankrollMultiplier * 0.8));
+    reasoning.push(`Balanced ${tradeSize.toFixed(0)}% per trade for steady growth`);
   }
   
-  // Calculate copy percentage based on trader's avg trade size vs your bankroll
+  // Calculate copy percentage - how much of each trader's trade to mirror
+  // This depends on: trader's avg trade size vs your bankroll, and your risk tolerance
   let copyPercentage: number;
-  const traderAvgTradeVsBankroll = avgTradeSize / allocatedFunds;
+  const maxTradeAmount = allocatedFunds * (tradeSize / 100);
+  const traderAvgVsYourMax = avgTradeSize / maxTradeAmount;
   
-  if (traderAvgTradeVsBankroll > 0.5) {
-    copyPercentage = Math.max(5, Math.min(15, 100 / (traderAvgTradeVsBankroll * 10)));
-    reasoning.push(`Trader's avg trade ($${avgTradeSize.toFixed(0)}) is large vs your bankroll - copying ${copyPercentage.toFixed(0)}%`);
-  } else if (traderAvgTradeVsBankroll > 0.1) {
-    copyPercentage = Math.min(30, Math.max(15, 50 / traderAvgTradeVsBankroll));
-    reasoning.push(`Trader's avg trade ($${avgTradeSize.toFixed(0)}) is moderate - copying ${copyPercentage.toFixed(0)}%`);
+  if (traderAvgVsYourMax > 10) {
+    // Trader trades way bigger than you can afford
+    copyPercentage = Math.max(1, Math.min(5, 100 / traderAvgVsYourMax));
+    reasoning.push(`Trader's avg trade ($${avgTradeSize.toLocaleString()}) is ${traderAvgVsYourMax.toFixed(0)}× your max - copy only ${copyPercentage.toFixed(0)}%`);
+  } else if (traderAvgVsYourMax > 3) {
+    copyPercentage = Math.max(5, Math.min(20, 60 / traderAvgVsYourMax));
+    reasoning.push(`Scale down to ${copyPercentage.toFixed(0)}% of trader's positions`);
+  } else if (traderAvgVsYourMax > 1) {
+    copyPercentage = Math.max(15, Math.min(50, 100 / traderAvgVsYourMax));
+    reasoning.push(`Match ${copyPercentage.toFixed(0)}% of trader's position sizes`);
   } else {
-    copyPercentage = Math.min(50, Math.max(25, 100 / (traderAvgTradeVsBankroll * 5)));
-    reasoning.push(`Trader's avg trade ($${avgTradeSize.toFixed(0)}) is small - can copy ${copyPercentage.toFixed(0)}%`);
+    // Your max trade is >= trader's avg - you could copy more but cap it
+    copyPercentage = Math.min(100, Math.max(30, 50 * (1 / traderAvgVsYourMax)));
+    reasoning.push(`Can copy up to ${copyPercentage.toFixed(0)}% - trader's avg ($${avgTradeSize.toLocaleString()}) fits your limits`);
   }
   
-  // Follow exits decision
-  const followExits = trader.realizedPnl > 0 && winRate > 50;
-  if (followExits) {
-    reasoning.push(`Follow exits enabled - trader shows good exit timing`);
-  } else {
-    reasoning.push(`Follow exits disabled - consider manual exit timing`);
+  // Follow exits is ALWAYS enabled (per product requirement)
+  const followExits = true;
+  reasoning.push(`Follow exits always enabled for risk management`);
+  
+  // Experience-based final adjustments
+  if (experience < 20) {
+    tradeSize = Math.max(1, tradeSize * 0.5);
+    copyPercentage = Math.max(5, copyPercentage * 0.5);
+    reasoning.push(`⚠️ Limited track record (${experience} trades) - halved allocations`);
+  } else if (experience > 100) {
+    reasoning.push(`✓ Proven track record with ${experience} closed positions`);
   }
   
-  // Experience adjustment
-  if (experience > 100) {
-    reasoning.push(`Experienced trader with ${experience} closed positions`);
-  } else if (experience < 20) {
-    tradeSize = Math.max(1, tradeSize - 2);
-    reasoning.push(`Limited track record (${experience} trades) - reduced size`);
-  }
+  // Calculate expected outcomes
+  const expectedWinPct = winRate * avgWin;
+  const expectedLossPct = (1 - winRate) * avgLoss;
+  const expectedTradeReturn = (expectedWinPct - expectedLossPct) / avgTradeSize;
+  const tradesPerMonth = Math.min(totalTrades / Math.max(1, (Date.now() - (history[0]?.timestamp || Date.now())) / (30 * 24 * 60 * 60 * 1000)), 30);
+  const expectedMonthlyReturn = expectedTradeReturn * (copyPercentage / 100) * (tradeSize / 100) * tradesPerMonth * 100;
+  
+  // Max drawdown estimation (simplified)
+  const maxConsecutiveLosses = Math.ceil(Math.log(0.01) / Math.log(1 - winRate)); // 99% confidence
+  const maxDrawdown = Math.min(50, maxConsecutiveLosses * tradeSize * (avgLoss / avgTradeSize));
   
   return {
-    tradeSize: Math.round(tradeSize),
-    copyPercentage: Math.round(copyPercentage),
+    tradeSize: Math.round(Math.max(1, Math.min(20, tradeSize))),
+    copyPercentage: Math.round(Math.max(1, Math.min(100, copyPercentage))),
     followExits,
     riskLevel,
-    reasoning
+    reasoning,
+    maxDrawdown: Math.round(maxDrawdown),
+    expectedMonthlyReturn: Math.round(expectedMonthlyReturn * 10) / 10
   };
 };
 
@@ -908,6 +998,27 @@ export default function AnalyzeTrader() {
                         <p className="text-3xl font-bold text-orange-400 font-mono">{copyStrategy.copyPercentage}%</p>
                         <p className="text-xs text-muted-foreground mt-1">
                           of trader's order size
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Expected Outcomes */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+                        <span className="text-sm text-muted-foreground">Est. Monthly Return</span>
+                        <p className={`text-2xl font-bold font-mono ${copyStrategy.expectedMonthlyReturn >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                          {copyStrategy.expectedMonthlyReturn >= 0 ? '+' : ''}{copyStrategy.expectedMonthlyReturn}%
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          ≈ ${((allocatedFunds * copyStrategy.expectedMonthlyReturn) / 100).toFixed(0)}/month
+                        </p>
+                      </div>
+                      
+                      <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+                        <span className="text-sm text-muted-foreground">Est. Max Drawdown</span>
+                        <p className="text-2xl font-bold text-red-400 font-mono">-{copyStrategy.maxDrawdown}%</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          ≈ -${((allocatedFunds * copyStrategy.maxDrawdown) / 100).toFixed(0)} worst case
                         </p>
                       </div>
                     </div>
