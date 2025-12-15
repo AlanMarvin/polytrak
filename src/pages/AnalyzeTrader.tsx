@@ -363,13 +363,22 @@ export default function AnalyzeTrader() {
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-3 mb-2">
-                    {trader.profileImage && (
-                      <img 
-                        src={trader.profileImage} 
-                        alt="Profile" 
-                        className="h-10 w-10 rounded-full"
-                      />
-                    )}
+                    <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary/30 to-accent/30 flex items-center justify-center overflow-hidden border-2 border-primary/20">
+                      {trader.profileImage ? (
+                        <img 
+                          src={trader.profileImage} 
+                          alt="Profile" 
+                          className="h-full w-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <span className="text-lg font-bold text-primary">
+                          {(trader.username || trader.address).slice(0, 2).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
                     <h2 className="text-2xl font-bold">
                       {trader.username || formatAddress(trader.address)}
                     </h2>

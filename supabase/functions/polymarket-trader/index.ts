@@ -42,6 +42,7 @@ serve(async (req) => {
     ]);
 
     console.log(`Fetched ${positions?.length || 0} positions, ${trades?.length || 0} trades`);
+    console.log('Profile data:', JSON.stringify(profile));
 
     // Calculate aggregated stats
     const openPositions = Array.isArray(positions) ? positions : [];
@@ -119,8 +120,8 @@ serve(async (req) => {
     // Build trader profile response
     const traderData = {
       address,
-      username: profile?.name || profile?.pseudonym || null,
-      profileImage: profile?.profileImage || profile?.profileImageOptimized || null,
+      username: profile?.name || profile?.username || profile?.pseudonym || null,
+      profileImage: profile?.profileImage || profile?.profileImageOptimized || profile?.image || profile?.avatar || null,
       pnl: totalPnl,
       pnl24h,
       pnl7d,
