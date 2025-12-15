@@ -52,16 +52,22 @@ serve(async (req) => {
 
     console.log(`Fetching data for address: ${address}`);
 
-    // Fetch profile first (quick)
-    const profileRes = await fetch(`${POLYMARKET_API}/profiles/${address}`);
+    // Fetch profile and official PnL first
+    const [profileRes, pnlRes] = await Promise.all([
+      fetch(`${POLYMARKET_API}/profiles/${address}`),
+      fetch(`${POLYMARKET_API}/${address}/pnl`),
+    ]);
+    
     const profile = profileRes.ok ? await profileRes.json() : null;
+    const officialPnl = pnlRes.ok ? await pnlRes.json() : null;
     console.log('Profile data:', JSON.stringify(profile));
+    console.log('Official PnL:', officialPnl);
 
     // Fetch all data with pagination for complete history
     const [positions, trades, closedPositions] = await Promise.all([
       fetchAllPaginated(`${POLYMARKET_API}/positions?user=${address}`, 1000),
       fetchAllPaginated(`${POLYMARKET_API}/trades?user=${address}`, 1000),
-      fetchAllPaginated(`${POLYMARKET_API}/closed-positions?user=${address}`, 5000), // Get more closed positions for accurate PnL
+      fetchAllPaginated(`${POLYMARKET_API}/closed-positions?user=${address}`, 5000),
     ]);
 
     console.log(`Fetched ${positions.length} positions, ${trades.length} trades, ${closedPositions.length} closed positions`);
@@ -71,24 +77,47 @@ serve(async (req) => {
     const allTrades = Array.isArray(trades) ? trades : [];
     const closed = Array.isArray(closedPositions) ? closedPositions : [];
 
-    // Calculate total PnL from open positions (unrealized)
+    // Calculate PnL from positions
+    // Positions are considered "resolved" if:
+    // - currentPrice = 0 (lost) or currentPrice = 1 (won)
+    // - currentValue = 0 (resolved to nothing)
     let unrealizedPnl = 0;
+    let resolvedPnl = 0; // Both wins and losses from resolved positions
     let totalInvested = 0;
     let totalCurrentValue = 0;
 
     openPositions.forEach((pos: any) => {
-      unrealizedPnl += pos.cashPnl || 0;
+      const cashPnl = pos.cashPnl || 0;
+      const currentPrice = pos.curPrice || 0;
+      const currentValue = pos.currentValue || 0;
+      
+      // If currentPrice is 0 (lost) or 1 (won), this is a resolved position
+      // Should be counted as realized, not unrealized
+      const isResolved = currentPrice < 0.001 || currentPrice > 0.999 || currentValue === 0;
+      
+      if (isResolved) {
+        resolvedPnl += cashPnl;
+      } else {
+        unrealizedPnl += cashPnl;
+      }
+      
       totalInvested += pos.initialValue || 0;
       totalCurrentValue += pos.currentValue || 0;
     });
 
-    // Add realized PnL from ALL closed positions
-    let realizedPnl = 0;
+    // Calculate realized PnL from closed positions
+    let closedRealizedPnl = 0;
     closed.forEach((pos: any) => {
-      realizedPnl += pos.realizedPnl || 0;
+      closedRealizedPnl += pos.realizedPnl || 0;
     });
 
+    // Total realized PnL = closed positions + resolved positions (wins + losses)
+    const realizedPnl = closedRealizedPnl + resolvedPnl;
+    
+    // Calculate total PnL
     const totalPnl = realizedPnl + unrealizedPnl;
+    
+    console.log(`PnL Breakdown: ClosedRealizedPnl=${closedRealizedPnl}, ResolvedPnl=${resolvedPnl}, UnrealizedPnl=${unrealizedPnl}, TotalPnl=${totalPnl}`);
 
     // Calculate win rate from closed positions
     const winningTrades = closed.filter((pos: any) => (pos.realizedPnl || 0) > 0).length;
