@@ -19,10 +19,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from '@/components/ui/hover-card';
 import { 
   Star, Copy, ExternalLink, TrendingUp, TrendingDown, 
   Wallet, Activity, Target, Clock, Search, ArrowRight,
-  BarChart3, PieChart, Calendar, Zap, Brain, Gauge, Loader2
+  BarChart3, PieChart, Calendar, Zap, Brain, Gauge, Loader2, Info
 } from 'lucide-react';
 
 type ChartTimeFilter = '1D' | '1W' | '1M' | 'ALL';
@@ -162,14 +167,32 @@ const calculateSmartScore = (trader: TraderData) => {
   return Math.round(winRateScore + consistencyScore + volumeScore + tradeScore + profitScore);
 };
 
-// Calculate Sharpe Ratio
+// Calculate Sharpe Ratio - proper formula based on returns and volatility
 const calculateSharpeRatio = (trader: TraderData) => {
-  const avgReturn = trader.pnl / Math.max(trader.totalTrades, 1);
-  const riskFreeRate = 0.05;
-  const volatility = Math.abs(trader.pnl24h - trader.pnl7d / 7) / Math.max(Math.abs(trader.pnl), 1);
-  if (volatility === 0) return 0;
-  const sharpe = (avgReturn - riskFreeRate) / Math.max(volatility * 100, 0.1);
-  return Math.min(3, Math.max(-3, sharpe));
+  // Calculate average return per trade
+  const avgReturnPerTrade = trader.pnl / Math.max(trader.totalTrades, 1);
+  
+  // Estimate volatility from PnL variance across time periods
+  const returns = [trader.pnl24h, trader.pnl7d / 7, trader.pnl30d / 30].filter(r => r !== 0);
+  if (returns.length < 2) {
+    // Fallback: use simple return/volume ratio scaled
+    return trader.volume > 0 ? (trader.pnl / trader.volume) * 1000 : 0;
+  }
+  
+  const meanReturn = returns.reduce((a, b) => a + b, 0) / returns.length;
+  const variance = returns.reduce((sum, r) => sum + Math.pow(r - meanReturn, 2), 0) / returns.length;
+  const stdDev = Math.sqrt(variance);
+  
+  if (stdDev === 0) {
+    // No volatility - return based on profitability
+    return trader.pnl > 0 ? trader.pnl / 1000 : 0;
+  }
+  
+  // Sharpe = (Return - Risk Free Rate) / Std Dev
+  // Risk-free rate negligible for short-term trading
+  const sharpe = avgReturnPerTrade / stdDev;
+  
+  return parseFloat(sharpe.toFixed(2));
 };
 
 const getSmartScoreInfo = (score: number) => {
@@ -444,6 +467,31 @@ export default function AnalyzeTrader() {
                       <div className="flex items-center gap-2 text-muted-foreground mb-2">
                         <Brain className="h-5 w-5" />
                         <span className="text-sm font-medium">Smart Score</span>
+                        <HoverCard>
+                          <HoverCardTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-5 w-5 p-0">
+                              <Info className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                            </Button>
+                          </HoverCardTrigger>
+                          <HoverCardContent className="w-80">
+                            <div className="space-y-2">
+                              <h4 className="text-sm font-semibold">What is Smart Score?</h4>
+                              <p className="text-sm text-muted-foreground">
+                                A composite score (0-100) evaluating trader quality based on multiple factors:
+                              </p>
+                              <ul className="text-xs text-muted-foreground space-y-1 ml-4 list-disc">
+                                <li><strong>Win Rate (40%)</strong> - Percentage of profitable trades</li>
+                                <li><strong>Consistency (25%)</strong> - Low PnL volatility over time</li>
+                                <li><strong>Volume (20%)</strong> - Total trading volume</li>
+                                <li><strong>Activity (10%)</strong> - Number of trades executed</li>
+                                <li><strong>Profitability (5%)</strong> - Overall profit achieved</li>
+                              </ul>
+                              <p className="text-xs text-muted-foreground pt-2 border-t">
+                                Higher scores indicate more reliable, consistent traders.
+                              </p>
+                            </div>
+                          </HoverCardContent>
+                        </HoverCard>
                       </div>
                       <div className="flex items-baseline gap-3">
                         <span className={`text-4xl font-bold font-mono ${smartScoreInfo.color}`}>
@@ -472,6 +520,34 @@ export default function AnalyzeTrader() {
                       <div className="flex items-center gap-2 text-muted-foreground mb-2">
                         <Gauge className="h-5 w-5" />
                         <span className="text-sm font-medium">Sharpe Ratio</span>
+                        <HoverCard>
+                          <HoverCardTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-5 w-5 p-0">
+                              <Info className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                            </Button>
+                          </HoverCardTrigger>
+                          <HoverCardContent className="w-80">
+                            <div className="space-y-2">
+                              <h4 className="text-sm font-semibold">What is Sharpe Ratio?</h4>
+                              <p className="text-sm text-muted-foreground">
+                                A measure of risk-adjusted returns developed by Nobel laureate William Sharpe.
+                              </p>
+                              <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded font-mono">
+                                Sharpe = (Return - Risk Free Rate) / Volatility
+                              </div>
+                              <ul className="text-xs text-muted-foreground space-y-1 ml-4 list-disc">
+                                <li><strong>&lt; 0</strong> - Negative returns or high risk</li>
+                                <li><strong>0 - 1</strong> - Average performance</li>
+                                <li><strong>1 - 2</strong> - Good risk-adjusted returns</li>
+                                <li><strong>&gt; 2</strong> - Excellent performance</li>
+                                <li><strong>&gt; 3</strong> - Outstanding (rare)</li>
+                              </ul>
+                              <p className="text-xs text-muted-foreground pt-2 border-t">
+                                Higher values indicate better returns relative to the risk taken.
+                              </p>
+                            </div>
+                          </HoverCardContent>
+                        </HoverCard>
                       </div>
                       <div className="flex items-baseline gap-3">
                         <span className={`text-4xl font-bold font-mono ${sharpeRatio >= 1 ? 'text-green-500' : sharpeRatio >= 0 ? 'text-yellow-500' : 'text-red-500'}`}>
