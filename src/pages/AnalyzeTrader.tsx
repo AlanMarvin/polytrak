@@ -551,6 +551,9 @@ export default function AnalyzeTrader() {
                             <div className="space-y-2">
                               <h4 className="text-sm font-semibold">What is Sharpe Ratio?</h4>
                               <p className="text-sm text-muted-foreground">
+                                Is he earning good returns for the level of risk he is taking? The Sharpe Ratio answers this question.
+                              </p>
+                              <p className="text-xs text-muted-foreground">
                                 A measure of risk-adjusted returns developed by Nobel laureate William Sharpe.
                               </p>
                               <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded font-mono">
