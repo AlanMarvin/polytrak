@@ -58,7 +58,7 @@ const Blog = () => {
   }, []);
 
   const coreTools = [
-    { name: 'TradeFox', handle: '@tradefoxai', desc: 'Best liquidity across platforms. Spreads matter.', url: 'https://thetradefox.com', recommended: true },
+    { name: 'TradeFox', handle: '@tradefoxai', desc: 'Best liquidity across platforms. Spreads matter. Easy Bot Trading.', url: 'https://thetradefox.com', recommended: true },
     { name: 'Polymarket', handle: '@Polymarket', desc: 'The platform itself. Where your money goes.', url: 'https://polymarket.com', recommended: true },
     { name: 'PolymarketTrade', handle: '@PolymarketTrade', desc: 'Track profitable traders. Copy smart, not blindly.', url: 'https://twitter.com/PolymarketTrade', recommended: true },
     { name: 'PolymarketIntel', handle: '@PolymarketIntel', desc: 'News feed. Sleep on events, lose money.', url: 'https://twitter.com/PolymarketIntel', recommended: true },
