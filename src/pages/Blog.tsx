@@ -105,6 +105,9 @@ const Blog = () => {
     { name: 'Prediction Arc', handle: '@predictionarc', desc: 'For beginners. Biggest community, supported by Polymarket.', url: 'https://twitter.com/predictionarc', recommended: true },
   ];
 
+  // Extract Twitter handle from the @ format
+  const getTwitterHandle = (handle: string) => handle.replace('@', '');
+
   const ToolSection = ({ 
     title, 
     icon: Icon, 
@@ -128,11 +131,37 @@ const Blog = () => {
         {tools.map((tool) => (
           <Card key={tool.name} className="glass-card hover:border-primary/30 transition-colors">
             <CardContent className="p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold">{tool.name}</h3>
-                    <span className="text-sm text-muted-foreground">{tool.handle}</span>
+              <div className="flex items-start gap-4">
+                {/* Logo/Avatar */}
+                <a href={tool.url} target="_blank" rel="noopener noreferrer" className="shrink-0">
+                  <img 
+                    src={`https://unavatar.io/twitter/${getTwitterHandle(tool.handle)}`}
+                    alt={`${tool.name} logo`}
+                    className="w-12 h-12 rounded-lg bg-muted object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(tool.name)}&background=7c3aed&color=fff&size=48`;
+                    }}
+                  />
+                </a>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <a 
+                      href={tool.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="font-semibold hover:text-primary transition-colors"
+                    >
+                      {tool.name}
+                    </a>
+                    <a 
+                      href={`https://twitter.com/${getTwitterHandle(tool.handle)}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      {tool.handle}
+                    </a>
                     {tool.recommended && (
                       <Badge variant="secondary" className="bg-primary/20 text-primary text-xs">
                         <Star className="h-3 w-3 mr-1" /> Recommended
@@ -141,8 +170,9 @@ const Blog = () => {
                   </div>
                   <p className="text-muted-foreground text-sm">{tool.desc}</p>
                 </div>
-                <a href={tool.url} target="_blank" rel="noopener noreferrer">
-                  <Button variant="ghost" size="icon" className="shrink-0">
+                
+                <a href={tool.url} target="_blank" rel="noopener noreferrer" className="shrink-0">
+                  <Button variant="ghost" size="icon">
                     <ExternalLink className="h-4 w-4" />
                   </Button>
                 </a>
