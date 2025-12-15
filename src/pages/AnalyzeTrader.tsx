@@ -152,11 +152,8 @@ const formatChartDate = (date: Date, timeFilter: ChartTimeFilter): string => {
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   } else if (timeFilter === '1W') {
     return date.toLocaleDateString('en-US', { weekday: 'short' });
-  } else if (timeFilter === '1M') {
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
-  // ALL: show month and year
-  return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
 // Calculate Smart Score
@@ -231,7 +228,7 @@ export default function AnalyzeTrader() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [inputAddress, setInputAddress] = useState(searchParams.get('address') || '');
   const [analyzedAddress, setAnalyzedAddress] = useState(searchParams.get('address') || '');
-  const [chartTimeFilter, setChartTimeFilter] = useState<ChartTimeFilter>('ALL');
+  const [chartTimeFilter, setChartTimeFilter] = useState<ChartTimeFilter>('1M');
   const [trader, setTrader] = useState<TraderData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -470,12 +467,12 @@ export default function AnalyzeTrader() {
                     </Button>
                   )}
                   <a 
-                    href={`https://thetradefox.com?copy=${trader.address}`}
+                    href={`https://polyhub.bot?copy=${trader.address}`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
                     <Button className="glow-primary">
-                      Copy on TheTradeFox
+                      Copy on PolyHub
                     </Button>
                   </a>
                 </div>
@@ -554,9 +551,6 @@ export default function AnalyzeTrader() {
                             <div className="space-y-2">
                               <h4 className="text-sm font-semibold">What is Sharpe Ratio?</h4>
                               <p className="text-sm text-muted-foreground">
-                                Is he earning good returns for the level of risk he is taking? The Sharpe Ratio answers this question.
-                              </p>
-                              <p className="text-xs text-muted-foreground">
                                 A measure of risk-adjusted returns developed by Nobel laureate William Sharpe.
                               </p>
                               <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded font-mono">
@@ -710,11 +704,7 @@ export default function AnalyzeTrader() {
                     <span className="text-sm">Total Invested</span>
                   </div>
                   <p className="text-2xl font-bold font-mono">
-                    ${trader.totalInvested >= 1000000 
-                      ? `${(trader.totalInvested / 1000000).toFixed(2)}M`
-                      : trader.totalInvested >= 1000 
-                        ? `${(trader.totalInvested / 1000).toFixed(1)}K`
-                        : trader.totalInvested.toFixed(2)}
+                    ${(trader.totalInvested / 1000000).toFixed(2)}M
                   </p>
                 </CardContent>
               </Card>
@@ -828,40 +818,27 @@ export default function AnalyzeTrader() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {trader.recentTrades.map((trade) => {
-                            // Determine win/loss based on trade characteristics
-                            // Sell at high price (>0.5) = likely profit, Sell at low price = likely loss
-                            const isWin = trade.side === 'sell' && trade.price >= 0.5;
-                            const isLoss = trade.side === 'sell' && trade.price < 0.5;
-                            
-                            return (
-                              <TableRow 
-                                key={trade.id}
-                                className={
-                                  isWin ? 'bg-green-500/10 hover:bg-green-500/20' : 
-                                  isLoss ? 'bg-red-500/10 hover:bg-red-500/20' : ''
-                                }
-                              >
-                                <TableCell className="text-muted-foreground">
-                                  <div className="flex items-center gap-1">
-                                    <Clock className="h-3 w-3" />
-                                    {new Date(trade.timestamp).toLocaleDateString()}
-                                  </div>
-                                </TableCell>
-                                <TableCell className="max-w-[200px]">
-                                  <p className="truncate">{trade.marketTitle}</p>
-                                </TableCell>
-                                <TableCell>
-                                  <Badge variant={trade.side === 'buy' ? 'default' : 'destructive'}>
-                                    {trade.side.toUpperCase()}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell>{trade.outcome}</TableCell>
-                                <TableCell className="font-mono">${Math.round(trade.size).toLocaleString()}</TableCell>
-                                <TableCell className="font-mono">{(trade.price * 100).toFixed(1)}¢</TableCell>
-                              </TableRow>
-                            );
-                          })}
+                          {trader.recentTrades.map((trade) => (
+                            <TableRow key={trade.id}>
+                              <TableCell className="text-muted-foreground">
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {new Date(trade.timestamp).toLocaleDateString()}
+                                </div>
+                              </TableCell>
+                              <TableCell className="max-w-[200px]">
+                                <p className="truncate">{trade.marketTitle}</p>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={trade.side === 'buy' ? 'default' : 'destructive'}>
+                                  {trade.side.toUpperCase()}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>{trade.outcome}</TableCell>
+                              <TableCell className="font-mono">${Math.round(trade.size).toLocaleString()}</TableCell>
+                              <TableCell className="font-mono">{(trade.price * 100).toFixed(1)}¢</TableCell>
+                            </TableRow>
+                          ))}
                         </TableBody>
                       </Table>
                     ) : (
