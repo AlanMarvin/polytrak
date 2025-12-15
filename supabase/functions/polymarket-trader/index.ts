@@ -77,22 +77,37 @@ serve(async (req) => {
       totalVolume += (trade.size || 0) * (trade.price || 0);
     });
 
-    // Get time-based PnL (approximation from trades)
-    const now = Date.now() / 1000;
-    const day = 86400;
+    // Get time-based PnL from closed positions (more accurate)
+    const now = Date.now();
+    const day = 86400 * 1000;
     
     let pnl24h = 0;
     let pnl7d = 0;
     let pnl30d = 0;
 
-    // Calculate from recent trades (simplified - actual would need price history)
-    allTrades.forEach((trade: any) => {
-      const tradeAge = now - (trade.timestamp || 0);
-      const tradePnl = trade.side === 'SELL' ? (trade.size || 0) * (trade.price || 0) : 0;
+    // Build PnL history from closed positions (sorted by time)
+    const pnlHistory: Array<{ timestamp: number; pnl: number; cumulative: number }> = [];
+    let cumulativePnl = 0;
+    
+    // Sort closed positions by timestamp (oldest first)
+    const sortedClosed = [...closed].sort((a: any, b: any) => {
+      const timeA = a.closedAt ? new Date(a.closedAt).getTime() : (a.timestamp ? a.timestamp * 1000 : 0);
+      const timeB = b.closedAt ? new Date(b.closedAt).getTime() : (b.timestamp ? b.timestamp * 1000 : 0);
+      return timeA - timeB;
+    });
+
+    sortedClosed.forEach((pos: any) => {
+      const positionPnl = pos.realizedPnl || 0;
+      const timestamp = pos.closedAt ? new Date(pos.closedAt).getTime() : (pos.timestamp ? pos.timestamp * 1000 : now);
       
-      if (tradeAge <= day) pnl24h += tradePnl;
-      if (tradeAge <= day * 7) pnl7d += tradePnl;
-      if (tradeAge <= day * 30) pnl30d += tradePnl;
+      cumulativePnl += positionPnl;
+      pnlHistory.push({ timestamp, pnl: positionPnl, cumulative: cumulativePnl });
+      
+      // Calculate time-based PnL
+      const age = now - timestamp;
+      if (age <= day) pnl24h += positionPnl;
+      if (age <= day * 7) pnl7d += positionPnl;
+      if (age <= day * 30) pnl30d += positionPnl;
     });
 
     // Get last active timestamp
@@ -120,6 +135,7 @@ serve(async (req) => {
       positions: openPositions.length,
       closedPositions: closed.length,
       lastActive,
+      pnlHistory: pnlHistory.slice(-100), // Last 100 data points for chart
       // Raw data for detailed views
       openPositions: openPositions.slice(0, 50).map((pos: any) => ({
         id: pos.conditionId,
