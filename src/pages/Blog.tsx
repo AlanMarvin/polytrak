@@ -58,6 +58,7 @@ const Blog = () => {
   }, []);
 
   const coreTools = [
+    { name: 'TradeFox', handle: '@tradefoxai', desc: 'Best liquidity across platforms. Spreads matter.', url: 'https://thetradefox.com', recommended: true },
     { name: 'Polymarket', handle: '@Polymarket', desc: 'The platform itself. Where your money goes.', url: 'https://polymarket.com', recommended: true },
     { name: 'PolymarketTrade', handle: '@PolymarketTrade', desc: 'Track profitable traders. Copy smart, not blindly.', url: 'https://twitter.com/PolymarketTrade', recommended: true },
     { name: 'PolymarketIntel', handle: '@PolymarketIntel', desc: 'News feed. Sleep on events, lose money.', url: 'https://twitter.com/PolymarketIntel', recommended: true },
@@ -70,7 +71,6 @@ const Blog = () => {
     { name: 'PolyTale AI', handle: '@polytaleai', desc: 'AI for filtering noise and finding signals.', url: 'https://twitter.com/polytaleai', recommended: false },
     { name: 'PolyBro', handle: '@polybroapp', desc: 'Quantum signals. When it says fade - consider fading.', url: 'https://twitter.com/polybroapp', recommended: false },
     { name: 'PolySimplr', handle: '@polysimplr', desc: "If Polymarket's interface frustrates you, use this.", url: 'https://twitter.com/polysimplr', recommended: false },
-    { name: 'TradeFox', handle: '@tradefoxai', desc: 'Best liquidity across platforms. Spreads matter.', url: 'https://tradefox.com', recommended: false },
     { name: 'Raven AI', handle: '@Ravenai_', desc: 'Meta-analysis. For those thinking three steps ahead.', url: 'https://twitter.com/Ravenai_', recommended: false },
     { name: 'Rainmaker', handle: '@rainmakerdotfun', desc: 'Specifically for sports betting markets.', url: 'https://twitter.com/rainmakerdotfun', recommended: false },
   ];
