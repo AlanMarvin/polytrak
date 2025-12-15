@@ -152,8 +152,11 @@ const formatChartDate = (date: Date, timeFilter: ChartTimeFilter): string => {
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   } else if (timeFilter === '1W') {
     return date.toLocaleDateString('en-US', { weekday: 'short' });
+  } else if (timeFilter === '1M') {
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  // ALL: show month and year
+  return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
 };
 
 // Calculate Smart Score
