@@ -7,6 +7,7 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import TraderProfile from "./pages/TraderProfile";
+import AnalyzeTrader from "./pages/AnalyzeTrader";
 import Markets from "./pages/Markets";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -24,6 +25,7 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Index />} />
+              <Route path="/analyze" element={<AnalyzeTrader />} />
               <Route path="/trader/:address" element={<TraderProfile />} />
               <Route path="/markets" element={<Markets />} />
               <Route path="/auth" element={<Auth />} />
