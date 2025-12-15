@@ -7,14 +7,13 @@ const corsHeaders = {
 
 const POLYMARKET_API = 'https://data-api.polymarket.com';
 
-// Helper to fetch paginated data
-async function fetchAllPaginated(baseUrl: string, maxItems = 5000): Promise<any[]> {
+// Helper to fetch paginated data with endpoint-specific limits
+async function fetchAllPaginated(baseUrl: string, maxItems = 5000, pageSize = 500): Promise<any[]> {
   const allItems: any[] = [];
   let offset = 0;
-  const limit = 500; // Max per request
   
   while (allItems.length < maxItems) {
-    const url = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}limit=${limit}&offset=${offset}`;
+    const url = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}limit=${pageSize}&offset=${offset}`;
     const res = await fetch(url);
     
     if (!res.ok) break;
@@ -26,8 +25,9 @@ async function fetchAllPaginated(baseUrl: string, maxItems = 5000): Promise<any[
     
     allItems.push(...items);
     
-    if (items.length < limit) break; // No more data
-    offset += limit;
+    // Stop if we got fewer items than requested (no more data)
+    if (items.length < pageSize) break;
+    offset += pageSize;
   }
   
   return allItems;
@@ -58,10 +58,11 @@ serve(async (req) => {
     console.log('Profile data:', JSON.stringify(profile));
 
     // Fetch all data with pagination for complete history
+    // Note: closed-positions API has max 50 per page, positions/trades allow 500
     const [positions, trades, closedPositions] = await Promise.all([
-      fetchAllPaginated(`${POLYMARKET_API}/positions?user=${address}`, 2000),
-      fetchAllPaginated(`${POLYMARKET_API}/trades?user=${address}`, 5000), // More trades for accurate PnL calculation
-      fetchAllPaginated(`${POLYMARKET_API}/closed-positions?user=${address}`, 5000),
+      fetchAllPaginated(`${POLYMARKET_API}/positions?user=${address}`, 2000, 500),
+      fetchAllPaginated(`${POLYMARKET_API}/trades?user=${address}`, 5000, 500),
+      fetchAllPaginated(`${POLYMARKET_API}/closed-positions?user=${address}`, 10000, 50), // Max 50 per page per API docs
     ]);
 
     console.log(`Fetched ${positions.length} positions, ${trades.length} trades, ${closedPositions.length} closed positions`);
