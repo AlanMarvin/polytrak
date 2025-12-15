@@ -27,50 +27,55 @@ import {
 type ChartTimeFilter = '1D' | '1W' | '1M' | 'ALL';
 
 // Generate PnL chart data based on time filter
-const generatePnlChartData = (traderData: { address: string; pnl: number; pnl30d: number }, timeFilter: ChartTimeFilter) => {
-  const now = Date.now();
+const generatePnlChartData = (traderData: { address: string; pnl: number; pnl24h: number; pnl7d: number; pnl30d: number }, timeFilter: ChartTimeFilter) => {
   const data = [];
   
-  let days: number;
   let points: number;
+  let periodPnl: number;
   
   switch (timeFilter) {
     case '1D':
-      days = 1;
       points = 24;
+      periodPnl = traderData.pnl24h;
       break;
     case '1W':
-      days = 7;
       points = 7;
+      periodPnl = traderData.pnl7d;
       break;
     case '1M':
-      days = 30;
       points = 30;
+      periodPnl = traderData.pnl30d;
       break;
     case 'ALL':
     default:
-      days = 90;
       points = 30;
+      periodPnl = traderData.pnl;
       break;
   }
   
   const hash = traderData.address.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
-  const basePnl = traderData.pnl - (traderData.pnl30d * (days / 30));
+  
+  // End PnL is the current total, start is current minus period gain
+  const endPnl = traderData.pnl;
+  const startPnl = endPnl - periodPnl;
   
   for (let i = 0; i <= points; i++) {
     const progress = i / points;
-    const volatility = Math.sin(i * 0.5 + hash * 0.01) * 0.15 + Math.cos(i * 0.3 + hash * 0.02) * 0.1;
-    const trend = progress * traderData.pnl30d * (days / 30);
-    const pnl = basePnl + trend + (volatility * Math.abs(traderData.pnl30d) * 0.3);
+    // Add some volatility/noise but maintain the overall trend
+    const noise = Math.sin(i * 0.8 + hash * 0.01) * Math.abs(periodPnl) * 0.05;
+    const pnl = startPnl + (periodPnl * progress) + noise;
     
     let label: string;
     if (timeFilter === '1D') {
       label = `${String(i).padStart(2, '0')}:00`;
     } else if (timeFilter === '1W') {
-      const date = new Date(now - (days - (i * days / points)) * 86400000);
-      label = date.toLocaleDateString('en-US', { weekday: 'short' });
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const today = new Date().getDay();
+      const dayIndex = (today - (points - i) + 7) % 7;
+      label = dayNames[dayIndex];
     } else {
-      const date = new Date(now - (days - (i * days / points)) * 86400000);
+      const date = new Date();
+      date.setDate(date.getDate() - (points - i));
       label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     }
     
