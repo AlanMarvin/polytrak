@@ -839,13 +839,15 @@ export default function AnalyzeTrader() {
             </Card>
 
             {/* TradeFox Copy Trading Configuration */}
-            <Card className="glass-card mb-8 border-primary/30">
-              <CardHeader>
+            <Card className="mb-8 border-2 border-orange-500/50 bg-gradient-to-br from-orange-500/10 via-background to-amber-500/10 shadow-lg shadow-orange-500/10">
+              <CardHeader className="border-b border-orange-500/20 pb-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <span className="text-2xl">🦊</span>
-                      AI-Optimized Copy Trading
+                    <CardTitle className="flex items-center gap-2 text-xl">
+                      <span className="text-3xl">🦊</span>
+                      <span className="bg-gradient-to-r from-orange-400 to-amber-500 bg-clip-text text-transparent font-bold">
+                        AI-Optimized Copy Trading
+                      </span>
                     </CardTitle>
                     <p className="text-muted-foreground text-sm mt-1">
                       Strategy calculated from trader's {trader.closedPositions} trades, {trader.winRate.toFixed(1)}% win rate
@@ -857,29 +859,33 @@ export default function AnalyzeTrader() {
                         ? 'bg-green-500/20 text-green-500 border-green-500/30'
                         : copyStrategy.riskLevel === 'Conservative'
                         ? 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30'
-                        : 'bg-primary/20 text-primary border-primary/30'
+                        : 'bg-orange-500/20 text-orange-400 border-orange-500/30'
                     }>
                       {copyStrategy.riskLevel} Strategy
                     </Badge>
                   )}
                 </div>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-6 pt-6">
                 {/* Allocation Input */}
                 <div>
                   <label className="text-sm text-muted-foreground mb-2 block">
                     How much do you want to allocate to this trader?
                   </label>
-                  <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30 border border-border/50">
+                  <div className="flex items-center justify-between p-4 rounded-lg bg-background/50 border border-orange-500/30">
                     <span className="text-muted-foreground">Allocated Funds</span>
                     <div className="flex items-center gap-1">
-                      <Input 
-                        type="number" 
+                      <span className="text-orange-400 font-mono text-2xl">$</span>
+                      <input 
+                        type="text"
+                        inputMode="numeric"
                         value={allocatedFunds}
-                        onChange={(e) => setAllocatedFunds(Math.max(100, Number(e.target.value)))}
-                        className="w-28 text-right bg-transparent border-none font-mono text-xl text-primary"
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9]/g, '');
+                          setAllocatedFunds(Math.max(100, Number(val) || 100));
+                        }}
+                        className="w-28 text-right bg-transparent border-none font-mono text-2xl text-orange-400 focus:outline-none"
                       />
-                      <span className="text-primary font-mono text-xl">$</span>
                     </div>
                   </div>
                 </div>
@@ -888,41 +894,41 @@ export default function AnalyzeTrader() {
                 {copyStrategy && (
                   <>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="p-4 rounded-lg bg-primary/10 border border-primary/30">
+                      <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/30">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-sm text-muted-foreground">% Size for each trade</span>
-                          <Badge variant="outline" className="text-xs">AI Recommended</Badge>
+                          <Badge variant="outline" className="text-xs border-orange-500/50 text-orange-400">AI Recommended</Badge>
                         </div>
-                        <p className="text-3xl font-bold text-primary font-mono">{copyStrategy.tradeSize}%</p>
+                        <p className="text-3xl font-bold text-orange-400 font-mono">{copyStrategy.tradeSize}%</p>
                         <p className="text-xs text-muted-foreground mt-1">
                           = ${((allocatedFunds * copyStrategy.tradeSize) / 100).toFixed(0)} max per trade
                         </p>
                       </div>
                       
-                      <div className="p-4 rounded-lg bg-primary/10 border border-primary/30">
+                      <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/30">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-sm text-muted-foreground">% of each trade to copy</span>
-                          <Badge variant="outline" className="text-xs">AI Recommended</Badge>
+                          <Badge variant="outline" className="text-xs border-orange-500/50 text-orange-400">AI Recommended</Badge>
                         </div>
-                        <p className="text-3xl font-bold text-primary font-mono">{copyStrategy.copyPercentage}%</p>
+                        <p className="text-3xl font-bold text-orange-400 font-mono">{copyStrategy.copyPercentage}%</p>
                         <p className="text-xs text-muted-foreground mt-1">
                           of trader's order size
                         </p>
                       </div>
                     </div>
 
-                    <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
+                    <div className="p-4 rounded-lg bg-background/50 border border-orange-500/30">
                       <div className="flex items-start gap-3">
                         <input 
                           type="checkbox" 
                           checked={copyStrategy.followExits}
                           readOnly
-                          className="mt-1 h-5 w-5 rounded border-primary text-primary focus:ring-primary accent-primary"
+                          className="mt-1 h-5 w-5 rounded border-orange-500 text-orange-500 focus:ring-orange-500 accent-orange-500"
                         />
                         <div>
                           <div className="flex items-center gap-2">
                             <p className="font-medium">Follow Exits</p>
-                            <Badge variant="outline" className="text-xs">AI Recommended</Badge>
+                            <Badge variant="outline" className="text-xs border-orange-500/50 text-orange-400">AI Recommended</Badge>
                           </div>
                           <p className="text-sm text-muted-foreground">
                             When the trader reduces or closes a position, you sell the same percentage of your copied position.
@@ -932,15 +938,15 @@ export default function AnalyzeTrader() {
                     </div>
 
                     {/* Strategy Reasoning */}
-                    <div className="p-4 rounded-lg bg-muted/20 border border-border/30">
+                    <div className="p-4 rounded-lg bg-background/30 border border-border/30">
                       <div className="flex items-center gap-2 mb-3">
-                        <Brain className="h-4 w-4 text-primary" />
+                        <Brain className="h-4 w-4 text-orange-400" />
                         <span className="text-sm font-medium">Strategy Analysis</span>
                       </div>
                       <ul className="space-y-1">
                         {copyStrategy.reasoning.map((reason, i) => (
                           <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                            <span className="text-primary">•</span>
+                            <span className="text-orange-400">•</span>
                             {reason}
                           </li>
                         ))}
@@ -956,7 +962,7 @@ export default function AnalyzeTrader() {
                     rel="noopener noreferrer"
                     className="w-full md:w-auto"
                   >
-                    <Button size="lg" className="w-full glow-primary">
+                    <Button size="lg" className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-lg shadow-orange-500/25">
                       <span className="mr-2">🦊</span>
                       Start Copy Trading with AI Settings
                       <ExternalLink className="ml-2 h-4 w-4" />
