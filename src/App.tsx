@@ -11,6 +11,7 @@ import AnalyzeTrader from "./pages/AnalyzeTrader";
 import Markets from "./pages/Markets";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
+import Blog from "./pages/Blog";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
               <Route path="/markets" element={<Markets />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/blog" element={<Blog />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
