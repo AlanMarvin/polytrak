@@ -145,7 +145,7 @@ serve(async (req) => {
       totalVolume += (trade.size || 0) * (trade.price || 0);
     });
 
-    // Get time-based PnL from trades
+    // Get time-based PnL
     const now = Date.now();
     const day = 86400 * 1000;
     
@@ -153,52 +153,47 @@ serve(async (req) => {
     let pnl7d = 0;
     let pnl30d = 0;
 
-    // Build PnL history from trades (sorted by time)
+    // Build PnL history from CLOSED positions (they have timestamps when position was closed)
+    // This is more accurate than trades because it shows when PnL was actually realized
     const pnlHistory: Array<{ timestamp: number; pnl: number; cumulative: number }> = [];
     
-    // Sort trades by timestamp (oldest first)
-    const sortedTrades = [...allTrades].sort((a: any, b: any) => {
-      return (a.timestamp || 0) - (b.timestamp || 0);
+    // Combine closed positions from API + resolved positions (with estimated close times)
+    const allClosedForHistory: Array<{ timestamp: number; pnl: number }> = [];
+    
+    // Add closed positions from API
+    closed.forEach((pos: any) => {
+      const pnl = pos.realizedPnl || 0;
+      // timestamp in closed positions is Unix seconds
+      const timestamp = pos.timestamp ? pos.timestamp * 1000 : (pos.endDate ? new Date(pos.endDate).getTime() : now);
+      if (pnl !== 0) {
+        allClosedForHistory.push({ timestamp, pnl });
+      }
     });
-
-    // Track running PnL per market to calculate incremental changes
-    const runningMarketPnl = new Map<string, { bought: number; sold: number; buyValue: number; sellValue: number }>();
-    let runningTotalPnl = 0;
-
-    sortedTrades.forEach((trade: any) => {
-      const key = `${trade.conditionId || trade.market}-${trade.outcome}`;
-      if (!runningMarketPnl.has(key)) {
-        runningMarketPnl.set(key, { bought: 0, sold: 0, buyValue: 0, sellValue: 0 });
+    
+    // Add resolved positions (estimate close time from endDate or use now)
+    resolvedPositions.forEach((pos: any) => {
+      const pnl = pos.cashPnl || 0;
+      // Use endDate if available, otherwise estimate based on position data
+      const timestamp = pos.endDate ? new Date(pos.endDate).getTime() : now - day; // Default to 1 day ago if no date
+      if (pnl !== 0) {
+        allClosedForHistory.push({ timestamp, pnl });
       }
-      const market = runningMarketPnl.get(key)!;
-      const size = trade.size || 0;
-      const price = trade.price || 0;
-      const value = size * price;
-      const timestamp = trade.timestamp ? trade.timestamp * 1000 : now;
+    });
+    
+    // Sort by timestamp (oldest first)
+    allClosedForHistory.sort((a, b) => a.timestamp - b.timestamp);
+    
+    // Build cumulative PnL history
+    let cumulativePnl = 0;
+    allClosedForHistory.forEach(({ timestamp, pnl }) => {
+      cumulativePnl += pnl;
+      pnlHistory.push({ timestamp, pnl, cumulative: cumulativePnl });
       
-      // Calculate PnL change from this trade
-      let pnlChange = 0;
-      if (trade.side?.toLowerCase() === 'buy') {
-        market.bought += size;
-        market.buyValue += value;
-      } else {
-        // Selling - realize PnL
-        const avgBuyPrice = market.bought > 0 ? market.buyValue / market.bought : 0;
-        pnlChange = (price - avgBuyPrice) * size;
-        market.sold += size;
-        market.sellValue += value;
-      }
-      
-      if (pnlChange !== 0) {
-        runningTotalPnl += pnlChange;
-        pnlHistory.push({ timestamp, pnl: pnlChange, cumulative: runningTotalPnl });
-        
-        // Time-based PnL
-        const age = now - timestamp;
-        if (age <= day) pnl24h += pnlChange;
-        if (age <= day * 7) pnl7d += pnlChange;
-        if (age <= day * 30) pnl30d += pnlChange;
-      }
+      // Calculate time-based PnL
+      const age = now - timestamp;
+      if (age <= day) pnl24h += pnl;
+      if (age <= day * 7) pnl7d += pnl;
+      if (age <= day * 30) pnl30d += pnl;
     });
 
     // Get last active timestamp
