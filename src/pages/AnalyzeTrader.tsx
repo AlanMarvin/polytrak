@@ -744,11 +744,12 @@ export default function AnalyzeTrader() {
               </CardContent>
             </Card>
 
-            {/* Tabs for Positions and Trade History */}
+            {/* Tabs for Positions, Trade History, and Bot Settings */}
             <Tabs defaultValue="positions">
               <TabsList className="mb-4">
                 <TabsTrigger value="positions">Open Positions ({trader.openPositions.length})</TabsTrigger>
                 <TabsTrigger value="history">Trade History ({trader.recentTrades.length})</TabsTrigger>
+                <TabsTrigger value="bot-settings">🦊 TradeFox Settings</TabsTrigger>
               </TabsList>
 
               <TabsContent value="positions">
@@ -830,7 +831,9 @@ export default function AnalyzeTrader() {
                                 <p className="truncate">{trade.marketTitle}</p>
                               </TableCell>
                               <TableCell>
-                                <Badge variant={trade.side === 'buy' ? 'default' : 'destructive'}>
+                                <Badge className={trade.side === 'buy' 
+                                  ? 'bg-green-500/20 text-green-500 border-green-500/30' 
+                                  : 'bg-red-500/20 text-red-500 border-red-500/30'}>
                                   {trade.side.toUpperCase()}
                                 </Badge>
                               </TableCell>
@@ -846,6 +849,74 @@ export default function AnalyzeTrader() {
                         No trade history
                       </div>
                     )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="bot-settings">
+                <Card className="glass-card">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <span className="text-2xl">🦊</span>
+                      TheTradeFox Bot Configuration
+                    </CardTitle>
+                    <p className="text-muted-foreground text-sm">
+                      Recommended settings to copy this trader automatically on TheTradeFox
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
+                        <p className="text-sm text-muted-foreground mb-1">Suggested Trade Size</p>
+                        <p className="text-xl font-bold text-primary">5-10%</p>
+                        <p className="text-xs text-muted-foreground mt-1">of your portfolio per trade</p>
+                      </div>
+                      <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
+                        <p className="text-sm text-muted-foreground mb-1">Max Exposure</p>
+                        <p className="text-xl font-bold text-primary">25%</p>
+                        <p className="text-xs text-muted-foreground mt-1">maximum allocation to single market</p>
+                      </div>
+                      <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
+                        <p className="text-sm text-muted-foreground mb-1">Follow Exits</p>
+                        <p className="text-xl font-bold text-green-500">Yes</p>
+                        <p className="text-xs text-muted-foreground mt-1">sell when trader sells</p>
+                      </div>
+                      <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
+                        <p className="text-sm text-muted-foreground mb-1">Strategy Type</p>
+                        <p className="text-xl font-bold text-primary">
+                          {trader.winRate >= 60 ? 'Conservative' : trader.winRate >= 45 ? 'Balanced' : 'Aggressive'}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">based on trader's win rate</p>
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
+                      <div className="flex items-start gap-3">
+                        <Zap className="h-5 w-5 text-primary mt-0.5" />
+                        <div>
+                          <p className="font-medium text-primary">Pro Tip</p>
+                          <p className="text-sm text-muted-foreground">
+                            Start with smaller trade sizes and increase as you verify the bot is copying trades correctly. 
+                            Monitor performance for at least a week before increasing allocation.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-center">
+                      <a 
+                        href={`https://thetradefox.com?copy=${trader.address}&strategy=${trader.winRate >= 60 ? 'conservative' : trader.winRate >= 45 ? 'balanced' : 'aggressive'}&tradeSize=5&maxExposure=25&followExits=true`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full md:w-auto"
+                      >
+                        <Button size="lg" className="w-full md:w-auto glow-primary">
+                          <span className="mr-2">🦊</span>
+                          Start Copy Trading on TheTradeFox
+                          <ExternalLink className="ml-2 h-4 w-4" />
+                        </Button>
+                      </a>
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
