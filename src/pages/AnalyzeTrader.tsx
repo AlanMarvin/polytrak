@@ -681,7 +681,7 @@ export default function AnalyzeTrader() {
                                 </Badge>
                               </TableCell>
                               <TableCell className="font-mono">
-                                ${position.size.toFixed(0)}
+                                ${Math.round(position.size).toLocaleString()}
                               </TableCell>
                               <TableCell className="font-mono">
                                 {(position.avgPrice * 100).toFixed(1)}¢
@@ -738,7 +738,7 @@ export default function AnalyzeTrader() {
                                 </Badge>
                               </TableCell>
                               <TableCell>{trade.outcome}</TableCell>
-                              <TableCell className="font-mono">${trade.size.toFixed(0)}</TableCell>
+                              <TableCell className="font-mono">${Math.round(trade.size).toLocaleString()}</TableCell>
                               <TableCell className="font-mono">{(trade.price * 100).toFixed(1)}¢</TableCell>
                             </TableRow>
                           ))}
