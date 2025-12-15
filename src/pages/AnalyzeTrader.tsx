@@ -157,40 +157,61 @@ const formatChartDate = (date: Date, timeFilter: ChartTimeFilter): string => {
 };
 
 // Calculate Smart Score
+// Calculate Smart Score - weighted composite of trading metrics
 const calculateSmartScore = (trader: TraderData) => {
-  const winRateScore = Math.min(30, (trader.winRate / 100) * 40);
-  const pnlVolatility = Math.abs(trader.pnl24h) / Math.max(Math.abs(trader.pnl), 1);
-  const consistencyScore = Math.max(0, 25 - (pnlVolatility * 100));
-  const volumeScore = Math.min(20, (trader.volume / 1000000) * 5);
-  const tradeScore = Math.min(15, (trader.totalTrades / 100) * 5);
-  const profitScore = trader.pnl > 0 ? Math.min(10, (trader.pnl / 100000) * 5) : 0;
-  return Math.round(winRateScore + consistencyScore + volumeScore + tradeScore + profitScore);
+  // Win rate component (max 30 pts) - scaled exponentially for high win rates
+  const winRateScore = Math.min(30, Math.pow(trader.winRate / 100, 0.8) * 35);
+  
+  // Profitability component (max 25 pts) - log scale for large PnLs
+  const profitScore = trader.pnl > 0 
+    ? Math.min(25, Math.log10(trader.pnl + 1) * 5) 
+    : Math.max(-10, Math.log10(Math.abs(trader.pnl) + 1) * -3);
+  
+  // Volume/activity component (max 20 pts) - shows market engagement
+  const volumeScore = Math.min(20, Math.log10(trader.volume + 1) * 3.5);
+  
+  // Experience component (max 15 pts) - based on closed positions
+  const experienceScore = Math.min(15, Math.log10(trader.closedPositions + 1) * 8);
+  
+  // ROI efficiency (max 10 pts) - profit relative to volume
+  const roi = trader.volume > 0 ? (trader.pnl / trader.volume) : 0;
+  const roiScore = Math.max(0, Math.min(10, roi * 50));
+  
+  const total = winRateScore + profitScore + volumeScore + experienceScore + roiScore;
+  return Math.round(Math.max(0, Math.min(100, total)));
 };
 
-// Calculate Sharpe Ratio - proper formula based on returns and volatility
+// Calculate Sharpe Ratio - based on PnL history returns
 const calculateSharpeRatio = (trader: TraderData) => {
-  // Calculate average return per trade
-  const avgReturnPerTrade = trader.pnl / Math.max(trader.totalTrades, 1);
+  // Use PnL history if available for more accurate calculation
+  const history = trader.pnlHistory || [];
   
-  // Estimate volatility from PnL variance across time periods
-  const returns = [trader.pnl24h, trader.pnl7d / 7, trader.pnl30d / 30].filter(r => r !== 0);
-  if (returns.length < 2) {
-    // Fallback: use simple return/volume ratio scaled
-    return trader.volume > 0 ? (trader.pnl / trader.volume) * 1000 : 0;
+  if (history.length < 2) {
+    // Fallback: simple return/risk approximation
+    if (trader.volume === 0) return 0;
+    const returnRate = trader.pnl / trader.volume;
+    // Scale by win rate as a volatility proxy
+    const volatilityProxy = 1 - (trader.winRate / 100) + 0.1;
+    return parseFloat((returnRate / volatilityProxy * 10).toFixed(2));
   }
   
+  // Calculate individual position returns
+  const returns = history.map(h => h.pnl);
+  
+  // Mean return
   const meanReturn = returns.reduce((a, b) => a + b, 0) / returns.length;
+  
+  // Standard deviation of returns
   const variance = returns.reduce((sum, r) => sum + Math.pow(r - meanReturn, 2), 0) / returns.length;
   const stdDev = Math.sqrt(variance);
   
   if (stdDev === 0) {
-    // No volatility - return based on profitability
-    return trader.pnl > 0 ? trader.pnl / 1000 : 0;
+    return trader.pnl > 0 ? 10 : 0;
   }
   
-  // Sharpe = (Return - Risk Free Rate) / Std Dev
-  // Risk-free rate negligible for short-term trading
-  const sharpe = avgReturnPerTrade / stdDev;
+  // Sharpe = Mean Return / Std Dev (annualization factor for daily returns ~sqrt(365))
+  // For position-level returns, we use a simpler scaling
+  const sharpe = (meanReturn / stdDev) * Math.sqrt(history.length);
   
   return parseFloat(sharpe.toFixed(2));
 };
