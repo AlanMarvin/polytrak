@@ -360,18 +360,13 @@ export default function AnalyzeTrader() {
         const message = err instanceof Error ? err.message : 'Failed to fetch trader data';
         console.error('Error fetching trader:', message);
         setError(message);
-        toast({
-          title: 'Error',
-          description: message,
-          variant: 'destructive'
-        });
       } finally {
         setLoading(false);
       }
     };
 
     fetchTraderData();
-  }, [analyzedAddress, toast]);
+  }, [analyzedAddress]);
 
   const chartData = useMemo(() => 
     trader ? generatePnlChartData(trader, chartTimeFilter) : [],
