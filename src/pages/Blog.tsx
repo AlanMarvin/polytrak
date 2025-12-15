@@ -60,49 +60,49 @@ const Blog = () => {
   const coreTools = [
     { name: 'TradeFox', handle: '@tradefoxai', desc: 'Best liquidity across platforms. Spreads matter. Easy Bot Trading.', url: 'https://thetradefox.com', recommended: true },
     { name: 'Polymarket', handle: '@Polymarket', desc: 'The platform itself. Where your money goes.', url: 'https://polymarket.com', recommended: true },
-    { name: 'PolymarketTrade', handle: '@PolymarketTrade', desc: 'Track profitable traders. Copy smart, not blindly.', url: 'https://twitter.com/PolymarketTrade', recommended: true },
-    { name: 'PolymarketIntel', handle: '@PolymarketIntel', desc: 'News feed. Sleep on events, lose money.', url: 'https://twitter.com/PolymarketIntel', recommended: true },
-    { name: 'PolymarketBuild', handle: '@PolymarketBuild', desc: 'New tools drop here.', url: 'https://twitter.com/PolymarketBuild', recommended: true },
+    { name: 'PolymarketTrade', handle: '@PolymarketTrade', desc: 'Track profitable traders. Copy smart, not blindly.', url: 'https://polymarket.trade', recommended: true },
+    { name: 'PolymarketIntel', handle: '@PolymarketIntel', desc: 'News feed. Sleep on events, lose money.', url: 'https://polymarketintel.com', recommended: true },
+    { name: 'PolymarketBuild', handle: '@PolymarketBuild', desc: 'New tools drop here.', url: 'https://polymarket.build', recommended: true },
   ];
 
   const aiTools = [
-    { name: 'Munar AI', handle: '@Munar_AI', desc: 'AI assistant for research and market analysis.', url: 'https://twitter.com/Munar_AI', recommended: true },
-    { name: 'PolyAgent', handle: '@trypolyagent', desc: 'AI-powered trading assistant.', url: 'https://twitter.com/trypolyagent', recommended: false },
-    { name: 'PolyTale AI', handle: '@polytaleai', desc: 'AI for filtering noise and finding signals.', url: 'https://twitter.com/polytaleai', recommended: false },
-    { name: 'PolyBro', handle: '@polybroapp', desc: 'Quantum signals. When it says fade - consider fading.', url: 'https://twitter.com/polybroapp', recommended: false },
-    { name: 'PolySimplr', handle: '@polysimplr', desc: "If Polymarket's interface frustrates you, use this.", url: 'https://twitter.com/polysimplr', recommended: false },
-    { name: 'Raven AI', handle: '@Ravenai_', desc: 'Meta-analysis. For those thinking three steps ahead.', url: 'https://twitter.com/Ravenai_', recommended: false },
-    { name: 'Rainmaker', handle: '@rainmakerdotfun', desc: 'Specifically for sports betting markets.', url: 'https://twitter.com/rainmakerdotfun', recommended: false },
+    { name: 'Munar AI', handle: '@Munar_AI', desc: 'AI assistant for research and market analysis.', url: 'https://munar.ai', recommended: true },
+    { name: 'PolyAgent', handle: '@trypolyagent', desc: 'AI-powered trading assistant.', url: 'https://polyagent.ai', recommended: false },
+    { name: 'PolyTale AI', handle: '@polytaleai', desc: 'AI for filtering noise and finding signals.', url: 'https://polytale.ai', recommended: false },
+    { name: 'PolyBro', handle: '@polybroapp', desc: 'Quantum signals. When it says fade - consider fading.', url: 'https://polybro.app', recommended: false },
+    { name: 'PolySimplr', handle: '@polysimplr', desc: "If Polymarket's interface frustrates you, use this.", url: 'https://polysimplr.com', recommended: false },
+    { name: 'Raven AI', handle: '@Ravenai_', desc: 'Meta-analysis. For those thinking three steps ahead.', url: 'https://raven.ai', recommended: false },
+    { name: 'Rainmaker', handle: '@rainmakerdotfun', desc: 'Specifically for sports betting markets.', url: 'https://rainmaker.fun', recommended: false },
   ];
 
   const analyticsTools = [
-    { name: 'PolymarketEco', handle: '@PolymarketEco', desc: 'Directory of all tools. Bookmark it.', url: 'https://twitter.com/PolymarketEco', recommended: true },
-    { name: 'LayerHub', handle: '@layerhub', desc: 'Whale and smart money tracking.', url: 'https://twitter.com/layerhub', recommended: true },
-    { name: 'PolyAlertHub', handle: '@PolyAlertHub', desc: 'Know when whales move.', url: 'https://twitter.com/PolyAlertHub', recommended: true },
-    { name: 'Pizzint Watch', handle: '@pizzintwatch', desc: 'Pentagon pizza orders predict military action.', url: 'https://twitter.com/pizzintwatch', recommended: true },
+    { name: 'PolymarketEco', handle: '@PolymarketEco', desc: 'Directory of all tools. Bookmark it.', url: 'https://polymarket.eco', recommended: true },
+    { name: 'LayerHub', handle: '@layerhub', desc: 'Whale and smart money tracking.', url: 'https://layerhub.xyz', recommended: true },
+    { name: 'PolyAlertHub', handle: '@PolyAlertHub', desc: 'Know when whales move.', url: 'https://polyalerthub.com', recommended: true },
+    { name: 'Pizzint Watch', handle: '@pizzintwatch', desc: 'Pentagon pizza orders predict military action.', url: 'https://pizzint.watch', recommended: true },
     { name: 'HashDive', handle: '@hash_dive', desc: '"Smart Scores" = statistical edge. Check before big trades.', url: 'https://hashdive.com', recommended: true },
-    { name: 'Polysights', handle: '@Polysights', desc: 'AI against revenge trading.', url: 'https://twitter.com/Polysights', recommended: true },
-    { name: 'Nevua Markets', handle: '@NevuaMarkets', desc: 'Instant alerts. Set it up or miss opportunities.', url: 'https://twitter.com/NevuaMarkets', recommended: true },
-    { name: 'PolyFactual', handle: '@polyfactual', desc: 'Weekly streams and free alpha.', url: 'https://twitter.com/polyfactual', recommended: true },
-    { name: 'PolyNoob', handle: '@Polynoob_', desc: 'Complete guide for beginners.', url: 'https://twitter.com/Polynoob_', recommended: true },
-    { name: 'PolyScope', handle: '@polyscope_', desc: 'Free monitoring dashboard.', url: 'https://twitter.com/polyscope_', recommended: false },
-    { name: 'PredictFolio', handle: '@PredictFolio', desc: 'Real-time portfolio tracking.', url: 'https://twitter.com/PredictFolio', recommended: false },
+    { name: 'Polysights', handle: '@Polysights', desc: 'AI against revenge trading.', url: 'https://polysights.io', recommended: true },
+    { name: 'Nevua Markets', handle: '@NevuaMarkets', desc: 'Instant alerts. Set it up or miss opportunities.', url: 'https://nevua.markets', recommended: true },
+    { name: 'PolyFactual', handle: '@polyfactual', desc: 'Weekly streams and free alpha.', url: 'https://polyfactual.com', recommended: true },
+    { name: 'PolyNoob', handle: '@Polynoob_', desc: 'Complete guide for beginners.', url: 'https://polynoob.com', recommended: true },
+    { name: 'PolyScope', handle: '@polyscope_', desc: 'Free monitoring dashboard.', url: 'https://polyscope.io', recommended: false },
+    { name: 'PredictFolio', handle: '@PredictFolio', desc: 'Real-time portfolio tracking.', url: 'https://predictfolio.com', recommended: false },
   ];
 
   const tradingTools = [
-    { name: 'Ostium Labs', handle: '@OstiumLabs', desc: 'Long/short TradFi assets onchain with leverage.', url: 'https://twitter.com/OstiumLabs', recommended: false },
-    { name: 'Flipr Bot', handle: '@fliprbot', desc: 'Leverage for prediction markets. Careful, liquidations are real.', url: 'https://twitter.com/fliprbot', recommended: false },
-    { name: 'OKBet', handle: '@tryokbet', desc: 'Telegram bot for trading.', url: 'https://twitter.com/tryokbet', recommended: false },
-    { name: 'PolyX Bot', handle: '@PolyxBot', desc: 'Twitter bot integration.', url: 'https://twitter.com/PolyxBot', recommended: false },
-    { name: 'Bankr Bot', handle: '@bankrbot', desc: 'Trade when you are not at your desk.', url: 'https://twitter.com/bankrbot', recommended: false },
-    { name: 'PolySwipe', handle: '@polyswipe_app', desc: 'Mobile terminal. Trade from anywhere.', url: 'https://twitter.com/polyswipe_app', recommended: false },
-    { name: 'Polyburg', handle: '@polyburg', desc: 'Catches signals others miss. Contrarian positions.', url: 'https://twitter.com/polyburg', recommended: true },
+    { name: 'Ostium Labs', handle: '@OstiumLabs', desc: 'Long/short TradFi assets onchain with leverage.', url: 'https://ostium.io', recommended: false },
+    { name: 'Flipr Bot', handle: '@fliprbot', desc: 'Leverage for prediction markets. Careful, liquidations are real.', url: 'https://flipr.bot', recommended: false },
+    { name: 'OKBet', handle: '@tryokbet', desc: 'Telegram bot for trading.', url: 'https://okbet.io', recommended: false },
+    { name: 'PolyX Bot', handle: '@PolyxBot', desc: 'Twitter bot integration.', url: 'https://polyx.bot', recommended: false },
+    { name: 'Bankr Bot', handle: '@bankrbot', desc: 'Trade when you are not at your desk.', url: 'https://bankr.bot', recommended: false },
+    { name: 'PolySwipe', handle: '@polyswipe_app', desc: 'Mobile terminal. Trade from anywhere.', url: 'https://polyswipe.app', recommended: false },
+    { name: 'Polyburg', handle: '@polyburg', desc: 'Catches signals others miss. Contrarian positions.', url: 'https://polyburg.com', recommended: true },
     { name: 'Stand Trade', handle: '@StandDOTtrade', desc: 'Advanced terminal. Everything in one place.', url: 'https://stand.trade', recommended: false },
   ];
 
   const communities = [
-    { name: 'ZSC DAO', handle: '@zscdao', desc: 'Real traders. Network here.', url: 'https://twitter.com/zscdao', recommended: true },
-    { name: 'Prediction Arc', handle: '@predictionarc', desc: 'For beginners. Biggest community, supported by Polymarket.', url: 'https://twitter.com/predictionarc', recommended: true },
+    { name: 'ZSC DAO', handle: '@zscdao', desc: 'Real traders. Network here.', url: 'https://zsc.dao', recommended: true },
+    { name: 'Prediction Arc', handle: '@predictionarc', desc: 'For beginners. Biggest community, supported by Polymarket.', url: 'https://predictionarc.com', recommended: true },
   ];
 
   // Extract Twitter handle from the @ format
