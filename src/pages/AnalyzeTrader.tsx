@@ -825,27 +825,40 @@ export default function AnalyzeTrader() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {trader.recentTrades.map((trade) => (
-                            <TableRow key={trade.id}>
-                              <TableCell className="text-muted-foreground">
-                                <div className="flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  {new Date(trade.timestamp).toLocaleDateString()}
-                                </div>
-                              </TableCell>
-                              <TableCell className="max-w-[200px]">
-                                <p className="truncate">{trade.marketTitle}</p>
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant={trade.side === 'buy' ? 'default' : 'destructive'}>
-                                  {trade.side.toUpperCase()}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>{trade.outcome}</TableCell>
-                              <TableCell className="font-mono">${Math.round(trade.size).toLocaleString()}</TableCell>
-                              <TableCell className="font-mono">{(trade.price * 100).toFixed(1)}¢</TableCell>
-                            </TableRow>
-                          ))}
+                          {trader.recentTrades.map((trade) => {
+                            // Determine win/loss based on trade characteristics
+                            // Sell at high price (>0.5) = likely profit, Sell at low price = likely loss
+                            const isWin = trade.side === 'sell' && trade.price >= 0.5;
+                            const isLoss = trade.side === 'sell' && trade.price < 0.5;
+                            
+                            return (
+                              <TableRow 
+                                key={trade.id}
+                                className={
+                                  isWin ? 'bg-green-500/10 hover:bg-green-500/20' : 
+                                  isLoss ? 'bg-red-500/10 hover:bg-red-500/20' : ''
+                                }
+                              >
+                                <TableCell className="text-muted-foreground">
+                                  <div className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    {new Date(trade.timestamp).toLocaleDateString()}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="max-w-[200px]">
+                                  <p className="truncate">{trade.marketTitle}</p>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={trade.side === 'buy' ? 'default' : 'destructive'}>
+                                    {trade.side.toUpperCase()}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>{trade.outcome}</TableCell>
+                                <TableCell className="font-mono">${Math.round(trade.size).toLocaleString()}</TableCell>
+                                <TableCell className="font-mono">{(trade.price * 100).toFixed(1)}¢</TableCell>
+                              </TableRow>
+                            );
+                          })}
                         </TableBody>
                       </Table>
                     ) : (
