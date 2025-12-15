@@ -788,7 +788,7 @@ export default function AnalyzeTrader() {
             {/* Strategy Analysis */}
             {strategy && (
               <div className="mb-8">
-                <StrategyAnalysis strategy={strategy} allocatedCapital={1000} />
+                <StrategyAnalysis strategy={strategy} />
               </div>
             )}
 
