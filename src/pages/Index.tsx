@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { LeaderboardTable } from '@/components/traders/LeaderboardTable';
 import { Button } from '@/components/ui/button';
@@ -12,11 +12,18 @@ import { Search, TrendingUp, Users, BarChart3, ArrowRight, Zap } from 'lucide-re
 const Index = () => {
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const navigate = useNavigate();
 
   const filteredTraders = mockTraders.filter(trader => 
     trader.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
     trader.username?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleAnalyze = () => {
+    if (searchQuery.trim()) {
+      navigate(`/analyze?address=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
 
   const stats = [
     { label: 'Top Traders', value: '500+', icon: Users },
@@ -49,22 +56,23 @@ const Index = () => {
             </p>
 
             {/* Search Bar */}
-            <div className="flex flex-col sm:flex-row gap-3 max-w-xl mx-auto pt-4">
+            <form 
+              onSubmit={(e) => { e.preventDefault(); handleAnalyze(); }}
+              className="flex flex-col sm:flex-row gap-3 max-w-xl mx-auto pt-4"
+            >
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by wallet address or username..."
+                  placeholder="Paste wallet address to analyze..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 h-12 bg-background/50 border-border/50"
+                  className="pl-10 h-12 bg-background/50 border-border/50 font-mono"
                 />
               </div>
-              <Link to="/markets">
-                <Button size="lg" className="h-12 px-6">
-                  Explore Markets <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
+              <Button type="submit" size="lg" className="h-12 px-6" disabled={!searchQuery.trim()}>
+                Analyze <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </form>
           </div>
 
           {/* Stats */}
