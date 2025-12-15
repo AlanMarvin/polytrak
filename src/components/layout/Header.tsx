@@ -51,6 +51,9 @@ export function Header() {
         </form>
 
         <nav className="flex items-center gap-2">
+          <Link to="/analyze" className="hidden sm:block">
+            <Button variant="ghost" size="sm">Analyze</Button>
+          </Link>
           <Link to="/markets" className="hidden sm:block">
             <Button variant="ghost" size="sm">Markets</Button>
           </Link>
