@@ -10,6 +10,10 @@ import {
   Table, TableBody, TableCell, TableHead, 
   TableHeader, TableRow 
 } from '@/components/ui/table';
+import { 
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, 
+  Tooltip, ResponsiveContainer 
+} from 'recharts';
 import { mockTraders, generateMockPositions, generateMockTrades } from '@/lib/mock-data';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { useAuth } from '@/hooks/useAuth';
@@ -17,13 +21,117 @@ import { useToast } from '@/hooks/use-toast';
 import { 
   Star, Copy, ExternalLink, TrendingUp, TrendingDown, 
   Wallet, Activity, Target, Clock, Search, ArrowRight,
-  BarChart3, PieChart, Calendar, Zap
+  BarChart3, PieChart, Calendar, Zap, Brain, Gauge
 } from 'lucide-react';
+
+type ChartTimeFilter = '1D' | '1W' | '1M' | 'ALL';
+
+// Generate PnL chart data based on time filter
+const generatePnlChartData = (trader: any, timeFilter: ChartTimeFilter) => {
+  const now = Date.now();
+  const data = [];
+  
+  let days: number;
+  let interval: number;
+  
+  switch (timeFilter) {
+    case '1D':
+      days = 1;
+      interval = 1; // hourly points
+      break;
+    case '1W':
+      days = 7;
+      interval = 7;
+      break;
+    case '1M':
+      days = 30;
+      interval = 30;
+      break;
+    case 'ALL':
+    default:
+      days = 90;
+      interval = 90;
+      break;
+  }
+  
+  const points = timeFilter === '1D' ? 24 : interval;
+  const basePnl = trader.pnl - (trader.pnl30d * 3); // Approximate starting point
+  const hash = trader.address.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
+  
+  for (let i = 0; i <= points; i++) {
+    const progress = i / points;
+    const volatility = (Math.sin(i * 0.5 + hash) * 0.3 + Math.cos(i * 0.3) * 0.2);
+    const trend = progress * trader.pnl30d * (days / 30);
+    const pnl = basePnl + trend + (volatility * Math.abs(trader.pnl30d) * 0.1);
+    
+    let label: string;
+    if (timeFilter === '1D') {
+      label = `${i}:00`;
+    } else if (timeFilter === '1W') {
+      const date = new Date(now - (days - (i * days / points)) * 86400000);
+      label = date.toLocaleDateString('en-US', { weekday: 'short' });
+    } else {
+      const date = new Date(now - (days - (i * days / points)) * 86400000);
+      label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+    
+    data.push({
+      date: label,
+      pnl: Math.round(pnl),
+    });
+  }
+  
+  return data;
+};
+
+// Calculate Smart Score (0-100) based on multiple factors
+const calculateSmartScore = (trader: any) => {
+  // Win Rate Score (0-30 points)
+  const winRateScore = Math.min(30, (trader.winRate / 100) * 40);
+  
+  // Consistency Score based on PnL stability (0-25 points)
+  const pnlVolatility = Math.abs(trader.pnl24h) / Math.max(Math.abs(trader.pnl), 1);
+  const consistencyScore = Math.max(0, 25 - (pnlVolatility * 100));
+  
+  // Volume Score (0-20 points) - Higher volume = more reliable data
+  const volumeScore = Math.min(20, (trader.volume / 1000000) * 5);
+  
+  // Trade Count Score (0-15 points) - More trades = more data points
+  const tradeScore = Math.min(15, (trader.totalTrades / 100) * 5);
+  
+  // Profitability Score (0-10 points)
+  const profitScore = trader.pnl > 0 ? Math.min(10, (trader.pnl / 100000) * 5) : 0;
+  
+  return Math.round(winRateScore + consistencyScore + volumeScore + tradeScore + profitScore);
+};
+
+// Calculate Sharpe Ratio (simplified)
+const calculateSharpeRatio = (trader: any) => {
+  // Simplified Sharpe = (Return - Risk Free Rate) / Volatility
+  // Using approximations for demo
+  const avgReturn = trader.pnl / Math.max(trader.totalTrades, 1);
+  const riskFreeRate = 0.05; // 5% annual
+  const volatility = Math.abs(trader.pnl24h - trader.pnl7d / 7) / Math.max(Math.abs(trader.pnl), 1);
+  
+  if (volatility === 0) return 0;
+  const sharpe = (avgReturn - riskFreeRate) / Math.max(volatility * 100, 0.1);
+  return Math.min(3, Math.max(-3, sharpe));
+};
+
+// Get Smart Score color and label
+const getSmartScoreInfo = (score: number) => {
+  if (score >= 80) return { color: 'text-green-500', bg: 'bg-green-500/20', label: 'Excellent' };
+  if (score >= 60) return { color: 'text-primary', bg: 'bg-primary/20', label: 'Good' };
+  if (score >= 40) return { color: 'text-yellow-500', bg: 'bg-yellow-500/20', label: 'Average' };
+  if (score >= 20) return { color: 'text-orange-500', bg: 'bg-orange-500/20', label: 'Below Avg' };
+  return { color: 'text-red-500', bg: 'bg-red-500/20', label: 'Poor' };
+};
 
 export default function AnalyzeTrader() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [inputAddress, setInputAddress] = useState(searchParams.get('address') || '');
   const [analyzedAddress, setAnalyzedAddress] = useState(searchParams.get('address') || '');
+  const [chartTimeFilter, setChartTimeFilter] = useState<ChartTimeFilter>('1M');
   const { user } = useAuth();
   const { isWatching, addToWatchlist, removeFromWatchlist } = useWatchlist();
   const { toast } = useToast();
@@ -64,6 +172,15 @@ export default function AnalyzeTrader() {
     trader ? generateMockTrades(50) : [], 
     [trader]
   );
+
+  const chartData = useMemo(() => 
+    trader ? generatePnlChartData(trader, chartTimeFilter) : [],
+    [trader, chartTimeFilter]
+  );
+
+  const smartScore = useMemo(() => trader ? calculateSmartScore(trader) : 0, [trader]);
+  const sharpeRatio = useMemo(() => trader ? calculateSharpeRatio(trader) : 0, [trader]);
+  const smartScoreInfo = getSmartScoreInfo(smartScore);
 
   const watching = trader ? isWatching(trader.address) : false;
 
@@ -202,6 +319,131 @@ export default function AnalyzeTrader() {
               </div>
             </div>
 
+            {/* Smart Score & Sharpe Ratio */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+              <Card className="glass-card">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                        <Brain className="h-5 w-5" />
+                        <span className="text-sm font-medium">Smart Score</span>
+                      </div>
+                      <div className="flex items-baseline gap-3">
+                        <span className={`text-4xl font-bold font-mono ${smartScoreInfo.color}`}>
+                          {smartScore}
+                        </span>
+                        <span className="text-muted-foreground">/100</span>
+                        <Badge className={`${smartScoreInfo.bg} ${smartScoreInfo.color} border-0`}>
+                          {smartScoreInfo.label}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Based on win rate, consistency, volume & trade history
+                      </p>
+                    </div>
+                    <div className={`h-20 w-20 rounded-full ${smartScoreInfo.bg} flex items-center justify-center`}>
+                      <span className={`text-2xl font-bold ${smartScoreInfo.color}`}>{smartScore}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="glass-card">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                        <Gauge className="h-5 w-5" />
+                        <span className="text-sm font-medium">Sharpe Ratio</span>
+                      </div>
+                      <div className="flex items-baseline gap-3">
+                        <span className={`text-4xl font-bold font-mono ${sharpeRatio >= 1 ? 'text-green-500' : sharpeRatio >= 0 ? 'text-yellow-500' : 'text-red-500'}`}>
+                          {sharpeRatio.toFixed(2)}
+                        </span>
+                        <Badge className={`${sharpeRatio >= 1 ? 'bg-green-500/20 text-green-500' : sharpeRatio >= 0 ? 'bg-yellow-500/20 text-yellow-500' : 'bg-red-500/20 text-red-500'} border-0`}>
+                          {sharpeRatio >= 2 ? 'Excellent' : sharpeRatio >= 1 ? 'Good' : sharpeRatio >= 0 ? 'Average' : 'Poor'}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Risk-adjusted return metric (higher is better)
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm text-muted-foreground">Benchmark</div>
+                      <div className="text-lg font-mono">&gt; 1.0</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* PnL Chart */}
+            <Card className="glass-card mb-8">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                  PnL Performance
+                </CardTitle>
+                <div className="flex gap-1">
+                  {(['1D', '1W', '1M', 'ALL'] as ChartTimeFilter[]).map((filter) => (
+                    <Button
+                      key={filter}
+                      variant={chartTimeFilter === filter ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => setChartTimeFilter(filter)}
+                      className="px-3"
+                    >
+                      {filter}
+                    </Button>
+                  ))}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData}>
+                      <defs>
+                        <linearGradient id="pnlGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                      <XAxis 
+                        dataKey="date" 
+                        stroke="hsl(var(--muted-foreground))"
+                        fontSize={12}
+                        tickLine={false}
+                      />
+                      <YAxis 
+                        stroke="hsl(var(--muted-foreground))"
+                        fontSize={12}
+                        tickLine={false}
+                        tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                        }}
+                        labelStyle={{ color: 'hsl(var(--foreground))' }}
+                        formatter={(value: number) => [`$${value.toLocaleString()}`, 'PnL']}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="pnl"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={2}
+                        fill="url(#pnlGradient)"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Stats Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               <Card className="glass-card">
@@ -312,7 +554,7 @@ export default function AnalyzeTrader() {
                     <span className="text-sm">Avg Win</span>
                   </div>
                   <p className="text-lg font-bold font-mono stat-profit">
-                    +${((trader.pnl / trader.totalTrades) * 2).toFixed(0)}
+                    +${Math.abs((trader.pnl / trader.totalTrades) * 2).toFixed(0)}
                   </p>
                 </CardContent>
               </Card>
