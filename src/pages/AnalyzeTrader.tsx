@@ -27,12 +27,19 @@ import {
 type ChartTimeFilter = '1D' | '1W' | '1M' | 'ALL';
 
 // Generate PnL chart data based on time filter
-const generatePnlChartData = (traderData: { address: string; pnl: number; pnl24h: number; pnl7d: number; pnl30d: number }, timeFilter: ChartTimeFilter) => {
+const generatePnlChartData = (traderData: { 
+  address: string; 
+  pnl: number; 
+  pnl24h: number; 
+  pnl7d: number; 
+  pnl30d: number 
+}, timeFilter: ChartTimeFilter) => {
   const data = [];
   
   let points: number;
   let periodPnl: number;
   
+  // Get the correct period PnL based on filter
   switch (timeFilter) {
     case '1D':
       points = 24;
@@ -49,21 +56,24 @@ const generatePnlChartData = (traderData: { address: string; pnl: number; pnl24h
     case 'ALL':
     default:
       points = 30;
-      periodPnl = traderData.pnl;
+      periodPnl = traderData.pnl; // Total PnL for ALL time
       break;
   }
   
   const hash = traderData.address.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
   
-  // End PnL is the current total, start is current minus period gain
+  // For ALL time, start from 0 and end at current PnL
+  // For periods, start from (currentPnL - periodPnl) and end at currentPnL
   const endPnl = traderData.pnl;
-  const startPnl = endPnl - periodPnl;
+  const startPnl = timeFilter === 'ALL' ? 0 : endPnl - periodPnl;
+  const pnlRange = endPnl - startPnl;
   
   for (let i = 0; i <= points; i++) {
     const progress = i / points;
-    // Add some volatility/noise but maintain the overall trend
-    const noise = Math.sin(i * 0.8 + hash * 0.01) * Math.abs(periodPnl) * 0.05;
-    const pnl = startPnl + (periodPnl * progress) + noise;
+    // Small noise for realism (max 3% of range)
+    const noise = Math.sin(i * 0.7 + hash * 0.01) * Math.abs(pnlRange) * 0.03;
+    // Linear progression from start to end with noise
+    const pnl = startPnl + (pnlRange * progress) + noise;
     
     let label: string;
     if (timeFilter === '1D') {
@@ -404,55 +414,77 @@ export default function AnalyzeTrader() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="h-[300px] w-full">
-                  {chartData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="pnlGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
-                            <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#333" opacity={0.3} />
-                        <XAxis 
-                          dataKey="date" 
-                          stroke="#888"
-                          fontSize={12}
-                          tickLine={false}
-                          axisLine={false}
-                        />
-                        <YAxis 
-                          stroke="#888"
-                          fontSize={12}
-                          tickLine={false}
-                          axisLine={false}
-                          tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-                        />
-                        <Tooltip 
-                          contentStyle={{ 
-                            backgroundColor: '#1a1a1a',
-                            border: '1px solid #333',
-                            borderRadius: '8px',
-                            color: '#fff'
-                          }}
-                          formatter={(value: number) => [`$${value.toLocaleString()}`, 'PnL']}
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="pnl"
-                          stroke="#22c55e"
-                          strokeWidth={2}
-                          fill="url(#pnlGradient)"
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-muted-foreground">
-                      No chart data available
+                {(() => {
+                  // Determine if chart should be green (profit) or red (loss)
+                  const periodPnl = chartTimeFilter === '1D' ? trader.pnl24h 
+                    : chartTimeFilter === '1W' ? trader.pnl7d 
+                    : chartTimeFilter === '1M' ? trader.pnl30d 
+                    : trader.pnl;
+                  const isProfit = periodPnl >= 0;
+                  const chartColor = isProfit ? '#22c55e' : '#ef4444';
+                  
+                  return (
+                    <div className="h-[300px] w-full">
+                      {chartData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                            <defs>
+                              <linearGradient id="pnlGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor={chartColor} stopOpacity={0.3}/>
+                                <stop offset="95%" stopColor={chartColor} stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#333" opacity={0.3} />
+                            <XAxis 
+                              dataKey="date" 
+                              stroke="#888"
+                              fontSize={12}
+                              tickLine={false}
+                              axisLine={false}
+                            />
+                            <YAxis 
+                              stroke="#888"
+                              fontSize={12}
+                              tickLine={false}
+                              axisLine={false}
+                              tickFormatter={(value) => {
+                                if (Math.abs(value) >= 1000000) {
+                                  return `$${(value / 1000000).toFixed(1)}M`;
+                                } else if (Math.abs(value) >= 1000) {
+                                  return `$${(value / 1000).toFixed(0)}k`;
+                                }
+                                return `$${value}`;
+                              }}
+                            />
+                            <Tooltip 
+                              contentStyle={{ 
+                                backgroundColor: '#1a1a1a',
+                                border: '1px solid #333',
+                                borderRadius: '8px',
+                                color: '#fff'
+                              }}
+                              formatter={(value: number) => [
+                                `${value >= 0 ? '+' : ''}$${value.toLocaleString()}`, 
+                                'PnL'
+                              ]}
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="pnl"
+                              stroke={chartColor}
+                              strokeWidth={2}
+                              fill="url(#pnlGradient)"
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="flex items-center justify-center h-full text-muted-foreground">
+                          No chart data available
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  );
+                })()}
               </CardContent>
             </Card>
 
