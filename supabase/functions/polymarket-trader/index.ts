@@ -67,84 +67,82 @@ serve(async (req) => {
     console.log(`Fetched ${positions.length} positions, ${trades.length} trades, ${closedPositions.length} closed positions`);
 
     // Calculate aggregated stats
-    const openPositions = Array.isArray(positions) ? positions : [];
+    const allPositions = Array.isArray(positions) ? positions : [];
     const allTrades = Array.isArray(trades) ? trades : [];
     const closed = Array.isArray(closedPositions) ? closedPositions : [];
 
-    console.log(`Processing: ${openPositions.length} open, ${allTrades.length} trades, ${closed.length} closed positions`);
+    console.log(`Raw data: ${allPositions.length} positions, ${allTrades.length} trades, ${closed.length} closed positions`);
 
-    // Calculate unrealized PnL from open positions
+    // CRITICAL: Separate truly open positions from resolved ones
+    // Positions with currentPrice=0 or currentPrice=1 have RESOLVED (settled)
+    // Only positions with 0 < currentPrice < 1 are truly open
+    const trulyOpenPositions: any[] = [];
+    const resolvedPositions: any[] = []; // Positions that settled but API still returns them
+
+    allPositions.forEach((pos: any) => {
+      const curPrice = pos.curPrice ?? pos.currentPrice ?? 0.5;
+      // If price is exactly 0 or 1, the market has settled
+      if (curPrice <= 0.001 || curPrice >= 0.999) {
+        resolvedPositions.push(pos);
+      } else {
+        trulyOpenPositions.push(pos);
+      }
+    });
+
+    console.log(`Positions breakdown: ${trulyOpenPositions.length} truly open, ${resolvedPositions.length} resolved`);
+
+    // Calculate UNREALIZED PnL only from truly open positions
     let unrealizedPnl = 0;
     let totalInvested = 0;
     let totalCurrentValue = 0;
 
-    openPositions.forEach((pos: any) => {
+    trulyOpenPositions.forEach((pos: any) => {
       unrealizedPnl += pos.cashPnl || 0;
       totalInvested += pos.initialValue || 0;
       totalCurrentValue += pos.currentValue || 0;
     });
 
-    // Calculate REALIZED PnL from TRADES (more reliable than closed-positions which caps at 50)
-    // Group trades by market/outcome to calculate net PnL
-    const marketPnl = new Map<string, { bought: number; sold: number; buyValue: number; sellValue: number; trades: any[] }>();
-    
-    allTrades.forEach((trade: any) => {
-      const key = `${trade.conditionId || trade.market}-${trade.outcome}`;
-      if (!marketPnl.has(key)) {
-        marketPnl.set(key, { bought: 0, sold: 0, buyValue: 0, sellValue: 0, trades: [] });
-      }
-      const market = marketPnl.get(key)!;
-      const size = trade.size || 0;
-      const price = trade.price || 0;
-      const value = size * price;
-      
-      if (trade.side?.toLowerCase() === 'buy') {
-        market.bought += size;
-        market.buyValue += value;
-      } else {
-        market.sold += size;
-        market.sellValue += value;
-      }
-      market.trades.push(trade);
+    // Calculate REALIZED PnL from:
+    // 1. Resolved positions (were in "positions" but have settled)
+    // 2. Closed positions from API (capped at 50)
+    // 3. Partial closes on truly open positions (realizedPnl field)
+    let realizedPnl = 0;
+
+    // From resolved positions - their cashPnl is actually realized now
+    resolvedPositions.forEach((pos: any) => {
+      // cashPnl shows the gain/loss, which is now realized since market settled
+      realizedPnl += pos.cashPnl || 0;
+      // Also add any partial realized PnL they had
+      realizedPnl += pos.realizedPnl || 0;
     });
 
-    // Calculate realized PnL per market (only from sold shares)
-    let realizedPnlFromTrades = 0;
-    let totalVolume = 0;
-    let winningMarkets = 0;
-    let closedMarkets = 0;
-
-    marketPnl.forEach((market, key) => {
-      totalVolume += market.buyValue + market.sellValue;
-      
-      // Only count as realized if shares were sold
-      if (market.sold > 0) {
-        const avgBuyPrice = market.bought > 0 ? market.buyValue / market.bought : 0;
-        const avgSellPrice = market.sold > 0 ? market.sellValue / market.sold : 0;
-        // Realized = what we got from selling - what we paid for those shares
-        const soldSharesCost = market.sold * avgBuyPrice;
-        const realizedForMarket = market.sellValue - soldSharesCost;
-        realizedPnlFromTrades += realizedForMarket;
-        
-        // If fully closed position
-        if (market.sold >= market.bought * 0.9) { // 90% or more sold = closed
-          closedMarkets++;
-          if (realizedForMarket > 0) winningMarkets++;
-        }
-      }
+    // From closed positions endpoint
+    closed.forEach((pos: any) => {
+      realizedPnl += pos.realizedPnl || 0;
     });
 
-    // Also add realized PnL from open positions (partial sells already captured)
-    let openRealizedPnl = 0;
-    openPositions.forEach((pos: any) => {
-      openRealizedPnl += pos.realizedPnl || 0;
+    // From partial closes on truly open positions
+    trulyOpenPositions.forEach((pos: any) => {
+      realizedPnl += pos.realizedPnl || 0;
     });
 
-    const realizedPnl = realizedPnlFromTrades;
     const totalPnl = realizedPnl + unrealizedPnl;
-    const winRate = closedMarkets > 0 ? (winningMarkets / closedMarkets) * 100 : 0;
 
-    console.log(`PnL from trades: realized=${realizedPnlFromTrades}, unrealized=${unrealizedPnl}, total=${totalPnl}, winRate=${winRate}%`);
+    // Calculate win rate from resolved + closed positions
+    const allResolvedAndClosed = [...resolvedPositions, ...closed];
+    const winningSets = allResolvedAndClosed.filter((pos: any) => {
+      const pnl = pos.cashPnl || pos.realizedPnl || 0;
+      return pnl > 0;
+    }).length;
+    const winRate = allResolvedAndClosed.length > 0 ? (winningSets / allResolvedAndClosed.length) * 100 : 0;
+
+    console.log(`PnL: realized=${realizedPnl}, unrealized=${unrealizedPnl}, total=${totalPnl}, winRate=${winRate}%`);
+
+    // Calculate volume from trades
+    let totalVolume = 0;
+    allTrades.forEach((trade: any) => {
+      totalVolume += (trade.size || 0) * (trade.price || 0);
+    });
 
     // Get time-based PnL from trades
     const now = Date.now();
@@ -224,12 +222,12 @@ serve(async (req) => {
       volume: totalVolume,
       totalInvested,
       totalCurrentValue,
-      positions: openPositions.length,
-      closedPositions: openPositions.length + closed.length, // Total positions count
+      positions: trulyOpenPositions.length,
+      closedPositions: resolvedPositions.length + closed.length, // Resolved + API closed
       lastActive,
       pnlHistory: pnlHistory.slice(-100), // Last 100 data points for chart
       // Raw data for detailed views
-      openPositions: openPositions.slice(0, 50).map((pos: any) => ({
+      openPositions: trulyOpenPositions.slice(0, 50).map((pos: any) => ({
         id: pos.conditionId,
         marketTitle: pos.title || 'Unknown Market',
         outcome: pos.outcome || 'Yes',
@@ -255,7 +253,7 @@ serve(async (req) => {
       })),
     };
 
-    console.log(`Returning trader data: PnL=${totalPnl}, RealizedPnL=${realizedPnl}, UnrealizedPnL=${unrealizedPnl}, Positions=${openPositions.length}, Closed=${closed.length}`);
+    console.log(`Returning: PnL=${totalPnl}, Realized=${realizedPnl}, Unrealized=${unrealizedPnl}, Open=${trulyOpenPositions.length}, Resolved=${resolvedPositions.length}, Closed=${closed.length}`);
 
     return new Response(
       JSON.stringify(traderData),
