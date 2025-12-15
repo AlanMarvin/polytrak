@@ -57,6 +57,9 @@ export function Header() {
           <Link to="/markets" className="hidden sm:block">
             <Button variant="ghost" size="sm">Markets</Button>
           </Link>
+          <Link to="/blog" className="hidden sm:block">
+            <Button variant="ghost" size="sm">Blog</Button>
+          </Link>
           
           <Button 
             variant="ghost" 
