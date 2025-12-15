@@ -19,8 +19,8 @@ const Index = () => {
   );
 
   const stats = [
-    { label: 'Top Traders', value: '500+', icon: Users },
-    { label: 'Total Volume', value: '$142M', icon: BarChart3 },
+    { label: 'Whale Traders', value: '500+', icon: Users },
+    { label: 'Volume Tracked', value: '$142M', icon: BarChart3 },
     { label: 'Avg Win Rate', value: '62%', icon: TrendingUp },
   ];
 
@@ -37,15 +37,15 @@ const Index = () => {
           <div className="max-w-3xl mx-auto text-center space-y-6">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-sm text-primary">
               <Zap className="h-4 w-4" />
-              <span>Discover profitable Polymarket traders</span>
+              <span>Beyond Telegram bots — Real analytics, real alpha</span>
             </div>
             
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
-              Track the <span className="text-primary">smartest</span> traders on Polymarket
+              Uncover <span className="text-primary">whale moves</span> before the crowd
             </h1>
             
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-              Analyze top traders, track their positions, and find alpha for your copy trading strategy on TheTradeFox.
+              Skip the noise from PolyHub, Stand, and Polylerts. Get deep trader analytics with full portfolio breakdowns — then execute with one click on TradeFox.
             </p>
 
             {/* Search Bar */}
@@ -118,10 +118,10 @@ const Index = () => {
           <div className="absolute inset-0 bg-grid-pattern opacity-5" />
           <div className="relative text-center space-y-4 max-w-2xl mx-auto">
             <h3 className="text-2xl md:text-3xl font-bold">
-              Ready to copy the best traders?
+              From research to execution in seconds
             </h3>
             <p className="text-muted-foreground">
-              Use TheTradeFox to automatically mirror top Polymarket traders' positions.
+              Why juggle between PolyFocus, PolyBot, and Polycule? Analyze here, then auto-mirror trades directly on TradeFox — non-custodial, lightning fast.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
               <a 
@@ -130,12 +130,12 @@ const Index = () => {
                 rel="noopener noreferrer"
               >
                 <Button size="lg" className="min-w-[180px]">
-                  Start Copy Trading
+                  Copy with TradeFox
                 </Button>
               </a>
               <Link to="/auth">
                 <Button variant="outline" size="lg" className="min-w-[180px]">
-                  Create Free Account
+                  Save Your Watchlist
                 </Button>
               </Link>
             </div>
