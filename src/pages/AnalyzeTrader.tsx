@@ -883,12 +883,11 @@ export default function AnalyzeTrader() {
                       value={allocatedFunds}
                       onChange={(e) => {
                         const val = e.target.value.replace(/[^0-9]/g, '');
-                        setAllocatedFunds(Math.max(100, Number(val) || 100));
+                        setAllocatedFunds(Number(val) || 0);
                       }}
                       className="w-36 text-center bg-transparent border-none font-mono text-4xl font-bold text-orange-400 focus:outline-none"
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">Minimum $100</p>
                 </div>
 
                 {/* AI Recommended Settings */}
