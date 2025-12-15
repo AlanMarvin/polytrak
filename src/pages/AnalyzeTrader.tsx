@@ -27,6 +27,12 @@ import {
 
 type ChartTimeFilter = '1D' | '1W' | '1M' | 'ALL';
 
+interface PnlHistoryPoint {
+  timestamp: number;
+  pnl: number;
+  cumulative: number;
+}
+
 interface TraderData {
   address: string;
   username: string | null;
@@ -45,6 +51,7 @@ interface TraderData {
   positions: number;
   closedPositions: number;
   lastActive: string;
+  pnlHistory: PnlHistoryPoint[];
   openPositions: Array<{
     id: string;
     marketTitle: string;
@@ -71,61 +78,77 @@ interface TraderData {
   }>;
 }
 
-// Generate PnL chart data based on time filter
+// Generate PnL chart data from real history
 const generatePnlChartData = (traderData: TraderData, timeFilter: ChartTimeFilter) => {
-  const data = [];
+  const now = Date.now();
+  const day = 86400 * 1000;
   
-  let points: number;
-  let periodPnl: number;
-  
+  // Filter period
+  let cutoffTime: number;
   switch (timeFilter) {
     case '1D':
-      points = 24;
-      periodPnl = traderData.pnl24h;
+      cutoffTime = now - day;
       break;
     case '1W':
-      points = 7;
-      periodPnl = traderData.pnl7d;
+      cutoffTime = now - day * 7;
       break;
     case '1M':
-      points = 30;
-      periodPnl = traderData.pnl30d;
+      cutoffTime = now - day * 30;
       break;
     case 'ALL':
     default:
-      points = 30;
-      periodPnl = traderData.pnl;
+      cutoffTime = 0;
       break;
   }
   
-  const hash = traderData.address.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
-  const endPnl = traderData.pnl;
-  const startPnl = timeFilter === 'ALL' ? 0 : endPnl - periodPnl;
-  const pnlRange = endPnl - startPnl;
+  const history = traderData.pnlHistory || [];
   
-  for (let i = 0; i <= points; i++) {
-    const progress = i / points;
-    const noise = Math.sin(i * 0.7 + hash * 0.01) * Math.abs(pnlRange) * 0.03;
-    const pnl = startPnl + (pnlRange * progress) + noise;
-    
-    let label: string;
-    if (timeFilter === '1D') {
-      label = `${String(i).padStart(2, '0')}:00`;
-    } else if (timeFilter === '1W') {
-      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      const today = new Date().getDay();
-      const dayIndex = (today - (points - i) + 7) % 7;
-      label = dayNames[dayIndex];
-    } else {
-      const date = new Date();
-      date.setDate(date.getDate() - (points - i));
-      label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    }
-    
-    data.push({ date: label, pnl: Math.round(pnl) });
+  // Filter history by time period
+  const filteredHistory = history.filter(point => point.timestamp >= cutoffTime);
+  
+  if (filteredHistory.length === 0) {
+    // No data for period - show flat line at current PnL
+    return [
+      { date: 'Start', pnl: traderData.realizedPnl },
+      { date: 'Now', pnl: traderData.realizedPnl }
+    ];
   }
   
+  // Find starting cumulative PnL before this period
+  const historyBeforePeriod = history.filter(point => point.timestamp < cutoffTime);
+  const startingPnl = historyBeforePeriod.length > 0 
+    ? historyBeforePeriod[historyBeforePeriod.length - 1].cumulative 
+    : 0;
+  
+  // Build chart data starting from period start
+  const data: Array<{ date: string; pnl: number }> = [];
+  
+  // Add starting point
+  const startDate = new Date(cutoffTime || (filteredHistory[0]?.timestamp || now));
+  data.push({
+    date: formatChartDate(startDate, timeFilter),
+    pnl: startingPnl
+  });
+  
+  // Add each position close
+  filteredHistory.forEach(point => {
+    const date = new Date(point.timestamp);
+    data.push({
+      date: formatChartDate(date, timeFilter),
+      pnl: point.cumulative
+    });
+  });
+  
   return data;
+};
+
+const formatChartDate = (date: Date, timeFilter: ChartTimeFilter): string => {
+  if (timeFilter === '1D') {
+    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  } else if (timeFilter === '1W') {
+    return date.toLocaleDateString('en-US', { weekday: 'short' });
+  }
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
 // Calculate Smart Score
