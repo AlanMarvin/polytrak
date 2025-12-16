@@ -158,28 +158,85 @@ const formatChartDate = (date: Date, timeFilter: ChartTimeFilter): string => {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
 
-// Calculate Smart Score
-// Calculate Smart Score - weighted composite of trading metrics
+// Calculate Smart Score - stricter algorithm based on real trading performance
 const calculateSmartScore = (trader: TraderData) => {
-  // Win rate component (max 30 pts) - scaled exponentially for high win rates
-  const winRateScore = Math.min(30, Math.pow(trader.winRate / 100, 0.8) * 35);
+  // ROI is the most important metric - profit relative to volume traded
+  const roi = trader.volume > 0 ? (trader.pnl / trader.volume) * 100 : 0; // as percentage
   
-  // Profitability component (max 25 pts) - log scale for large PnLs
-  const profitScore = trader.pnl > 0 
-    ? Math.min(25, Math.log10(trader.pnl + 1) * 5) 
-    : Math.max(-10, Math.log10(Math.abs(trader.pnl) + 1) * -3);
+  // ROI component (max 35 pts) - the primary performance indicator
+  // 10% ROI = 20 pts, 20% ROI = 30 pts, 30%+ ROI = 35 pts
+  // Negative ROI results in negative points
+  let roiScore: number;
+  if (roi <= 0) {
+    roiScore = Math.max(-20, roi * 2); // Negative ROI penalizes heavily
+  } else if (roi < 5) {
+    roiScore = roi * 2; // 0-10 pts for 0-5% ROI
+  } else if (roi < 15) {
+    roiScore = 10 + (roi - 5) * 1.5; // 10-25 pts for 5-15% ROI
+  } else {
+    roiScore = Math.min(35, 25 + (roi - 15) * 0.5); // 25-35 pts for 15%+ ROI
+  }
   
-  // Volume/activity component (max 20 pts) - shows market engagement
-  const volumeScore = Math.min(20, Math.log10(trader.volume + 1) * 3.5);
+  // Win rate component (max 25 pts) - only rewards above 55%
+  // 50% = 0 pts, 55% = 5 pts, 60% = 12 pts, 70% = 20 pts, 80%+ = 25 pts
+  const winRate = trader.winRate;
+  let winRateScore: number;
+  if (winRate < 50) {
+    winRateScore = Math.max(-10, (winRate - 50) * 0.5); // Penalty for <50%
+  } else if (winRate < 55) {
+    winRateScore = (winRate - 50) * 1; // 0-5 pts
+  } else if (winRate < 65) {
+    winRateScore = 5 + (winRate - 55) * 1.5; // 5-20 pts
+  } else {
+    winRateScore = Math.min(25, 20 + (winRate - 65) * 0.5); // 20-25 pts
+  }
   
-  // Experience component (max 15 pts) - based on closed positions
-  const experienceScore = Math.min(15, Math.log10(trader.closedPositions + 1) * 8);
+  // Consistency component (max 20 pts) - based on Sharpe-like ratio
+  // Uses PnL history to assess volatility of returns
+  const history = trader.pnlHistory || [];
+  let consistencyScore = 0;
+  if (history.length >= 5) {
+    const returns = history.map(h => h.pnl);
+    const meanReturn = returns.reduce((a, b) => a + b, 0) / returns.length;
+    const variance = returns.reduce((sum, r) => sum + Math.pow(r - meanReturn, 2), 0) / returns.length;
+    const stdDev = Math.sqrt(variance);
+    
+    if (stdDev > 0 && meanReturn > 0) {
+      const sharpeProxy = meanReturn / stdDev;
+      consistencyScore = Math.min(20, Math.max(0, sharpeProxy * 10));
+    } else if (meanReturn <= 0) {
+      consistencyScore = Math.max(-10, meanReturn / 100); // Penalty for losing average
+    }
+  }
   
-  // ROI efficiency (max 10 pts) - profit relative to volume
-  const roi = trader.volume > 0 ? (trader.pnl / trader.volume) : 0;
-  const roiScore = Math.max(0, Math.min(10, roi * 50));
+  // Experience component (max 15 pts) - only if profitable
+  // Requires profitable + enough trades to matter
+  let experienceScore = 0;
+  if (trader.pnl > 0 && trader.closedPositions >= 10) {
+    if (trader.closedPositions >= 500) {
+      experienceScore = 15;
+    } else if (trader.closedPositions >= 100) {
+      experienceScore = 10 + (trader.closedPositions - 100) / 80; // 10-15 pts
+    } else {
+      experienceScore = trader.closedPositions / 10; // 1-10 pts
+    }
+  } else if (trader.pnl <= 0) {
+    experienceScore = 0; // No experience credit for unprofitable traders
+  }
   
-  const total = winRateScore + profitScore + volumeScore + experienceScore + roiScore;
+  // Profitability bonus (max 5 pts) - small bonus for large absolute profits
+  // Only matters if ROI is already decent
+  let profitBonus = 0;
+  if (roi > 3 && trader.pnl > 0) {
+    if (trader.pnl > 1000000) profitBonus = 5;
+    else if (trader.pnl > 100000) profitBonus = 3;
+    else if (trader.pnl > 10000) profitBonus = 1;
+  }
+  
+  const total = roiScore + winRateScore + consistencyScore + experienceScore + profitBonus;
+  
+  // Scale to 0-100 and round
+  // Realistic distribution: most traders should be 30-60, excellent 70+, elite 85+
   return Math.round(Math.max(0, Math.min(100, total)));
 };
 
