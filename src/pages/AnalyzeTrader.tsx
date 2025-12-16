@@ -556,6 +556,64 @@ const calculateRiskRegime = (trader: TraderData) => {
   };
 };
 
+// Calculate Market Focus from positions and trades
+const calculateMarketFocus = (trader: TraderData) => {
+  const categories: Record<string, number> = {
+    Politics: 0,
+    Macro: 0,
+    Sports: 0,
+    Crypto: 0,
+    Entertainment: 0,
+    Other: 0
+  };
+  
+  // Keywords for categorization
+  const politicsKeywords = ['president', 'election', 'trump', 'biden', 'congress', 'senate', 'vote', 'political', 'democrat', 'republican', 'gov', 'policy'];
+  const macroKeywords = ['fed', 'inflation', 'gdp', 'rate', 'economy', 'jobs', 'unemployment', 'recession', 'stock', 'market', 'sp500', 'nasdaq'];
+  const sportsKeywords = ['nfl', 'nba', 'mlb', 'soccer', 'football', 'basketball', 'baseball', 'tennis', 'golf', 'ufc', 'boxing', 'super bowl', 'championship'];
+  const cryptoKeywords = ['bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'token', 'defi', 'solana'];
+  const entertainmentKeywords = ['oscar', 'movie', 'celebrity', 'tv', 'show', 'award', 'grammy', 'emmy'];
+  
+  const categorize = (title: string) => {
+    const lower = title.toLowerCase();
+    if (politicsKeywords.some(k => lower.includes(k))) return 'Politics';
+    if (macroKeywords.some(k => lower.includes(k))) return 'Macro';
+    if (sportsKeywords.some(k => lower.includes(k))) return 'Sports';
+    if (cryptoKeywords.some(k => lower.includes(k))) return 'Crypto';
+    if (entertainmentKeywords.some(k => lower.includes(k))) return 'Entertainment';
+    return 'Other';
+  };
+  
+  // Analyze open positions
+  trader.openPositions.forEach(pos => {
+    const cat = categorize(pos.marketTitle);
+    categories[cat] += Math.abs(pos.size);
+  });
+  
+  // Analyze recent trades
+  trader.recentTrades.forEach(trade => {
+    const cat = categorize(trade.marketTitle);
+    categories[cat] += Math.abs(trade.size);
+  });
+  
+  // Calculate percentages
+  const total = Object.values(categories).reduce((a, b) => a + b, 0);
+  if (total === 0) return { breakdown: [], dominantCategory: 'Other', dominantPercent: 0 };
+  
+  const breakdown = Object.entries(categories)
+    .map(([name, value]) => ({ name, percent: Math.round((value / total) * 100) }))
+    .filter(c => c.percent > 0)
+    .sort((a, b) => b.percent - a.percent);
+  
+  const dominant = breakdown[0] || { name: 'Other', percent: 0 };
+  
+  return {
+    breakdown,
+    dominantCategory: dominant.name,
+    dominantPercent: dominant.percent
+  };
+};
+
 export default function AnalyzeTrader() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [inputAddress, setInputAddress] = useState(searchParams.get('address') || '');
@@ -627,6 +685,7 @@ export default function AnalyzeTrader() {
     [trader, allocatedFunds]
   );
   const riskRegime = useMemo(() => trader ? calculateRiskRegime(trader) : null, [trader]);
+  const marketFocus = useMemo(() => trader ? calculateMarketFocus(trader) : null, [trader]);
 
   const watching = trader ? isWatching(trader.address) : false;
 
@@ -1142,6 +1201,66 @@ export default function AnalyzeTrader() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Market Focus Breakdown */}
+            {marketFocus && marketFocus.breakdown.length > 0 && (
+              <Card className="glass-card mb-8 border-green-500/30">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Target className="h-5 w-5 text-green-500" />
+                    <span className="text-green-400">Market Focus Breakdown</span>
+                    <HoverCard>
+                      <HoverCardTrigger asChild>
+                        <button className="ml-auto">
+                          <Info className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-help transition-colors" />
+                        </button>
+                      </HoverCardTrigger>
+                      <HoverCardContent className="w-80 z-50" side="top">
+                        <div className="space-y-2">
+                          <p className="text-sm font-semibold text-green-400">How this affects your copy strategy:</p>
+                          <p className="text-xs text-muted-foreground">
+                            Strategy is optimized assuming {marketFocus.dominantCategory.toLowerCase()} markets dominance ({marketFocus.dominantPercent}%). 
+                            Different market categories have varying liquidity, volatility, and resolution patterns that influence optimal position sizing.
+                          </p>
+                        </div>
+                      </HoverCardContent>
+                    </HoverCard>
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">Top Market Categories</p>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {marketFocus.breakdown.slice(0, 4).map((cat, i) => (
+                      <div key={cat.name} className="flex items-center gap-3">
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-medium">{cat.name}</span>
+                            <span className="text-sm font-mono text-green-400">{cat.percent}%</span>
+                          </div>
+                          <div className="h-2 bg-muted/30 rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full rounded-full ${
+                                i === 0 ? 'bg-green-500' : 
+                                i === 1 ? 'bg-green-500/70' : 
+                                i === 2 ? 'bg-green-500/50' : 'bg-green-500/30'
+                              }`}
+                              style={{ width: `${cat.percent}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Strategy Link */}
+                  <div className="mt-4 p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+                    <p className="text-xs text-green-400">
+                      <span className="font-semibold">Strategy optimized for:</span> {marketFocus.dominantCategory} markets dominance
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* TradeFox Copy Trading Configuration */}
             <Card className="mb-8 border-2 border-orange-500/50 bg-gradient-to-br from-orange-500/10 via-background to-amber-500/10 shadow-lg shadow-orange-500/10">
