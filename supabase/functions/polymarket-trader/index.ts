@@ -256,13 +256,16 @@ serve(async (req) => {
     // Add closed positions from API
     closed.forEach((pos: any) => {
       const pnl = pos.realizedPnl || 0;
-      // timestamp in closed positions could be Unix seconds OR milliseconds
-      let timestamp = pos.timestamp;
-      if (timestamp) {
-        // If timestamp is in seconds (less than year 2100 in ms), convert to ms
-        timestamp = timestamp < 10000000000 ? timestamp * 1000 : timestamp;
-      } else if (pos.endDate) {
+      // CRITICAL: Use endDate (when position closed) NOT timestamp (when position opened)
+      // This is essential for accurate time-based PnL (24h, 7d, 30d)
+      let timestamp: number;
+      
+      if (pos.endDate) {
+        // endDate is when the position was actually closed/resolved
         timestamp = new Date(pos.endDate).getTime();
+      } else if (pos.timestamp) {
+        // Fallback to timestamp if no endDate (convert seconds to ms if needed)
+        timestamp = pos.timestamp < 10000000000 ? pos.timestamp * 1000 : pos.timestamp;
       } else {
         timestamp = now;
       }
