@@ -52,65 +52,64 @@ async function fetchWithRetry(url: string, maxRetries = 3): Promise<Response> {
   throw lastError || new Error('Max retries exceeded');
 }
 
-// Helper to fetch paginated data with endpoint-specific limits
-// IMPORTANT: closed-positions API has max 50 per page, positions/trades allow up to 500
+// Helper to fetch paginated data with PARALLEL batch fetching for speed
+// IMPORTANT: closed-positions API has max 50 per page
 async function fetchAllPaginated(baseUrl: string, maxItems = 5000, pageSize = 50): Promise<any[]> {
   const allItems: any[] = [];
-  const seenIds = new Set<string>(); // Track unique IDs to avoid duplicates
-  let offset = 0;
-  let consecutiveEmptyPages = 0;
+  const seenIds = new Set<string>();
   
-  while (allItems.length < maxItems && offset <= 100000) { // API max offset is 100000
-    const url = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}limit=${pageSize}&offset=${offset}`;
+  // Fetch pages in parallel batches for speed
+  const BATCH_SIZE = 10; // Fetch 10 pages at once
+  let offset = 0;
+  let hasMore = true;
+  
+  while (hasMore && allItems.length < maxItems && offset <= 100000) {
+    // Create batch of page requests
+    const batchPromises: Promise<any[]>[] = [];
     
-    try {
-      const res = await fetchWithRetry(url);
+    for (let i = 0; i < BATCH_SIZE && offset + (i * pageSize) <= 100000; i++) {
+      const currentOffset = offset + (i * pageSize);
+      const url = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}limit=${pageSize}&offset=${currentOffset}`;
       
-      if (!res.ok) {
-        console.log(`Failed to fetch ${url}: ${res.status}`);
-        break;
-      }
-      
-      const data = await res.json();
-      const items = Array.isArray(data) ? data : [];
-      
-      if (items.length === 0) {
-        consecutiveEmptyPages++;
-        // Allow a few empty pages before stopping (API can be inconsistent)
-        if (consecutiveEmptyPages >= 3) break;
-        offset += pageSize;
-        continue;
-      }
-      
-      consecutiveEmptyPages = 0;
-      
-      // Deduplicate by unique identifier
-      // For closed-positions: use asset (unique outcome token) since same conditionId can have multiple outcomes
-      // For trades: use transactionHash or timestamp+size combo
-      let newItems = 0;
-      items.forEach((item: any) => {
-        // Use asset as primary key for positions (unique per outcome)
-        // Use conditionId+outcome as fallback
-        // Use transactionHash for trades
-        const id = item.asset || item.transactionHash || `${item.conditionId}-${item.outcome}` || `${item.timestamp}-${item.size}`;
-        if (!seenIds.has(id)) {
-          seenIds.add(id);
-          allItems.push(item);
-          newItems++;
-        }
-      });
-      
-      // Stop if we got fewer items than requested (no more data)
-      if (items.length < pageSize) break;
-      
-      offset += pageSize;
-      
-      // Small delay between requests to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 150));
-    } catch (error) {
-      console.error(`Error fetching paginated data at offset ${offset}:`, error);
-      break;
+      batchPromises.push(
+        fetchWithRetry(url)
+          .then(res => res.ok ? res.json() : [])
+          .then(data => Array.isArray(data) ? data : [])
+          .catch(() => [])
+      );
     }
+    
+    // Execute batch in parallel
+    const batchResults = await Promise.all(batchPromises);
+    
+    let batchNewItems = 0;
+    let batchHadData = false;
+    
+    for (const items of batchResults) {
+      if (items.length > 0) {
+        batchHadData = true;
+        for (const item of items) {
+          const id = item.asset || item.transactionHash || `${item.conditionId}-${item.outcome}` || `${item.timestamp}-${item.size}`;
+          if (!seenIds.has(id)) {
+            seenIds.add(id);
+            allItems.push(item);
+            batchNewItems++;
+          }
+        }
+      }
+    }
+    
+    // Stop if no pages in this batch had data
+    if (!batchHadData) {
+      hasMore = false;
+    } else {
+      offset += BATCH_SIZE * pageSize;
+      // Small delay between batches to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    // Early exit if we have enough data
+    if (allItems.length >= maxItems) break;
   }
   
   console.log(`Fetched ${allItems.length} unique items from ${baseUrl.split('?')[0]}`);
