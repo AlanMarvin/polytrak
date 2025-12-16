@@ -1043,7 +1043,7 @@ export default function AnalyzeTrader() {
               <CardHeader className="border-b border-orange-500/20 pb-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <img src={tradefoxLogo} alt="TradeFox" className="h-10 w-10 object-contain" />
+                    <img src={tradefoxLogo} alt="TradeFox" className="h-16 w-16 object-contain" />
                     <div>
                       <CardTitle className="text-xl">
                         <span className="bg-gradient-to-r from-orange-400 to-amber-500 bg-clip-text text-transparent font-bold">
@@ -1251,7 +1251,7 @@ export default function AnalyzeTrader() {
             <Card className="mb-8 border-border/50">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <img src={tradefoxLogo} alt="TradeFox" className="h-5 w-5" />
+                  <img src={tradefoxLogo} alt="TradeFox" className="h-8 w-8" />
                   Copy on TradeFox
                 </CardTitle>
               </CardHeader>
