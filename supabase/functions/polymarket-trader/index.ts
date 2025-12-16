@@ -7,29 +7,72 @@ const corsHeaders = {
 
 const POLYMARKET_API = 'https://data-api.polymarket.com';
 
+// Helper to fetch with retry and exponential backoff
+async function fetchWithRetry(url: string, maxRetries = 3): Promise<Response> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const res = await fetch(url);
+      
+      // Handle rate limiting (429) or server errors (5xx)
+      if (res.status === 429 || res.status >= 500) {
+        const delay = Math.pow(2, attempt) * 500; // 500ms, 1s, 2s
+        console.log(`Rate limited/error on ${url}, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      
+      return res;
+    } catch (error) {
+      lastError = error as Error;
+      const delay = Math.pow(2, attempt) * 500;
+      console.log(`Fetch error on ${url}: ${lastError.message}, retrying in ${delay}ms`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw lastError || new Error('Max retries exceeded');
+}
+
 // Helper to fetch paginated data with endpoint-specific limits
-async function fetchAllPaginated(baseUrl: string, maxItems = 5000, pageSize = 500): Promise<any[]> {
+// IMPORTANT: closed-positions API has max 50 per page, positions/trades allow up to 500
+async function fetchAllPaginated(baseUrl: string, maxItems = 5000, pageSize = 50): Promise<any[]> {
   const allItems: any[] = [];
   let offset = 0;
   
-  while (allItems.length < maxItems) {
+  while (allItems.length < maxItems && offset <= 100000) { // API max offset is 100000
     const url = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}limit=${pageSize}&offset=${offset}`;
-    const res = await fetch(url);
     
-    if (!res.ok) break;
-    
-    const data = await res.json();
-    const items = Array.isArray(data) ? data : [];
-    
-    if (items.length === 0) break;
-    
-    allItems.push(...items);
-    
-    // Stop if we got fewer items than requested (no more data)
-    if (items.length < pageSize) break;
-    offset += pageSize;
+    try {
+      const res = await fetchWithRetry(url);
+      
+      if (!res.ok) {
+        console.log(`Failed to fetch ${url}: ${res.status}`);
+        break;
+      }
+      
+      const data = await res.json();
+      const items = Array.isArray(data) ? data : [];
+      
+      if (items.length === 0) break;
+      
+      allItems.push(...items);
+      
+      // Stop if we got fewer items than requested (no more data)
+      if (items.length < pageSize) break;
+      
+      offset += pageSize;
+      
+      // Small delay between requests to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 100));
+    } catch (error) {
+      console.error(`Error fetching paginated data at offset ${offset}:`, error);
+      break;
+    }
   }
   
+  console.log(`Fetched ${allItems.length} items from ${baseUrl.split('?')[0]}`);
   return allItems;
 }
 
@@ -58,10 +101,11 @@ serve(async (req) => {
     console.log('Profile data:', JSON.stringify(profile));
 
     // Fetch all data with pagination for complete history
-    // Note: closed-positions API has max 50 per page, positions/trades allow 500
+    // IMPORTANT: closed-positions API has max 50 per page per API docs
+    // positions and trades endpoints also work better with smaller page sizes
     const [positions, trades, closedPositions] = await Promise.all([
-      fetchAllPaginated(`${POLYMARKET_API}/positions?user=${address}`, 2000, 500),
-      fetchAllPaginated(`${POLYMARKET_API}/trades?user=${address}`, 5000, 500),
+      fetchAllPaginated(`${POLYMARKET_API}/positions?user=${address}`, 2000, 50),
+      fetchAllPaginated(`${POLYMARKET_API}/trades?user=${address}`, 5000, 50),
       fetchAllPaginated(`${POLYMARKET_API}/closed-positions?user=${address}`, 10000, 50), // Max 50 per page per API docs
     ]);
 
