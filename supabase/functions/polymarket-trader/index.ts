@@ -195,29 +195,32 @@ serve(async (req) => {
       totalCurrentValue += pos.currentValue || 0;
     });
 
-    // Calculate REALIZED PnL from:
-    // 1. Resolved positions (were in "positions" but have settled)
-    // 2. Closed positions from API (capped at 50)
-    // 3. Partial closes on truly open positions (realizedPnl field)
+    // Calculate REALIZED PnL ONLY from /closed-positions endpoint
+    // CRITICAL FIX: Do NOT add from resolvedPositions because they overlap with closed-positions
+    // The /closed-positions endpoint is the authoritative source for realized PnL
     let realizedPnl = 0;
-
-    // From resolved positions - their cashPnl is actually realized now
-    resolvedPositions.forEach((pos: any) => {
-      // cashPnl shows the gain/loss, which is now realized since market settled
-      realizedPnl += pos.cashPnl || 0;
-      // Also add any partial realized PnL they had
-      realizedPnl += pos.realizedPnl || 0;
-    });
-
-    // From closed positions endpoint
+    
+    // Track conditionIds we've already counted to avoid any duplicates
+    const countedConditionIds = new Set<string>();
+    
+    // From closed positions endpoint - this is the authoritative source
     closed.forEach((pos: any) => {
+      const conditionId = pos.conditionId || pos.id;
+      if (conditionId && countedConditionIds.has(conditionId)) {
+        return; // Skip duplicate
+      }
+      if (conditionId) {
+        countedConditionIds.add(conditionId);
+      }
       realizedPnl += pos.realizedPnl || 0;
     });
 
-    // From partial closes on truly open positions
+    // From partial closes on truly open positions (these are separate - active positions with some profit taken)
     trulyOpenPositions.forEach((pos: any) => {
       realizedPnl += pos.realizedPnl || 0;
     });
+    
+    console.log(`Realized PnL: ${realizedPnl} from ${countedConditionIds.size} unique closed positions + ${trulyOpenPositions.length} open positions`);
 
     const totalPnl = realizedPnl + unrealizedPnl;
 
