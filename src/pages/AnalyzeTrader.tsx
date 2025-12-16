@@ -27,7 +27,8 @@ import {
 import { 
   Star, Copy, ExternalLink, TrendingUp, TrendingDown, 
   Wallet, Activity, Target, Clock, Search, ArrowRight,
-  BarChart3, PieChart, Calendar, Zap, Brain, Gauge, Loader2, Info
+  BarChart3, PieChart, Calendar, Zap, Brain, Gauge, Loader2, Info,
+  AlertTriangle
 } from 'lucide-react';
 import tradefoxLogo from '@/assets/tradefox-logo.png';
 
@@ -155,6 +156,21 @@ const formatChartDate = (date: Date, timeFilter: ChartTimeFilter): string => {
     return date.toLocaleDateString('en-US', { weekday: 'short' });
   }
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
+// Check if trader is inactive (no activity in last 30 days)
+const getInactivityStatus = (lastActive: string): { isInactive: boolean; daysSinceActive: number } => {
+  if (!lastActive) return { isInactive: true, daysSinceActive: -1 };
+  
+  const lastActiveDate = new Date(lastActive);
+  const now = new Date();
+  const diffTime = now.getTime() - lastActiveDate.getTime();
+  const daysSinceActive = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  
+  return {
+    isInactive: daysSinceActive > 30,
+    daysSinceActive
+  };
 };
 
 // Calculate Smart Score - stricter algorithm based on real trading performance
@@ -677,6 +693,18 @@ export default function AnalyzeTrader() {
                         🐋 Whale
                       </Badge>
                     )}
+                    {(() => {
+                      const { isInactive, daysSinceActive } = getInactivityStatus(trader.lastActive);
+                      if (isInactive) {
+                        return (
+                          <Badge className="bg-orange-500/20 text-orange-500 border-orange-500/30">
+                            <AlertTriangle className="h-3 w-3 mr-1" />
+                            Inactive {daysSinceActive > 0 ? `(${daysSinceActive}d)` : ''}
+                          </Badge>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <code className="font-mono text-sm bg-muted px-2 py-1 rounded">
@@ -719,6 +747,26 @@ export default function AnalyzeTrader() {
                 </div>
               </div>
             </div>
+
+            {/* Inactive Trader Warning Banner */}
+            {(() => {
+              const { isInactive, daysSinceActive } = getInactivityStatus(trader.lastActive);
+              if (isInactive) {
+                return (
+                  <div className="mb-6 p-4 rounded-lg bg-orange-500/10 border border-orange-500/30 flex items-start gap-3">
+                    <AlertTriangle className="h-5 w-5 text-orange-500 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <h4 className="font-semibold text-orange-500">Inactive Trader</h4>
+                      <p className="text-sm text-muted-foreground">
+                        This trader hasn't made any trades in {daysSinceActive > 0 ? `${daysSinceActive} days` : 'a long time'}. 
+                        Their past performance may not reflect current market conditions. Consider this before copy trading.
+                      </p>
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
 
             {/* Smart Score & Sharpe Ratio */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
