@@ -1,19 +1,11 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/hooks/useAuth';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger 
-} from '@/components/ui/dropdown-menu';
-import { Search, TrendingUp, LayoutDashboard, LogOut, User, Moon, Sun } from 'lucide-react';
+import { Search, TrendingUp, Moon, Sun } from 'lucide-react';
 import { useState } from 'react';
 import { useTheme } from 'next-themes';
 import { Input } from '@/components/ui/input';
 
 export function Header() {
-  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const { theme, setTheme } = useTheme();
@@ -70,40 +62,6 @@ export function Header() {
             <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
             <span className="sr-only">Toggle theme</span>
           </Button>
-          
-          {user ? (
-            <>
-              <Link to="/dashboard" className="hidden sm:block">
-                <Button variant="ghost" size="sm">
-                  <LayoutDashboard className="h-4 w-4 mr-2" />
-                  Dashboard
-                </Button>
-              </Link>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon">
-                    <User className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem className="text-muted-foreground text-xs">
-                    {user.email}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild className="sm:hidden">
-                    <Link to="/dashboard">Dashboard</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => signOut()}>
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Sign Out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
-          ) : (
-            <Link to="/auth">
-              <Button size="sm">Sign In</Button>
-            </Link>
-          )}
         </nav>
       </div>
     </header>
