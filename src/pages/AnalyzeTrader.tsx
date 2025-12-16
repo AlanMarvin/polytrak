@@ -1033,7 +1033,21 @@ export default function AnalyzeTrader() {
                     </p>
                   </div>
                   <div className="text-center p-4 rounded-lg bg-muted/30">
-                    <p className="text-sm text-muted-foreground mb-1">Unrealized</p>
+                    <div className="flex items-center justify-center gap-1 mb-1">
+                      <p className="text-sm text-muted-foreground">Unrealized</p>
+                      <HoverCard>
+                        <HoverCardTrigger asChild>
+                          <button>
+                            <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground cursor-help transition-colors" />
+                          </button>
+                        </HoverCardTrigger>
+                        <HoverCardContent className="w-72 z-50" side="top">
+                          <p className="text-sm text-muted-foreground">
+                            Unrealized PnL represents profit/loss from open positions that haven't been closed yet. This value is subject to change based on market movements.
+                          </p>
+                        </HoverCardContent>
+                      </HoverCard>
+                    </div>
                     <p className={`text-xl font-bold font-mono ${trader.unrealizedPnl >= 0 ? 'stat-profit' : 'stat-loss'}`}>
                       {formatPnl(trader.unrealizedPnl)}
                     </p>
