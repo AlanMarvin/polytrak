@@ -827,7 +827,7 @@ export default function AnalyzeTrader() {
                             />
                             <Tooltip 
                               contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px', color: '#fff' }}
-                              formatter={(value: number) => [`${value >= 0 ? '+' : ''}$${value.toLocaleString()}`, 'PnL']}
+                              formatter={(value: number) => [`${value >= 0 ? '+' : ''}$${Math.round(value).toLocaleString()}`, 'PnL']}
                             />
                             <Area type="monotone" dataKey="pnl" stroke={chartColor} strokeWidth={2} fill="url(#pnlGradient)" />
                           </AreaChart>
