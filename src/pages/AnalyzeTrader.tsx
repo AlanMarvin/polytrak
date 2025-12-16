@@ -1294,39 +1294,6 @@ export default function AnalyzeTrader() {
                       </div>
                     </div>
 
-                    <div className="p-4 rounded-lg bg-background/50 border border-orange-500/30">
-                      <div className="flex items-start gap-3">
-                        <input 
-                          type="checkbox" 
-                          checked={true}
-                          readOnly
-                          className="mt-1 h-5 w-5 rounded border-orange-500 text-orange-500 focus:ring-orange-500 accent-orange-500"
-                        />
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <p className="font-medium">Follow Exits</p>
-                              <Badge variant="outline" className="text-xs border-green-500/50 text-green-500">Always On</Badge>
-                            </div>
-                            <HoverCard>
-                              <HoverCardTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:bg-muted/20">
-                                  <Info className="h-4 w-4" />
-                                </Button>
-                              </HoverCardTrigger>
-                              <HoverCardContent className="w-72 bg-background/95 backdrop-blur border-border/50">
-                                <p className="text-xs text-muted-foreground">
-                                  Follow exits is always enabled for risk management. When the trader reduces or closes a position, you automatically sell the same percentage.
-                                </p>
-                              </HoverCardContent>
-                            </HoverCard>
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            When the trader closes, you close too.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
 
                     {/* Full Strategy Reasoning - Always Visible */}
                     <div className="p-4 rounded-lg bg-background/30 border border-orange-500/30">
@@ -1434,6 +1401,36 @@ export default function AnalyzeTrader() {
                         )}
                       </div>
                     )}
+
+                    {/* Follow Exits - Always Enabled */}
+                    <div className="p-3 rounded-lg bg-background/30 border border-border/30">
+                      <div className="flex items-center gap-3">
+                        <input 
+                          type="checkbox" 
+                          checked={true}
+                          readOnly
+                          className="h-4 w-4 rounded border-green-500 text-green-500 focus:ring-green-500 accent-green-500"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium">Follow Exits</p>
+                            <Badge variant="outline" className="text-xs border-green-500/50 text-green-500">Always On</Badge>
+                            <HoverCard>
+                              <HoverCardTrigger asChild>
+                                <button className="ml-auto">
+                                  <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground cursor-help transition-colors" />
+                                </button>
+                              </HoverCardTrigger>
+                              <HoverCardContent className="w-72 z-50" side="top">
+                                <p className="text-xs text-muted-foreground">
+                                  Follow exits is always enabled for risk management. When the trader reduces or closes a position, you automatically sell the same percentage.
+                                </p>
+                              </HoverCardContent>
+                            </HoverCard>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </>
                 )}
               </CardContent>
