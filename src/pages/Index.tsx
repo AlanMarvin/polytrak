@@ -52,7 +52,7 @@ const Index = () => {
             </h1>
             
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-              Analyze real wallets, understand how they trade, and configure your copy-trading settings for TradeFox with confidence.
+              Analyze real wallets, understand how they trade, and configure your copy-trading settings for <span className="text-primary font-semibold">TheTradeFox</span> with confidence.
             </p>
 
             {/* Search Bar */}
