@@ -27,9 +27,10 @@ import {
 import { 
   Star, Copy, ExternalLink, TrendingUp, TrendingDown, 
   Wallet, Activity, Target, Clock, Search, ArrowRight,
-  BarChart3, PieChart, Calendar, Zap, Brain, Gauge, Loader2, Info
+  BarChart3, PieChart, Calendar, Zap, Brain, Gauge, Loader2, Info, Lock, Trophy, CheckCircle2
 } from 'lucide-react';
 import tradefoxLogo from '@/assets/tradefox-logo.png';
+import { useTradeFoxConnection } from '@/hooks/useTradeFoxConnection';
 
 type ChartTimeFilter = '1D' | '1W' | '1M' | 'ALL';
 
@@ -417,6 +418,13 @@ export default function AnalyzeTrader() {
   const { user } = useAuth();
   const { isWatching, addToWatchlist, removeFromWatchlist } = useWatchlist();
   const { toast } = useToast();
+  const { isConnected: isTradeFoxConnected, connect: connectTradeFox } = useTradeFoxConnection();
+
+  const handleTradeFoxConnect = () => {
+    window.open('https://thetradefox.com?ref=POLYTRAK', '_blank');
+    // Mark as connected when they click the button
+    connectTradeFox();
+  };
 
   // Fetch trader data when address changes
   useEffect(() => {
@@ -1129,6 +1137,95 @@ export default function AnalyzeTrader() {
                       </ul>
                     </div>
                   </>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* TradeFox Connection CTA or Badge */}
+            {!isTradeFoxConnected ? (
+              <Card className="mb-8 border-2 border-primary/50 bg-gradient-to-br from-primary/10 via-background to-primary/5">
+                <CardContent className="p-6 text-center">
+                  <Button
+                    onClick={handleTradeFoxConnect}
+                    size="lg"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-lg px-8 py-6 h-auto mb-4"
+                  >
+                    <Trophy className="h-5 w-5 mr-2" />
+                    Connect TradeFox & Unlock Badges
+                  </Button>
+                  <p className="text-sm text-muted-foreground max-w-md mx-auto mb-4">
+                    Connect your TradeFox account via PolyTrak to unlock:
+                  </p>
+                  <ul className="text-sm text-muted-foreground space-y-1 mb-4">
+                    <li className="flex items-center justify-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-primary" />
+                      <span>a visible "TradeFox Connected" badge</span>
+                    </li>
+                    <li className="flex items-center justify-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-primary" />
+                      <span>access to the Top Copied Traders section</span>
+                    </li>
+                  </ul>
+                  <p className="text-xs text-muted-foreground/70">
+                    PolyTrak does not execute trades. A TradeFox account is required to copy traders.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="flex items-center justify-center mb-8">
+                <Badge className="bg-primary/20 text-primary border-primary/30 px-4 py-2 text-sm font-medium">
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  TradeFox Connected
+                </Badge>
+              </div>
+            )}
+
+            {/* Top Copied Traders Section */}
+            <Card className={`mb-8 ${!isTradeFoxConnected ? 'opacity-50 pointer-events-none' : ''}`}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Trophy className="h-5 w-5 text-primary" />
+                    Top Copied Traders
+                    {!isTradeFoxConnected && (
+                      <Badge variant="outline" className="ml-2 text-xs">
+                        <Lock className="h-3 w-3 mr-1" />
+                        Locked
+                      </Badge>
+                    )}
+                  </CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {!isTradeFoxConnected ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Lock className="h-8 w-8 mx-auto mb-3 opacity-50" />
+                    <p className="text-sm">Connect TradeFox to unlock this section</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      Discover the most copied traders on TradeFox based on community activity.
+                    </p>
+                    <div className="grid gap-3">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/50">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
+                              #{i}
+                            </div>
+                            <div>
+                              <p className="font-medium text-sm">Top Trader {i}</p>
+                              <p className="text-xs text-muted-foreground">{Math.floor(Math.random() * 500) + 100} copiers</p>
+                            </div>
+                          </div>
+                          <Button variant="outline" size="sm" className="text-xs">
+                            View Profile
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </CardContent>
             </Card>
