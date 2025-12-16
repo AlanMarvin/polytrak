@@ -7,6 +7,23 @@ const corsHeaders = {
 
 const POLYMARKET_API = 'https://data-api.polymarket.com';
 
+// Sample PnL history to get evenly distributed points across the full timeframe
+function samplePnlHistory(history: Array<{ timestamp: number; pnl: number; cumulative: number }>, targetCount: number) {
+  if (history.length <= targetCount) return history;
+  
+  const result: typeof history = [];
+  const step = (history.length - 1) / (targetCount - 1);
+  
+  for (let i = 0; i < targetCount - 1; i++) {
+    const index = Math.floor(i * step);
+    result.push(history[index]);
+  }
+  // Always include the last point
+  result.push(history[history.length - 1]);
+  
+  return result;
+}
+
 // Helper to fetch with retry and exponential backoff
 async function fetchWithRetry(url: string, maxRetries = 3): Promise<Response> {
   let lastError: Error | null = null;
@@ -265,7 +282,7 @@ serve(async (req) => {
       positions: trulyOpenPositions.length,
       closedPositions: resolvedPositions.length + closed.length, // Resolved + API closed
       lastActive,
-      pnlHistory: pnlHistory.slice(-100), // Last 100 data points for chart
+      pnlHistory: samplePnlHistory(pnlHistory, 150), // Sample 150 points across full history
       // Raw data for detailed views
       openPositions: trulyOpenPositions.slice(0, 50).map((pos: any) => ({
         id: pos.conditionId,
