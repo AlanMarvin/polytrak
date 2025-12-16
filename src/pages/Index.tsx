@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TimeFilter } from '@/types/polymarket';
 import { mockTraders } from '@/lib/mock-data';
-import { Search, TrendingUp, Users, BarChart3, ArrowRight, Zap } from 'lucide-react';
+import { Search, Brain, Sparkles, Target, ArrowRight, Zap } from 'lucide-react';
 
 const Index = () => {
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
@@ -25,10 +25,10 @@ const Index = () => {
     }
   };
 
-  const stats = [
-    { label: 'Top Traders', value: '500+', icon: Users },
-    { label: 'Total Volume', value: '$142M', icon: BarChart3 },
-    { label: 'Avg Win Rate', value: '62%', icon: TrendingUp },
+  const features = [
+    { label: 'AI-Powered Analysis', description: 'Smart algorithms analyze trader performance', icon: Brain },
+    { label: 'Optimized Settings', description: 'Auto-calculate ideal copy trading config', icon: Target },
+    { label: 'Personalized Strategy', description: 'Tailored to your risk & budget', icon: Sparkles },
   ];
 
   return (
@@ -75,16 +75,16 @@ const Index = () => {
             </form>
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-4 md:gap-8 max-w-2xl mx-auto mt-12 md:mt-16">
-            {stats.map((stat) => (
+          {/* AI Features */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 max-w-3xl mx-auto mt-12 md:mt-16">
+            {features.map((feature) => (
               <div 
-                key={stat.label} 
-                className="text-center p-4 rounded-lg bg-card/50 border border-border/50"
+                key={feature.label} 
+                className="text-center p-5 rounded-xl bg-card/50 border border-border/50 hover:border-primary/30 transition-colors"
               >
-                <stat.icon className="h-5 w-5 mx-auto mb-2 text-primary" />
-                <div className="text-2xl md:text-3xl font-bold">{stat.value}</div>
-                <div className="text-sm text-muted-foreground">{stat.label}</div>
+                <feature.icon className="h-8 w-8 mx-auto mb-3 text-primary" />
+                <div className="font-semibold mb-1">{feature.label}</div>
+                <div className="text-sm text-muted-foreground">{feature.description}</div>
               </div>
             ))}
           </div>
