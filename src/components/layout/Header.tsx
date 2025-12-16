@@ -1,22 +1,10 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Search, TrendingUp, Moon, Sun } from 'lucide-react';
-import { useState } from 'react';
+import { TrendingUp, Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
-import { Input } from '@/components/ui/input';
 
 export function Header() {
-  const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState('');
   const { theme, setTheme } = useTheme();
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/trader/${searchQuery.trim()}`);
-      setSearchQuery('');
-    }
-  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl">
@@ -29,18 +17,6 @@ export function Header() {
             PolyTrak
           </span>
         </Link>
-
-        <form onSubmit={handleSearch} className="flex-1 max-w-md">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search wallet address or ENS..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 bg-secondary/50 border-border/50"
-            />
-          </div>
-        </form>
 
         <nav className="flex items-center gap-2">
           <Link to="/analyze" className="hidden sm:block">
