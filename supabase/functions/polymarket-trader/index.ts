@@ -102,7 +102,7 @@ serve(async (req) => {
   try {
     const { address } = await req.json();
 
-    if (!address) {
+    if (!address || typeof address !== 'string') {
       console.error('No address provided');
       return new Response(
         JSON.stringify({ error: 'Address is required' }),
@@ -110,10 +110,21 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Fetching data for address: ${address}`);
+    const trimmedAddress = address.trim();
+
+    // Validate Ethereum address format (0x + 40 hex characters)
+    if (!/^0x[a-fA-F0-9]{40}$/i.test(trimmedAddress)) {
+      console.error(`Invalid address format: ${trimmedAddress}`);
+      return new Response(
+        JSON.stringify({ error: 'Invalid Ethereum address format. Expected 0x followed by 40 hex characters.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`Fetching data for address: ${trimmedAddress}`);
 
     // Fetch profile first (quick)
-    const profileRes = await fetch(`${POLYMARKET_API}/profiles/${address}`);
+    const profileRes = await fetch(`${POLYMARKET_API}/profiles/${trimmedAddress}`);
     const profile = profileRes.ok ? await profileRes.json() : null;
     console.log('Profile data:', JSON.stringify(profile));
 
@@ -121,9 +132,9 @@ serve(async (req) => {
     // IMPORTANT: closed-positions needs high limit for accurate PnL calculation
     // closed-positions API has max 50 per page per API docs
     const [positions, trades, closedPositions] = await Promise.all([
-      fetchAllPaginated(`${POLYMARKET_API}/positions?user=${address}`, 2000, 50),
-      fetchAllPaginated(`${POLYMARKET_API}/trades?user=${address}`, 5000, 50),
-      fetchAllPaginated(`${POLYMARKET_API}/closed-positions?user=${address}`, 10000, 50),
+      fetchAllPaginated(`${POLYMARKET_API}/positions?user=${trimmedAddress}`, 2000, 50),
+      fetchAllPaginated(`${POLYMARKET_API}/trades?user=${trimmedAddress}`, 5000, 50),
+      fetchAllPaginated(`${POLYMARKET_API}/closed-positions?user=${trimmedAddress}`, 10000, 50),
     ]);
 
     console.log(`Fetched ${positions.length} positions, ${trades.length} trades, ${closedPositions.length} closed positions`);
@@ -265,7 +276,7 @@ serve(async (req) => {
 
     // Build trader profile response
     const traderData = {
-      address,
+      address: trimmedAddress,
       username: profile?.name || profile?.username || profile?.pseudonym || null,
       profileImage: profile?.profileImage || profile?.profileImageOptimized || profile?.image || profile?.avatar || null,
       pnl: totalPnl,
