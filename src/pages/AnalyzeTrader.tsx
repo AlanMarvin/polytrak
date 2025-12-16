@@ -960,6 +960,23 @@ export default function AnalyzeTrader() {
                   <label className="text-sm text-muted-foreground mb-3">
                     How much do you want to allocate to this trader?
                   </label>
+                  {/* Preset Amount Buttons */}
+                  <div className="flex flex-wrap justify-center gap-2 mb-4">
+                    {[100, 250, 500, 1000, 2000, 5000, 10000].map((amount) => (
+                      <Button
+                        key={amount}
+                        variant={allocatedFunds === amount ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setAllocatedFunds(amount)}
+                        className={allocatedFunds === amount 
+                          ? "bg-orange-500 hover:bg-orange-600 text-white border-orange-500" 
+                          : "border-orange-500/30 text-orange-400 hover:bg-orange-500/20 hover:border-orange-500/50"
+                        }
+                      >
+                        ${amount.toLocaleString()}
+                      </Button>
+                    ))}
+                  </div>
                   <div className="flex items-center gap-2 p-6 rounded-xl bg-background/50 border-2 border-orange-500/40">
                     <span className="text-orange-400 font-mono text-4xl font-bold">$</span>
                     <input 
