@@ -1116,48 +1116,23 @@ export default function AnalyzeTrader() {
                       </div>
                     </div>
 
-                    {/* Full Strategy Reasoning - Collapsible */}
-                    <HoverCard>
-                      <HoverCardTrigger asChild>
-                        <Button variant="outline" className="w-full border-orange-500/30 text-orange-400 hover:bg-orange-500/10">
-                          <Brain className="h-4 w-4 mr-2" />
-                          View Full Strategy Analysis
-                        </Button>
-                      </HoverCardTrigger>
-                      <HoverCardContent className="w-96 bg-background/95 backdrop-blur border-orange-500/30">
-                        <div className="space-y-2">
-                          <h4 className="text-sm font-semibold text-orange-400 flex items-center gap-2">
-                            <Brain className="h-4 w-4" />
-                            Strategy Analysis
-                          </h4>
-                          <ul className="space-y-1.5">
-                            {copyStrategy.reasoning.map((reason, i) => (
-                              <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
-                                <span className="text-orange-400">•</span>
-                                {reason}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      </HoverCardContent>
-                    </HoverCard>
+                    {/* Full Strategy Reasoning - Always Visible */}
+                    <div className="p-4 rounded-lg bg-background/30 border border-orange-500/30">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Brain className="h-4 w-4 text-orange-400" />
+                        <span className="text-sm font-semibold text-orange-400">Strategy Analysis</span>
+                      </div>
+                      <ul className="space-y-1.5">
+                        {copyStrategy.reasoning.map((reason, i) => (
+                          <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                            <span className="text-orange-400">•</span>
+                            {reason}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   </>
                 )}
-
-                <div className="flex justify-center">
-                  <a 
-                    href={`https://thetradefox.com?copy=${trader.address}&tradeSize=${copyStrategy?.tradeSize || 5}&copyPercentage=${copyStrategy?.copyPercentage || 25}&followExits=${copyStrategy?.followExits ?? true}&bankroll=${allocatedFunds}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full md:w-auto"
-                  >
-                    <Button size="lg" className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-lg shadow-orange-500/25">
-                      <span className="mr-2">🦊</span>
-                      Start Copy Trading with AI Settings
-                      <ExternalLink className="ml-2 h-4 w-4" />
-                    </Button>
-                  </a>
-                </div>
               </CardContent>
             </Card>
 
