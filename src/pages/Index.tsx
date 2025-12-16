@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Search, Brain, Sparkles, Target, ArrowRight, Zap, TrendingUp, Shield, Settings, BarChart3, Wallet, Copy } from 'lucide-react';
+import tradeFoxLogo from '@/assets/tradefox-logo.png';
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -17,9 +18,9 @@ const Index = () => {
   };
 
   const features = [
-    { label: 'AI-Powered Analysis', description: 'Smart algorithms analyze trader performance', icon: Brain },
-    { label: 'Optimized Settings', description: 'Auto-calculate ideal copy trading config', icon: Target },
-    { label: 'Personalized Strategy', description: 'Tailored to your risk & budget', icon: Sparkles },
+    { label: 'AI-Powered Analysis', description: 'Smart algorithms analyze trader performance', icon: Brain, useLogo: false },
+    { label: 'Optimized Settings', description: 'Auto-calculate ideal copy trading config for TheTradeFox', icon: null, useLogo: true },
+    { label: 'Personalized Strategy', description: 'Tailored to your risk & budget', icon: Sparkles, useLogo: false },
   ];
 
   const howItWorks = [
@@ -123,7 +124,11 @@ const Index = () => {
                 key={feature.label} 
                 className="text-center p-5 rounded-xl bg-card/50 border border-border/50 hover:border-primary/30 transition-colors"
               >
-                <feature.icon className="h-8 w-8 mx-auto mb-3 text-primary" />
+                {feature.useLogo ? (
+                  <img src={tradeFoxLogo} alt="TheTradeFox" className="h-10 w-auto mx-auto mb-3" />
+                ) : (
+                  feature.icon && <feature.icon className="h-8 w-8 mx-auto mb-3 text-primary" />
+                )}
                 <div className="font-semibold mb-1">{feature.label}</div>
                 <div className="text-sm text-muted-foreground">{feature.description}</div>
               </div>
