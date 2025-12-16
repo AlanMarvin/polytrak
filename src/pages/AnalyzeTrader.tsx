@@ -1041,17 +1041,13 @@ export default function AnalyzeTrader() {
             {/* TradeFox Copy Trading Configuration */}
             <Card className="mb-8 border-2 border-orange-500/50 bg-gradient-to-br from-orange-500/10 via-background to-amber-500/10 shadow-lg shadow-orange-500/10">
               <CardHeader className="border-b border-orange-500/20 pb-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <img src={tradefoxLogo} alt="TradeFox" className="h-16 w-16 object-contain" />
-                    <div>
-                      <CardTitle className="text-xl">
-                        <span className="bg-gradient-to-r from-orange-400 to-amber-500 bg-clip-text text-transparent font-bold">
-                          AI-Optimized Copy Trading for TheTradeFox
-                        </span>
-                      </CardTitle>
-                    </div>
-                  </div>
+                <div className="flex flex-col items-center text-center gap-3">
+                  <img src={tradefoxLogo} alt="TradeFox" className="h-auto w-48 object-contain" />
+                  <CardTitle className="text-xl">
+                    <span className="bg-gradient-to-r from-orange-400 to-amber-500 bg-clip-text text-transparent font-bold">
+                      AI-Optimized Copy Trading for TheTradeFox
+                    </span>
+                  </CardTitle>
                   {copyStrategy && (
                     <Badge className={
                       copyStrategy.riskLevel === 'Aggressive' 
