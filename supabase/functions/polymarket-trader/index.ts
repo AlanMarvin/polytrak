@@ -56,7 +56,9 @@ async function fetchWithRetry(url: string, maxRetries = 3): Promise<Response> {
 // IMPORTANT: closed-positions API has max 50 per page, positions/trades allow up to 500
 async function fetchAllPaginated(baseUrl: string, maxItems = 5000, pageSize = 50): Promise<any[]> {
   const allItems: any[] = [];
+  const seenIds = new Set<string>(); // Track unique IDs to avoid duplicates
   let offset = 0;
+  let consecutiveEmptyPages = 0;
   
   while (allItems.length < maxItems && offset <= 100000) { // API max offset is 100000
     const url = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}limit=${pageSize}&offset=${offset}`;
@@ -72,9 +74,26 @@ async function fetchAllPaginated(baseUrl: string, maxItems = 5000, pageSize = 50
       const data = await res.json();
       const items = Array.isArray(data) ? data : [];
       
-      if (items.length === 0) break;
+      if (items.length === 0) {
+        consecutiveEmptyPages++;
+        // Allow a few empty pages before stopping (API can be inconsistent)
+        if (consecutiveEmptyPages >= 3) break;
+        offset += pageSize;
+        continue;
+      }
       
-      allItems.push(...items);
+      consecutiveEmptyPages = 0;
+      
+      // Deduplicate by conditionId or unique identifier
+      let newItems = 0;
+      items.forEach((item: any) => {
+        const id = item.conditionId || item.transactionHash || `${item.timestamp}-${item.size}`;
+        if (!seenIds.has(id)) {
+          seenIds.add(id);
+          allItems.push(item);
+          newItems++;
+        }
+      });
       
       // Stop if we got fewer items than requested (no more data)
       if (items.length < pageSize) break;
@@ -82,14 +101,14 @@ async function fetchAllPaginated(baseUrl: string, maxItems = 5000, pageSize = 50
       offset += pageSize;
       
       // Small delay between requests to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 150));
     } catch (error) {
       console.error(`Error fetching paginated data at offset ${offset}:`, error);
       break;
     }
   }
   
-  console.log(`Fetched ${allItems.length} items from ${baseUrl.split('?')[0]}`);
+  console.log(`Fetched ${allItems.length} unique items from ${baseUrl.split('?')[0]}`);
   return allItems;
 }
 
@@ -129,12 +148,13 @@ serve(async (req) => {
     console.log('Profile data:', JSON.stringify(profile));
 
     // Fetch all data with pagination for complete history
-    // IMPORTANT: closed-positions needs high limit for accurate PnL calculation
+    // IMPORTANT: Must fetch ALL closed positions for accurate PnL calculation
     // closed-positions API has max 50 per page per API docs
+    // Some traders have 5000+ positions, so we need high limits
     const [positions, trades, closedPositions] = await Promise.all([
-      fetchAllPaginated(`${POLYMARKET_API}/positions?user=${trimmedAddress}`, 2000, 50),
-      fetchAllPaginated(`${POLYMARKET_API}/trades?user=${trimmedAddress}`, 5000, 50),
-      fetchAllPaginated(`${POLYMARKET_API}/closed-positions?user=${trimmedAddress}`, 10000, 50),
+      fetchAllPaginated(`${POLYMARKET_API}/positions?user=${trimmedAddress}`, 5000, 50),
+      fetchAllPaginated(`${POLYMARKET_API}/trades?user=${trimmedAddress}`, 10000, 50),
+      fetchAllPaginated(`${POLYMARKET_API}/closed-positions?user=${trimmedAddress}`, 20000, 50), // High limit for whale traders
     ]);
 
     console.log(`Fetched ${positions.length} positions, ${trades.length} trades, ${closedPositions.length} closed positions`);
@@ -231,13 +251,25 @@ serve(async (req) => {
     
     // Combine closed positions from API + resolved positions (with estimated close times)
     const allClosedForHistory: Array<{ timestamp: number; pnl: number }> = [];
+    const seenTimestamps = new Set<string>(); // Prevent duplicate entries
     
     // Add closed positions from API
     closed.forEach((pos: any) => {
       const pnl = pos.realizedPnl || 0;
-      // timestamp in closed positions is Unix seconds
-      const timestamp = pos.timestamp ? pos.timestamp * 1000 : (pos.endDate ? new Date(pos.endDate).getTime() : now);
-      if (pnl !== 0) {
+      // timestamp in closed positions could be Unix seconds OR milliseconds
+      let timestamp = pos.timestamp;
+      if (timestamp) {
+        // If timestamp is in seconds (less than year 2100 in ms), convert to ms
+        timestamp = timestamp < 10000000000 ? timestamp * 1000 : timestamp;
+      } else if (pos.endDate) {
+        timestamp = new Date(pos.endDate).getTime();
+      } else {
+        timestamp = now;
+      }
+      
+      const key = `${pos.conditionId || ''}-${timestamp}`;
+      if (pnl !== 0 && !seenTimestamps.has(key)) {
+        seenTimestamps.add(key);
         allClosedForHistory.push({ timestamp, pnl });
       }
     });
@@ -247,7 +279,9 @@ serve(async (req) => {
       const pnl = pos.cashPnl || 0;
       // Use endDate if available, otherwise estimate based on position data
       const timestamp = pos.endDate ? new Date(pos.endDate).getTime() : now - day; // Default to 1 day ago if no date
-      if (pnl !== 0) {
+      const key = `${pos.conditionId || ''}-${timestamp}`;
+      if (pnl !== 0 && !seenTimestamps.has(key)) {
+        seenTimestamps.add(key);
         allClosedForHistory.push({ timestamp, pnl });
       }
     });
@@ -267,6 +301,8 @@ serve(async (req) => {
       if (age <= day * 7) pnl7d += pnl;
       if (age <= day * 30) pnl30d += pnl;
     });
+    
+    console.log(`Time-based PnL: 24h=${pnl24h.toFixed(2)}, 7d=${pnl7d.toFixed(2)}, 30d=${pnl30d.toFixed(2)} from ${allClosedForHistory.length} closed positions`);
 
     // Get last active timestamp
     const lastTrade = allTrades[0];
