@@ -118,12 +118,12 @@ serve(async (req) => {
     console.log('Profile data:', JSON.stringify(profile));
 
     // Fetch all data with pagination for complete history
-    // IMPORTANT: closed-positions API has max 50 per page per API docs
-    // positions and trades endpoints also work better with smaller page sizes
+    // IMPORTANT: Limits reduced to prevent timeouts for large traders
+    // closed-positions API has max 50 per page per API docs
     const [positions, trades, closedPositions] = await Promise.all([
-      fetchAllPaginated(`${POLYMARKET_API}/positions?user=${address}`, 2000, 50),
-      fetchAllPaginated(`${POLYMARKET_API}/trades?user=${address}`, 5000, 50),
-      fetchAllPaginated(`${POLYMARKET_API}/closed-positions?user=${address}`, 10000, 50), // Max 50 per page per API docs
+      fetchAllPaginated(`${POLYMARKET_API}/positions?user=${address}`, 1000, 50),
+      fetchAllPaginated(`${POLYMARKET_API}/trades?user=${address}`, 2000, 50),
+      fetchAllPaginated(`${POLYMARKET_API}/closed-positions?user=${address}`, 2000, 50),
     ]);
 
     console.log(`Fetched ${positions.length} positions, ${trades.length} trades, ${closedPositions.length} closed positions`);
