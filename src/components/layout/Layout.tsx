@@ -14,7 +14,7 @@ export function Layout({ children }: LayoutProps) {
       </main>
       <footer className="border-t border-border/50 py-6">
         <div className="container text-center text-sm text-muted-foreground">
-          <p>PolyTracker - Polymarket Analytics for Copy Trading</p>
+          <p>PolyTrak - Polymarket Analytics for Copy Trading</p>
           <p className="mt-1">
             Use with{' '}
             <a 
