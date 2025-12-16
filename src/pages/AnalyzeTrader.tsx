@@ -551,13 +551,35 @@ export default function AnalyzeTrader() {
 
   const watching = trader ? isWatching(trader.address) : false;
 
+  // Validate Ethereum address format (0x + 40 hex characters)
+  const isValidEthereumAddress = (addr: string): boolean => {
+    return /^0x[a-fA-F0-9]{40}$/i.test(addr);
+  };
+
   const handleAnalyze = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = inputAddress.trim();
-    if (trimmed) {
-      setAnalyzedAddress(trimmed);
-      setSearchParams({ address: trimmed });
+    
+    if (!trimmed) {
+      toast({ 
+        title: "Error", 
+        description: "Please enter a trader address",
+        variant: "destructive"
+      });
+      return;
     }
+    
+    if (!isValidEthereumAddress(trimmed)) {
+      toast({ 
+        title: "Invalid Address", 
+        description: "Please enter a valid Ethereum address (0x + 40 hex characters)",
+        variant: "destructive" 
+      });
+      return;
+    }
+    
+    setAnalyzedAddress(trimmed);
+    setSearchParams({ address: trimmed });
   };
 
   const formatPnl = (value: number) => {
