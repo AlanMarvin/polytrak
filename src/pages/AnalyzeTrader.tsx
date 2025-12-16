@@ -14,7 +14,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, 
   Tooltip, ResponsiveContainer 
 } from 'recharts';
-import { Skeleton } from '@/components/ui/skeleton';
+
 import { supabase } from '@/integrations/supabase/client';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { useAuth } from '@/hooks/useAuth';
@@ -31,6 +31,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import tradefoxLogo from '@/assets/tradefox-logo.png';
+import { LoadingProgress } from '@/components/analyze/LoadingProgress';
 
 type ChartTimeFilter = '1D' | '1W' | '1M' | 'ALL';
 
@@ -622,25 +623,7 @@ export default function AnalyzeTrader() {
         </div>
 
         {/* Loading State */}
-        {loading && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[...Array(4)].map((_, i) => (
-                <Card key={i} className="glass-card">
-                  <CardContent className="p-4">
-                    <Skeleton className="h-4 w-20 mb-2" />
-                    <Skeleton className="h-8 w-24" />
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-            <Card className="glass-card">
-              <CardContent className="p-6">
-                <Skeleton className="h-[300px] w-full" />
-              </CardContent>
-            </Card>
-          </div>
-        )}
+        {loading && <LoadingProgress />}
 
         {/* Error State */}
         {error && !loading && (
