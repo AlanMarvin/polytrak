@@ -1398,6 +1398,26 @@ export default function AnalyzeTrader() {
                             ))}
                           </div>
                         </div>
+
+                        {/* Why AI Chose These Settings */}
+                        {copyStrategy && (
+                          <div className="p-3 rounded-lg bg-purple-500/20 border border-purple-500/40 mt-4">
+                            <p className="text-xs font-semibold text-purple-400 mb-2">Why AI chose these settings:</p>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="flex items-center gap-2">
+                                <span className="text-2xl font-bold text-orange-400 font-mono">{copyStrategy.tradeSize}%</span>
+                                <span className="text-xs text-muted-foreground">per trade</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-2xl font-bold text-orange-400 font-mono">{copyStrategy.copyPercentage}%</span>
+                                <span className="text-xs text-muted-foreground">copy size</span>
+                              </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-2">
+                              Based on {riskRegime.riskProfile.toLowerCase()} risk profile and {riskRegime.liquiditySensitivity.toLowerCase()} liquidity needs
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
                   </>
