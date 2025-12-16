@@ -84,10 +84,15 @@ async function fetchAllPaginated(baseUrl: string, maxItems = 5000, pageSize = 50
       
       consecutiveEmptyPages = 0;
       
-      // Deduplicate by conditionId or unique identifier
+      // Deduplicate by unique identifier
+      // For closed-positions: use asset (unique outcome token) since same conditionId can have multiple outcomes
+      // For trades: use transactionHash or timestamp+size combo
       let newItems = 0;
       items.forEach((item: any) => {
-        const id = item.conditionId || item.transactionHash || `${item.timestamp}-${item.size}`;
+        // Use asset as primary key for positions (unique per outcome)
+        // Use conditionId+outcome as fallback
+        // Use transactionHash for trades
+        const id = item.asset || item.transactionHash || `${item.conditionId}-${item.outcome}` || `${item.timestamp}-${item.size}`;
         if (!seenIds.has(id)) {
           seenIds.add(id);
           allItems.push(item);
@@ -204,15 +209,26 @@ serve(async (req) => {
     const countedConditionIds = new Set<string>();
     
     // From closed positions endpoint - this is the authoritative source
+    // IMPORTANT: Use asset as key - it's the unique token identifier for each outcome
+    // This ensures we count each position only once
+    const countedAssets = new Set<string>();
+    let positivePnl = 0;
+    let negativePnl = 0;
+    let skippedDuplicates = 0;
+    
     closed.forEach((pos: any) => {
-      const conditionId = pos.conditionId || pos.id;
-      if (conditionId && countedConditionIds.has(conditionId)) {
+      // Use asset as primary unique key
+      const key = pos.asset || `${pos.conditionId}-${pos.outcome}`;
+      if (countedAssets.has(key)) {
+        skippedDuplicates++;
         return; // Skip duplicate
       }
-      if (conditionId) {
-        countedConditionIds.add(conditionId);
-      }
-      realizedPnl += pos.realizedPnl || 0;
+      countedAssets.add(key);
+      
+      const pnl = pos.realizedPnl || 0;
+      realizedPnl += pnl;
+      if (pnl > 0) positivePnl += pnl;
+      else negativePnl += pnl;
     });
 
     // From partial closes on truly open positions (these are separate - active positions with some profit taken)
@@ -220,7 +236,8 @@ serve(async (req) => {
       realizedPnl += pos.realizedPnl || 0;
     });
     
-    console.log(`Realized PnL: ${realizedPnl} from ${countedConditionIds.size} unique closed positions + ${trulyOpenPositions.length} open positions`);
+    console.log(`Realized PnL breakdown: total=${realizedPnl.toFixed(2)}, wins=${positivePnl.toFixed(2)}, losses=${negativePnl.toFixed(2)}`);
+    console.log(`Positions: ${countedAssets.size} unique, ${skippedDuplicates} duplicates skipped, ${trulyOpenPositions.length} open`);
 
     const totalPnl = realizedPnl + unrealizedPnl;
 
