@@ -478,6 +478,84 @@ const getSmartScoreInfo = (score: number) => {
   return { color: 'text-red-500', bg: 'bg-red-500/20', label: 'Poor' };
 };
 
+// Calculate Risk Regime based on trader behavior patterns
+const calculateRiskRegime = (trader: TraderData) => {
+  const avgTradeSize = trader.totalInvested / Math.max(1, trader.totalTrades);
+  const volumePerTrade = trader.volume / Math.max(1, trader.totalTrades);
+  const pnlVolatility = Math.abs(trader.pnl) / Math.max(1, trader.totalInvested);
+  
+  // Risk Profile: Conservative / Moderate / Aggressive
+  let riskProfile: 'Conservative' | 'Moderate' | 'Aggressive';
+  let riskReasoning: string;
+  
+  // Analyze trade sizing relative to volume
+  const tradeSizeRatio = avgTradeSize / Math.max(1, volumePerTrade);
+  const positionConcentration = trader.positions > 0 ? trader.totalCurrentValue / trader.positions : 0;
+  
+  if (tradeSizeRatio < 0.3 && trader.winRate > 55) {
+    riskProfile = 'Conservative';
+    riskReasoning = 'Smaller positions with higher win rate focus';
+  } else if (tradeSizeRatio > 0.6 || pnlVolatility > 0.5) {
+    riskProfile = 'Aggressive';
+    riskReasoning = 'Larger position sizing with higher volatility tolerance';
+  } else {
+    riskProfile = 'Moderate';
+    riskReasoning = 'Balanced approach between risk and reward';
+  }
+  
+  // Liquidity Sensitivity: High / Medium / Low
+  let liquiditySensitivity: 'High' | 'Medium' | 'Low';
+  let liquidityReasoning: string;
+  
+  // Analyze based on trade frequency and position sizing
+  const tradesPerPosition = trader.totalTrades / Math.max(1, trader.closedPositions + trader.positions);
+  
+  if (avgTradeSize > 10000 || tradesPerPosition < 2) {
+    liquiditySensitivity = 'High';
+    liquidityReasoning = 'Trades larger positions, needs liquid markets';
+  } else if (avgTradeSize > 1000 || tradesPerPosition < 5) {
+    liquiditySensitivity = 'Medium';
+    liquidityReasoning = 'Moderate position sizes, some liquidity needs';
+  } else {
+    liquiditySensitivity = 'Low';
+    liquidityReasoning = 'Smaller positions, flexible across markets';
+  }
+  
+  // Best conditions analysis
+  const bestConditions: string[] = [];
+  
+  // Position duration preference
+  if (trader.positions > 5 && trader.closedPositions < trader.positions * 2) {
+    bestConditions.push('Longer-duration positions');
+  } else {
+    bestConditions.push('Short-duration positions');
+  }
+  
+  // Volume/liquidity preference
+  if (avgTradeSize > 5000) {
+    bestConditions.push('High-liquidity markets');
+  } else {
+    bestConditions.push('Various liquidity levels');
+  }
+  
+  // Win rate driven conditions
+  if (trader.winRate > 60) {
+    bestConditions.push('Probability ranges 55-75%');
+  } else if (trader.winRate > 45) {
+    bestConditions.push('Probability ranges 40-60%');
+  } else {
+    bestConditions.push('High-risk asymmetric bets');
+  }
+  
+  return {
+    riskProfile,
+    riskReasoning,
+    liquiditySensitivity,
+    liquidityReasoning,
+    bestConditions
+  };
+};
+
 export default function AnalyzeTrader() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [inputAddress, setInputAddress] = useState(searchParams.get('address') || '');
@@ -548,6 +626,7 @@ export default function AnalyzeTrader() {
     trader ? calculateOptimalStrategy(trader, allocatedFunds) : null,
     [trader, allocatedFunds]
   );
+  const riskRegime = useMemo(() => trader ? calculateRiskRegime(trader) : null, [trader]);
 
   const watching = trader ? isWatching(trader.address) : false;
 
@@ -1264,6 +1343,63 @@ export default function AnalyzeTrader() {
                         ))}
                       </ul>
                     </div>
+
+                    {/* Risk Regime Detection Card */}
+                    {riskRegime && (
+                      <div className="p-4 rounded-lg bg-purple-500/10 border border-purple-500/30">
+                        <div className="flex items-center gap-2 mb-4">
+                          <Gauge className="h-4 w-4 text-purple-400" />
+                          <span className="text-sm font-semibold text-purple-400">Trader Risk Regime</span>
+                          <HoverCard>
+                            <HoverCardTrigger asChild>
+                              <button className="ml-auto">
+                                <Info className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-help transition-colors" />
+                              </button>
+                            </HoverCardTrigger>
+                            <HoverCardContent className="w-72 z-50" side="top">
+                              <p className="text-sm text-muted-foreground">
+                                Risk regime analysis explains why the AI chose specific settings. It's based on the trader's historical behavior patterns.
+                              </p>
+                            </HoverCardContent>
+                          </HoverCard>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                          <div className="p-3 rounded-lg bg-background/50">
+                            <p className="text-xs text-muted-foreground mb-1">Risk Profile</p>
+                            <p className={`text-lg font-bold ${
+                              riskRegime.riskProfile === 'Conservative' ? 'text-green-400' :
+                              riskRegime.riskProfile === 'Moderate' ? 'text-yellow-400' : 'text-red-400'
+                            }`}>
+                              {riskRegime.riskProfile}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">{riskRegime.riskReasoning}</p>
+                          </div>
+                          
+                          <div className="p-3 rounded-lg bg-background/50">
+                            <p className="text-xs text-muted-foreground mb-1">Liquidity Sensitivity</p>
+                            <p className={`text-lg font-bold ${
+                              riskRegime.liquiditySensitivity === 'Low' ? 'text-green-400' :
+                              riskRegime.liquiditySensitivity === 'Medium' ? 'text-yellow-400' : 'text-purple-400'
+                            }`}>
+                              {riskRegime.liquiditySensitivity}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">{riskRegime.liquidityReasoning}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="p-3 rounded-lg bg-background/50">
+                          <p className="text-xs text-muted-foreground mb-2">Trader performs best in:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {riskRegime.bestConditions.map((condition, i) => (
+                              <Badge key={i} variant="outline" className="border-purple-500/50 text-purple-300 text-xs">
+                                {condition}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </>
                 )}
               </CardContent>
