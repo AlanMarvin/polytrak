@@ -976,6 +976,18 @@ export default function AnalyzeTrader() {
                   <div className="flex items-center gap-2 text-muted-foreground mb-1">
                     <Target className="h-4 w-4" />
                     <span className="text-sm">Win Rate</span>
+                    <HoverCard>
+                      <HoverCardTrigger asChild>
+                        <button className="ml-auto">
+                          <Info className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-help transition-colors" />
+                        </button>
+                      </HoverCardTrigger>
+                      <HoverCardContent className="w-64 z-50" side="top">
+                        <p className="text-sm text-muted-foreground">
+                          Based on win rate, consistency, volume, and trade history
+                        </p>
+                      </HoverCardContent>
+                    </HoverCard>
                   </div>
                   <p className="text-2xl font-bold font-mono">{trader.winRate.toFixed(1)}%</p>
                 </CardContent>
