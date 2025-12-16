@@ -408,7 +408,7 @@ export default function AnalyzeTrader() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [inputAddress, setInputAddress] = useState(searchParams.get('address') || '');
   const [analyzedAddress, setAnalyzedAddress] = useState(searchParams.get('address') || '');
-  const [chartTimeFilter, setChartTimeFilter] = useState<ChartTimeFilter>('1M');
+  const [chartTimeFilter, setChartTimeFilter] = useState<ChartTimeFilter>('ALL');
   const [trader, setTrader] = useState<TraderData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
