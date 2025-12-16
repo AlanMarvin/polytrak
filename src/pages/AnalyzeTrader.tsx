@@ -1329,7 +1329,7 @@ export default function AnalyzeTrader() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/30">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm text-muted-foreground">% Size for each trade</span>
+                          <span className="text-sm text-muted-foreground">What percent of that should go into each trade</span>
                           <HoverCard>
                             <HoverCardTrigger asChild>
                               <Button variant="ghost" size="icon" className="h-6 w-6 text-orange-400 hover:bg-orange-500/20">
@@ -1361,7 +1361,7 @@ export default function AnalyzeTrader() {
                       
                       <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/30">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm text-muted-foreground">% of each trade to copy</span>
+                          <span className="text-sm text-muted-foreground">Enter the percentage of each trade to copy</span>
                           <HoverCard>
                             <HoverCardTrigger asChild>
                               <Button variant="ghost" size="icon" className="h-6 w-6 text-orange-400 hover:bg-orange-500/20">
