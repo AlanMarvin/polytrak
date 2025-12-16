@@ -999,7 +999,28 @@ export default function AnalyzeTrader() {
                       <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/30">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-sm text-muted-foreground">% Size for each trade</span>
-                          <Badge variant="outline" className="text-xs border-orange-500/50 text-orange-400">AI Recommended</Badge>
+                          <HoverCard>
+                            <HoverCardTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-6 w-6 text-orange-400 hover:bg-orange-500/20">
+                                <Info className="h-4 w-4" />
+                              </Button>
+                            </HoverCardTrigger>
+                            <HoverCardContent className="w-80 bg-background/95 backdrop-blur border-orange-500/30">
+                              <div className="space-y-2">
+                                <h4 className="text-sm font-semibold text-orange-400">Why this percentage?</h4>
+                                <ul className="space-y-1">
+                                  {copyStrategy.reasoning.filter(r => 
+                                    r.includes('Kelly') || r.includes('per trade') || r.includes('bankroll')
+                                  ).map((reason, i) => (
+                                    <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
+                                      <span className="text-orange-400">•</span>
+                                      {reason}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </HoverCardContent>
+                          </HoverCard>
                         </div>
                         <p className="text-3xl font-bold text-orange-400 font-mono">{copyStrategy.tradeSize}%</p>
                         <p className="text-xs text-muted-foreground mt-1">
@@ -1010,7 +1031,28 @@ export default function AnalyzeTrader() {
                       <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/30">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-sm text-muted-foreground">% of each trade to copy</span>
-                          <Badge variant="outline" className="text-xs border-orange-500/50 text-orange-400">AI Recommended</Badge>
+                          <HoverCard>
+                            <HoverCardTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-6 w-6 text-orange-400 hover:bg-orange-500/20">
+                                <Info className="h-4 w-4" />
+                              </Button>
+                            </HoverCardTrigger>
+                            <HoverCardContent className="w-80 bg-background/95 backdrop-blur border-orange-500/30">
+                              <div className="space-y-2">
+                                <h4 className="text-sm font-semibold text-orange-400">Why this copy %?</h4>
+                                <ul className="space-y-1">
+                                  {copyStrategy.reasoning.filter(r => 
+                                    r.includes('copy') || r.includes('trade') || r.includes('avg') || r.includes('position')
+                                  ).map((reason, i) => (
+                                    <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
+                                      <span className="text-orange-400">•</span>
+                                      {reason}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </HoverCardContent>
+                          </HoverCard>
                         </div>
                         <p className="text-3xl font-bold text-orange-400 font-mono">{copyStrategy.copyPercentage}%</p>
                         <p className="text-xs text-muted-foreground mt-1">
@@ -1048,33 +1090,57 @@ export default function AnalyzeTrader() {
                           readOnly
                           className="mt-1 h-5 w-5 rounded border-orange-500 text-orange-500 focus:ring-orange-500 accent-orange-500"
                         />
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium">Follow Exits</p>
-                            <Badge variant="outline" className="text-xs border-green-500/50 text-green-500">Always On</Badge>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium">Follow Exits</p>
+                              <Badge variant="outline" className="text-xs border-green-500/50 text-green-500">Always On</Badge>
+                            </div>
+                            <HoverCard>
+                              <HoverCardTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:bg-muted/20">
+                                  <Info className="h-4 w-4" />
+                                </Button>
+                              </HoverCardTrigger>
+                              <HoverCardContent className="w-72 bg-background/95 backdrop-blur border-border/50">
+                                <p className="text-xs text-muted-foreground">
+                                  Follow exits is always enabled for risk management. When the trader reduces or closes a position, you automatically sell the same percentage.
+                                </p>
+                              </HoverCardContent>
+                            </HoverCard>
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            When the trader reduces or closes a position, you sell the same percentage of your copied position.
+                            When the trader closes, you close too.
                           </p>
                         </div>
                       </div>
                     </div>
 
-                    {/* Strategy Reasoning */}
-                    <div className="p-4 rounded-lg bg-background/30 border border-border/30">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Brain className="h-4 w-4 text-orange-400" />
-                        <span className="text-sm font-medium">Strategy Analysis</span>
-                      </div>
-                      <ul className="space-y-1">
-                        {copyStrategy.reasoning.map((reason, i) => (
-                          <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                            <span className="text-orange-400">•</span>
-                            {reason}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                    {/* Full Strategy Reasoning - Collapsible */}
+                    <HoverCard>
+                      <HoverCardTrigger asChild>
+                        <Button variant="outline" className="w-full border-orange-500/30 text-orange-400 hover:bg-orange-500/10">
+                          <Brain className="h-4 w-4 mr-2" />
+                          View Full Strategy Analysis
+                        </Button>
+                      </HoverCardTrigger>
+                      <HoverCardContent className="w-96 bg-background/95 backdrop-blur border-orange-500/30">
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-semibold text-orange-400 flex items-center gap-2">
+                            <Brain className="h-4 w-4" />
+                            Strategy Analysis
+                          </h4>
+                          <ul className="space-y-1.5">
+                            {copyStrategy.reasoning.map((reason, i) => (
+                              <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
+                                <span className="text-orange-400">•</span>
+                                {reason}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </HoverCardContent>
+                    </HoverCard>
                   </>
                 )}
 
