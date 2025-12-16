@@ -284,7 +284,7 @@ serve(async (req) => {
       lastActive,
       pnlHistory: samplePnlHistory(pnlHistory, 150), // Sample 150 points across full history
       // Raw data for detailed views
-      openPositions: trulyOpenPositions.slice(0, 50).map((pos: any) => ({
+      openPositions: trulyOpenPositions.map((pos: any) => ({
         id: pos.conditionId,
         marketTitle: pos.title || 'Unknown Market',
         outcome: pos.outcome || 'Yes',
