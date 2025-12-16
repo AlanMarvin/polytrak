@@ -1402,7 +1402,21 @@ export default function AnalyzeTrader() {
                         {/* Why AI Chose These Settings */}
                         {copyStrategy && (
                           <div className="p-3 rounded-lg bg-purple-500/20 border border-purple-500/40 mt-4">
-                            <p className="text-xs font-semibold text-purple-400 mb-2">Why AI chose these settings:</p>
+                            <div className="flex items-center gap-2 mb-2">
+                              <p className="text-xs font-semibold text-purple-400">Why AI chose these settings:</p>
+                              <HoverCard>
+                                <HoverCardTrigger asChild>
+                                  <button>
+                                    <Info className="h-3.5 w-3.5 text-purple-400 hover:text-purple-300 cursor-help transition-colors" />
+                                  </button>
+                                </HoverCardTrigger>
+                                <HoverCardContent className="w-72 z-50" side="top">
+                                  <p className="text-sm text-muted-foreground">
+                                    With ${allocatedFunds.toLocaleString()} allocation, ~{Math.round(Math.max(5, Math.min(25, 50000 / allocatedFunds)))}% of trades may be skipped due to minimum buy size requirements on TradeFox.
+                                  </p>
+                                </HoverCardContent>
+                              </HoverCard>
+                            </div>
                             <div className="grid grid-cols-2 gap-3">
                               <div className="flex items-center gap-2">
                                 <span className="text-2xl font-bold text-orange-400 font-mono">{copyStrategy.tradeSize}%</span>
