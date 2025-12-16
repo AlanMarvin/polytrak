@@ -1246,10 +1246,7 @@ export default function AnalyzeTrader() {
             {/* Copy on TradeFox Section */}
             <Card className="mb-8 border-border/50">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <img src={tradefoxLogo} alt="TradeFox" className="h-8 w-8" />
-                  Copy on TradeFox
-                </CardTitle>
+                <CardTitle>Copy on TradeFox</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">
