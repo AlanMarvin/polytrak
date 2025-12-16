@@ -63,7 +63,7 @@ export function LoadingProgress() {
   useEffect(() => {
     const interval = setInterval(() => {
       setProgress(prev => {
-        const increment = Math.random() * 6 + 2;
+        const increment = Math.random() * 2 + 0.5;
         const newProgress = Math.min(prev + increment, 95);
         
         const newStepIndex = loadingSteps.findIndex(
@@ -77,7 +77,7 @@ export function LoadingProgress() {
         
         return newProgress;
       });
-    }, 300 + Math.random() * 200);
+    }, 600 + Math.random() * 400);
 
     return () => clearInterval(interval);
   }, [currentStepIndex]);
