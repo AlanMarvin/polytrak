@@ -931,9 +931,6 @@ export default function AnalyzeTrader() {
                   <div className="flex items-center gap-3">
                     <img src={tradefoxLogo} alt="TradeFox" className="h-10 w-10 object-contain" />
                     <div>
-                      <p className="text-xs text-orange-400/80 mb-1">
-                        Calculated from {trader.closedPositions} trades
-                      </p>
                       <CardTitle className="text-xl">
                         <span className="bg-gradient-to-r from-orange-400 to-amber-500 bg-clip-text text-transparent font-bold">
                           AI-Optimized Copy Trading for TheTradeFox
