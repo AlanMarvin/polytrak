@@ -226,7 +226,7 @@ const Index = () => {
             
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight flex flex-col items-center gap-2 md:gap-3">
               <span>Let AI find</span>
-              <span className="inline-flex items-center justify-center px-5 py-1.5 md:px-6 md:py-2 rounded-full bg-primary/20 border border-primary/40 text-primary">
+              <span className="inline-flex items-center justify-center px-5 py-1.5 md:px-6 md:py-2 rounded-full bg-primary/20 text-primary">
                 <RotatingWord 
                   words={["recommended", "safer", "starting", "suggested", "practical"]} 
                   interval={2500}
