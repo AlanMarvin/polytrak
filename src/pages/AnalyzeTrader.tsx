@@ -93,6 +93,15 @@ interface TraderData {
   }>;
 }
 
+interface FeeImpact {
+  level: 'Low' | 'Medium' | 'High';
+  estimatedMonthlyTradeCount: number;
+  estimatedFeePercentage: number;
+  reasons: string[];
+  recommendations: string[];
+  assumedTier: string;
+}
+
 // Generate PnL chart data from real history
 const generatePnlChartData = (traderData: TraderData, timeFilter: ChartTimeFilter) => {
   const now = Date.now();
@@ -749,6 +758,77 @@ const calculateCopySuitability = (trader: TraderData): CopySuitability => {
   };
 };
 
+// Calculate fee impact based on TradeFox fee structure
+interface CopyStrategy {
+  tradeSize: number;
+  copyPercentage: number;
+  expectedMonthlyReturn: number;
+  maxDrawdown: number;
+  reasoning: string[];
+}
+
+const calculateFeeImpact = (
+  trader: TraderData,
+  copyStrategy: CopyStrategy,
+  allocatedFunds: number,
+  copySuitability: CopySuitability
+): FeeImpact => {
+  // TradeFox fee constants for lowest tier (Cub)
+  const NET_FEE_RATE = 0.0095; // 0.95%
+  const CASHBACK_RATE = 0.05;  // 5%
+  const EFFECTIVE_FEE = NET_FEE_RATE * (1 - CASHBACK_RATE); // ~0.90%
+  
+  // Estimate monthly trade count
+  const tradesPerMonth = copySuitability.tradesPerDay * 30;
+  
+  // Average trade size in $ based on allocated funds and trade size %
+  const avgTradeUsd = allocatedFunds * (copyStrategy.tradeSize / 100);
+  
+  // Total monthly fees estimate
+  const monthlyFees = tradesPerMonth * avgTradeUsd * EFFECTIVE_FEE;
+  
+  // Compare fees to expected return
+  const expectedReturnUsd = (allocatedFunds * copyStrategy.expectedMonthlyReturn) / 100;
+  const feesAsPercentOfReturn = expectedReturnUsd > 0 
+    ? (monthlyFees / expectedReturnUsd) * 100 
+    : 100;
+  
+  // Build reasons and recommendations
+  const reasons: string[] = [];
+  const recommendations: string[] = [];
+  let level: 'Low' | 'Medium' | 'High';
+  
+  // Classify fee impact
+  if (feesAsPercentOfReturn > 50 || tradesPerMonth > 300) {
+    level = 'High';
+    reasons.push(`Est. ${Math.round(tradesPerMonth)} trades/month`);
+    if (avgTradeUsd < 50) reasons.push(`Small avg trade size ($${avgTradeUsd.toFixed(0)})`);
+    if (expectedReturnUsd > 0 && feesAsPercentOfReturn > 30) {
+      reasons.push(`Fees may consume ~${Math.min(100, Math.round(feesAsPercentOfReturn))}% of returns`);
+    }
+    recommendations.push('Consider upgrading to a higher TradeFox tier for better cashback');
+    recommendations.push('Consider larger allocation to reduce relative fee impact');
+  } else if (feesAsPercentOfReturn > 20 || tradesPerMonth > 100) {
+    level = 'Medium';
+    reasons.push(`Est. ${Math.round(tradesPerMonth)} trades/month`);
+    if (avgTradeUsd < 100) reasons.push('Moderate trade sizes may increase fee impact');
+    recommendations.push('Higher tier or larger positions may improve net returns');
+  } else {
+    level = 'Low';
+    reasons.push('Reasonable trade frequency');
+    reasons.push('Position sizes efficient for fee structure');
+  }
+  
+  return {
+    level,
+    estimatedMonthlyTradeCount: Math.round(tradesPerMonth),
+    estimatedFeePercentage: Math.round(feesAsPercentOfReturn),
+    reasons,
+    recommendations,
+    assumedTier: 'Cub (lowest tier)'
+  };
+};
+
 export default function AnalyzeTrader() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [inputAddress, setInputAddress] = useState(searchParams.get('address') || '');
@@ -822,6 +902,12 @@ export default function AnalyzeTrader() {
   );
   const riskRegime = useMemo(() => trader ? calculateRiskRegime(trader) : null, [trader]);
   const marketFocus = useMemo(() => trader ? calculateMarketFocus(trader) : null, [trader]);
+  const feeImpact = useMemo(() => 
+    trader && copyStrategy && copySuitability 
+      ? calculateFeeImpact(trader, copyStrategy, allocatedFunds, copySuitability) 
+      : null,
+    [trader, copyStrategy, allocatedFunds, copySuitability]
+  );
 
   const watching = trader ? isWatching(trader.address) : false;
 
@@ -1860,6 +1946,86 @@ export default function AnalyzeTrader() {
                             </p>
                           </div>
                         )}
+                      </div>
+                    )}
+
+                    {/* Fee Impact Analysis Card */}
+                    {feeImpact && (
+                      <div className={`p-4 rounded-lg border ${
+                        feeImpact.level === 'High' 
+                          ? 'bg-red-500/10 border-red-500/30' 
+                          : feeImpact.level === 'Medium'
+                          ? 'bg-yellow-500/10 border-yellow-500/30'
+                          : 'bg-green-500/10 border-green-500/30'
+                      }`}>
+                        <div className="flex items-center gap-2 mb-3">
+                          <Activity className="h-4 w-4" />
+                          <span className="text-sm font-semibold">Fee Impact Analysis</span>
+                          <Badge variant="outline" className={`ml-auto ${
+                            feeImpact.level === 'High' ? 'border-red-500/50 text-red-400' :
+                            feeImpact.level === 'Medium' ? 'border-yellow-500/50 text-yellow-400' :
+                            'border-green-500/50 text-green-400'
+                          }`}>
+                            {feeImpact.level}
+                          </Badge>
+                          <HoverCard>
+                            <HoverCardTrigger asChild>
+                              <button>
+                                <Info className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-help transition-colors" />
+                              </button>
+                            </HoverCardTrigger>
+                            <HoverCardContent className="w-80 z-[100]" side="top">
+                              <div className="space-y-2">
+                                <p className="text-sm font-semibold">About TradeFox Fees</p>
+                                <p className="text-xs text-muted-foreground">
+                                  TradeFox applies a net trading fee (0.95% → 0.75%) and cashback (5% → 25%) 
+                                  depending on your tier.
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  This analysis assumes the <span className="font-semibold">{feeImpact.assumedTier}</span>. 
+                                  Higher tiers or larger allocations can significantly reduce fee impact.
+                                </p>
+                                <p className="text-xs text-muted-foreground italic">
+                                  Est. ~{feeImpact.estimatedMonthlyTradeCount} trades/month with this strategy.
+                                </p>
+                              </div>
+                            </HoverCardContent>
+                          </HoverCard>
+                        </div>
+                        
+                        {/* Reasons */}
+                        <div className="mb-3">
+                          <p className="text-xs text-muted-foreground mb-1.5">Analysis:</p>
+                          <ul className="space-y-1">
+                            {feeImpact.reasons.map((reason, i) => (
+                              <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                                <span className={
+                                  feeImpact.level === 'High' ? 'text-red-400' : 
+                                  feeImpact.level === 'Medium' ? 'text-yellow-400' : 'text-green-400'
+                                }>•</span>
+                                {reason}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                        
+                        {/* Recommendations - only show if Medium or High */}
+                        {feeImpact.level !== 'Low' && feeImpact.recommendations.length > 0 && (
+                          <div className="p-3 rounded-lg bg-background/50">
+                            <p className="text-xs font-semibold mb-1.5">Recommendations:</p>
+                            <ul className="space-y-1">
+                              {feeImpact.recommendations.map((rec, i) => (
+                                <li key={i} className="text-xs text-muted-foreground">
+                                  💡 {rec}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        
+                        <p className="text-xs text-muted-foreground/60 mt-3 italic">
+                          Based on {feeImpact.assumedTier}. Actual results vary by your TradeFox tier.
+                        </p>
                       </div>
                     )}
 
