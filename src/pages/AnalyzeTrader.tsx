@@ -909,6 +909,31 @@ export default function AnalyzeTrader() {
     [trader, copyStrategy, allocatedFunds, copySuitability]
   );
 
+  // Adjust Copy Suitability based on Fee Impact (two-pass approach)
+  const adjustedCopySuitability = useMemo(() => {
+    if (!copySuitability || !feeImpact) return copySuitability;
+    
+    // If fee impact is High, potentially downgrade the rating
+    if (feeImpact.level === 'High') {
+      const newFlags = [...copySuitability.flags];
+      newFlags.push('High fee impact may significantly affect returns');
+      
+      // Downgrade rating if currently High
+      let newRating = copySuitability.rating;
+      if (copySuitability.rating === 'High') {
+        newRating = 'Medium';
+      }
+      
+      return {
+        ...copySuitability,
+        flags: newFlags,
+        rating: newRating
+      };
+    }
+    
+    return copySuitability;
+  }, [copySuitability, feeImpact]);
+
   const watching = trader ? isWatching(trader.address) : false;
 
   // Validate Ethereum address format (0x + 40 hex characters)
@@ -1301,7 +1326,7 @@ export default function AnalyzeTrader() {
               </Card>
 
               {/* Copy Suitability Card */}
-              <Card className={`glass-card ${copySuitability?.rating === 'Low' ? 'border-red-500/50' : copySuitability?.rating === 'Medium' ? 'border-yellow-500/50' : 'border-green-500/50'}`}>
+              <Card className={`glass-card ${adjustedCopySuitability?.rating === 'Low' ? 'border-red-500/50' : adjustedCopySuitability?.rating === 'Medium' ? 'border-yellow-500/50' : 'border-green-500/50'}`}>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
@@ -1318,12 +1343,12 @@ export default function AnalyzeTrader() {
                             <div className="space-y-2">
                               <h4 className="text-sm font-semibold">What is Copy Suitability?</h4>
                               <p className="text-sm text-muted-foreground">
-                                Measures how realistically this trader can be copied on TradeFox given execution constraints.
+                                Measures how realistically this trader can be copied on TradeFox given execution constraints and fee impact.
                               </p>
                               <ul className="text-xs text-muted-foreground space-y-1 ml-4 list-disc">
                                 <li><strong>High</strong> - Directional trades, suitable for copy trading</li>
-                                <li><strong>Medium</strong> - Some execution-dependent patterns</li>
-                                <li><strong>Low</strong> - Market-making or HFT patterns</li>
+                                <li><strong>Medium</strong> - Some execution-dependent patterns or fee concerns</li>
+                                <li><strong>Low</strong> - Market-making, HFT patterns, or high fee impact</li>
                               </ul>
                               <p className="text-xs text-muted-foreground pt-2 border-t">
                                 Copy trading works best for directional traders who hold positions long enough for followers to get similar fills.
@@ -1334,28 +1359,28 @@ export default function AnalyzeTrader() {
                       </div>
                       <div className="flex items-baseline gap-3">
                         <span className={`text-4xl font-bold font-mono ${
-                          copySuitability?.rating === 'High' ? 'text-green-500' : 
-                          copySuitability?.rating === 'Medium' ? 'text-yellow-500' : 'text-red-500'
+                          adjustedCopySuitability?.rating === 'High' ? 'text-green-500' : 
+                          adjustedCopySuitability?.rating === 'Medium' ? 'text-yellow-500' : 'text-red-500'
                         }`}>
-                          {copySuitability?.rating || 'N/A'}
+                          {adjustedCopySuitability?.rating || 'N/A'}
                         </span>
                         <Badge className={`${
-                          copySuitability?.rating === 'High' ? 'bg-green-500/20 text-green-500' : 
-                          copySuitability?.rating === 'Medium' ? 'bg-yellow-500/20 text-yellow-500' : 
+                          adjustedCopySuitability?.rating === 'High' ? 'bg-green-500/20 text-green-500' : 
+                          adjustedCopySuitability?.rating === 'Medium' ? 'bg-yellow-500/20 text-yellow-500' : 
                           'bg-red-500/20 text-red-500'
                         } border-0`}>
-                          {copySuitability?.rating === 'High' ? 'Suitable' : 
-                           copySuitability?.rating === 'Medium' ? 'Caution' : 'Risky'}
+                          {adjustedCopySuitability?.rating === 'High' ? 'Suitable' : 
+                           adjustedCopySuitability?.rating === 'Medium' ? 'Caution' : 'Risky'}
                         </Badge>
                       </div>
                     </div>
                     <div className={`h-16 w-16 rounded-full ${
-                      copySuitability?.rating === 'High' ? 'bg-green-500/20' : 
-                      copySuitability?.rating === 'Medium' ? 'bg-yellow-500/20' : 'bg-red-500/20'
+                      adjustedCopySuitability?.rating === 'High' ? 'bg-green-500/20' : 
+                      adjustedCopySuitability?.rating === 'Medium' ? 'bg-yellow-500/20' : 'bg-red-500/20'
                     } flex items-center justify-center`}>
-                      {copySuitability?.rating === 'High' ? (
+                      {adjustedCopySuitability?.rating === 'High' ? (
                         <TrendingUp className="h-7 w-7 text-green-500" />
-                      ) : copySuitability?.rating === 'Medium' ? (
+                      ) : adjustedCopySuitability?.rating === 'Medium' ? (
                         <AlertTriangle className="h-7 w-7 text-yellow-500" />
                       ) : (
                         <AlertTriangle className="h-7 w-7 text-red-500" />
@@ -1630,7 +1655,7 @@ export default function AnalyzeTrader() {
               </CardHeader>
               <CardContent className="space-y-6 pt-6">
                 {/* Execution-Dependent Strategy Warning */}
-                {copySuitability?.executionDependent && (
+                {adjustedCopySuitability?.executionDependent && (
                   <div className="p-4 rounded-lg bg-red-500/10 border-2 border-red-500/40">
                     <div className="flex items-start gap-3">
                       <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
@@ -1654,7 +1679,7 @@ export default function AnalyzeTrader() {
                           This trader's performance may rely on order execution tactics (fast limit orders, frequent updates, spread capture). TradeFox copy trading can't replicate timing and limit management, so results may differ.
                         </p>
                         <ul className="text-sm text-red-400 space-y-1">
-                          {copySuitability.flags.map((flag, i) => (
+                          {adjustedCopySuitability.flags.map((flag, i) => (
                             <li key={i} className="flex items-center gap-2">
                               <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
                               {flag}
