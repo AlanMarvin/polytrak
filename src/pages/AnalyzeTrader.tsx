@@ -60,6 +60,13 @@ interface TraderData {
   closedPositions: number;
   lastActive: string;
   pnlHistory: PnlHistoryPoint[];
+  dataReliability?: {
+    score: 'high' | 'medium' | 'low';
+    warnings: string[];
+    positionsAnalyzed: number;
+    rateLimitRetries: number;
+    hitApiLimit: boolean;
+  };
   openPositions: Array<{
     id: string;
     marketTitle: string;
@@ -994,6 +1001,42 @@ export default function AnalyzeTrader() {
               }
               return null;
             })()}
+
+            {/* Data Reliability Warning Banner */}
+            {trader.dataReliability && trader.dataReliability.score !== 'high' && (
+              <div className="mb-6 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30 flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-yellow-500 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h4 className="font-semibold text-yellow-500">Data Accuracy Notice</h4>
+                  <ul className="text-sm text-yellow-200/80 mt-1 space-y-1">
+                    {trader.dataReliability.warnings.map((warning, i) => (
+                      <li key={i}>• {warning}</li>
+                    ))}
+                  </ul>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    PnL figures may differ from other sources. Consider cross-referencing with:
+                  </p>
+                  <div className="flex gap-3 mt-2">
+                    <a 
+                      href={`https://polymarketanalytics.com/traders/${trader.address}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-primary hover:underline flex items-center gap-1"
+                    >
+                      PolymarketAnalytics <ExternalLink className="h-3 w-3" />
+                    </a>
+                    <a 
+                      href={`https://polymarket.com/profile/${trader.address}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-primary hover:underline flex items-center gap-1"
+                    >
+                      Polymarket <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Smart Score, Sharpe Ratio & Copy Suitability */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
