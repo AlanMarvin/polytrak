@@ -1,16 +1,21 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 
 interface RotatingWordProps {
   words: string[];
   interval?: number;
   className?: string;
+  reducedMotionFallbackIndex?: number;
 }
 
-export function RotatingWord({ words, interval = 2500, className = '' }: RotatingWordProps) {
+export function RotatingWord({ 
+  words, 
+  interval = 2500, 
+  className = '',
+  reducedMotionFallbackIndex = 3 // "suggested" by default
+}: RotatingWordProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
-  const containerRef = useRef<HTMLSpanElement>(null);
 
   // Check for reduced motion preference
   const prefersReducedMotion = typeof window !== 'undefined' 
@@ -33,24 +38,20 @@ export function RotatingWord({ words, interval = 2500, className = '' }: Rotatin
     return () => clearInterval(timer);
   }, [words.length, interval, prefersReducedMotion, isPaused]);
 
-  // If reduced motion, show "better" (second word)
-  const displayWord = prefersReducedMotion ? words[1] : words[currentIndex];
+  const displayWord = prefersReducedMotion ? words[reducedMotionFallbackIndex] : words[currentIndex];
 
   return (
     <span
-      ref={containerRef}
-      className={`inline-block relative ${className}`}
+      className={`inline-flex items-center justify-center relative ${className}`}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
       {/* Invisible text for width reservation */}
-      <span className="invisible" aria-hidden="true">{longestWord}</span>
+      <span className="invisible px-1" aria-hidden="true">{longestWord}</span>
       {/* Visible rotating text */}
       <span
-        className={`absolute inset-0 transition-all duration-200 ease-out ${
-          isVisible 
-            ? 'opacity-100 translate-y-0' 
-            : 'opacity-0 -translate-y-2'
+        className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ease-out ${
+          isVisible ? 'opacity-100' : 'opacity-0'
         }`}
       >
         {displayWord}
