@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from '@/components/ui/carousel';
+import { RotatingWord } from '@/components/ui/rotating-word';
 import { Search, Brain, Sparkles, Target, ArrowRight, Zap, TrendingUp, Shield, Settings, BarChart3, Wallet, Copy, DollarSign, AlertTriangle, ChevronUp } from 'lucide-react';
 import tradeFoxLogo from '@/assets/tradefox-logo.png';
 
@@ -224,7 +225,7 @@ const Index = () => {
             </div>
             
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
-              Let AI find the <span className="text-primary">perfect settings</span> for copy trading
+              Let AI find the <span className="text-primary"><RotatingWord words={["perfect", "better", "smarter", "safer", "right", "recommended"]} interval={2500} /> settings</span> for copy trading
             </h1>
             
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
