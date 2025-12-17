@@ -302,7 +302,7 @@ interface CopyStrategy {
   expectedMonthlyReturn: number; // Expected monthly return %
 }
 
-const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number): CopyStrategy => {
+const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, copySuitability?: CopySuitability): CopyStrategy => {
   const reasoning: string[] = [];
   
   // Core trader metrics
@@ -446,6 +446,20 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number): C
     reasoning.push(`⚠️ Limited track record (${experience} trades) - halved allocations`);
   } else if (experience > 100) {
     reasoning.push(`✓ Proven track record with ${experience} closed positions`);
+  }
+  
+  // Execution-dependent strategy adjustments
+  if (copySuitability?.executionDependent) {
+    // Reduce trade size by 40-50%
+    tradeSize = Math.max(1, tradeSize * 0.55);
+    // Reduce copy percentage by 60-70%
+    copyPercentage = Math.max(1, copyPercentage * 0.35);
+    // Downgrade risk level
+    if (riskLevel === 'Aggressive') riskLevel = 'Moderate';
+    else if (riskLevel === 'Moderate') riskLevel = 'Conservative';
+    
+    reasoning.push(`⚠️ Execution-dependent strategy detected - settings reduced for safety`);
+    reasoning.push(`📉 Trade size reduced by ~45%, copy percentage reduced by ~65%`);
   }
   
   // Calculate expected outcomes
@@ -614,6 +628,75 @@ const calculateMarketFocus = (trader: TraderData) => {
   };
 };
 
+// Calculate Copy Suitability - detects execution-dependent strategies
+interface CopySuitability {
+  rating: 'High' | 'Medium' | 'Low';
+  flags: string[];
+  executionDependent: boolean;
+  tradesPerDay: number;
+  tradesPerPosition: number;
+  avgTradeSizeUsd: number;
+}
+
+const calculateCopySuitability = (trader: TraderData): CopySuitability => {
+  const flags: string[] = [];
+  
+  // Calculate metrics
+  const history = trader.pnlHistory || [];
+  const firstTrade = history.length > 0 ? history[0].timestamp : Date.now() - (30 * 24 * 60 * 60 * 1000);
+  const tradingDays = Math.max(1, (Date.now() - firstTrade) / (24 * 60 * 60 * 1000));
+  const tradesPerDay = trader.totalTrades / tradingDays;
+  
+  const totalPositions = Math.max(1, trader.closedPositions + trader.positions);
+  const tradesPerPosition = trader.totalTrades / totalPositions;
+  
+  const avgTradeSizeUsd = trader.volume / Math.max(1, trader.totalTrades);
+  
+  // Rule 1: Very high trade frequency (>150 trades/day indicates market making)
+  if (tradesPerDay > 150) {
+    flags.push('Very high trade frequency');
+  }
+  
+  // Rule 2: High churn - many trades per position (>3.0 ratio indicates constant adjustments)
+  if (tradesPerPosition > 3.0) {
+    flags.push('High churn (many adjustments per position)');
+  }
+  
+  // Rule 3: Micro-trade pattern - small trades + high frequency (spread capture behavior)
+  if (avgTradeSizeUsd < 300 && tradesPerDay > 50) {
+    flags.push('Micro-trade pattern (spread capture behavior)');
+  }
+  
+  // Rule 4: Very high trade count relative to positions (order book manipulation)
+  if (trader.totalTrades > totalPositions * 5 && tradesPerDay > 30) {
+    flags.push('Frequent order adjustments');
+  }
+  
+  // Classification
+  let rating: 'High' | 'Medium' | 'Low';
+  let executionDependent: boolean;
+  
+  if (flags.length >= 2) {
+    rating = 'Low';
+    executionDependent = true;
+  } else if (flags.length === 1) {
+    rating = 'Medium';
+    executionDependent = false;
+  } else {
+    rating = 'High';
+    executionDependent = false;
+  }
+  
+  return {
+    rating,
+    flags,
+    executionDependent,
+    tradesPerDay: Math.round(tradesPerDay * 10) / 10,
+    tradesPerPosition: Math.round(tradesPerPosition * 10) / 10,
+    avgTradeSizeUsd: Math.round(avgTradeSizeUsd)
+  };
+};
+
 export default function AnalyzeTrader() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [inputAddress, setInputAddress] = useState(searchParams.get('address') || '');
@@ -680,9 +763,10 @@ export default function AnalyzeTrader() {
   const smartScore = useMemo(() => trader ? calculateSmartScore(trader) : 0, [trader]);
   const sharpeRatio = useMemo(() => trader ? calculateSharpeRatio(trader) : 0, [trader]);
   const smartScoreInfo = getSmartScoreInfo(smartScore);
+  const copySuitability = useMemo(() => trader ? calculateCopySuitability(trader) : null, [trader]);
   const copyStrategy = useMemo(() => 
-    trader ? calculateOptimalStrategy(trader, allocatedFunds) : null,
-    [trader, allocatedFunds]
+    trader ? calculateOptimalStrategy(trader, allocatedFunds, copySuitability || undefined) : null,
+    [trader, allocatedFunds, copySuitability]
   );
   const riskRegime = useMemo(() => trader ? calculateRiskRegime(trader) : null, [trader]);
   const marketFocus = useMemo(() => trader ? calculateMarketFocus(trader) : null, [trader]);
@@ -911,8 +995,8 @@ export default function AnalyzeTrader() {
               return null;
             })()}
 
-            {/* Smart Score & Sharpe Ratio */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            {/* Smart Score, Sharpe Ratio & Copy Suitability */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
               <Card className="glass-card">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
@@ -955,12 +1039,9 @@ export default function AnalyzeTrader() {
                           {smartScoreInfo.label}
                         </Badge>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Based on win rate, consistency, volume & trade history
-                      </p>
                     </div>
-                    <div className={`h-20 w-20 rounded-full ${smartScoreInfo.bg} flex items-center justify-center`}>
-                      <span className={`text-2xl font-bold ${smartScoreInfo.color}`}>{smartScore}</span>
+                    <div className={`h-16 w-16 rounded-full ${smartScoreInfo.bg} flex items-center justify-center`}>
+                      <span className={`text-xl font-bold ${smartScoreInfo.color}`}>{smartScore}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -995,9 +1076,6 @@ export default function AnalyzeTrader() {
                                 <li><strong>&gt; 2</strong> - Excellent performance</li>
                                 <li><strong>&gt; 3</strong> - Outstanding (rare)</li>
                               </ul>
-                              <p className="text-xs text-muted-foreground pt-2 border-t">
-                                Higher values indicate better returns relative to the risk taken.
-                              </p>
                             </div>
                           </HoverCardContent>
                         </HoverCard>
@@ -1010,13 +1088,75 @@ export default function AnalyzeTrader() {
                           {sharpeRatio >= 2 ? 'Excellent' : sharpeRatio >= 1 ? 'Good' : sharpeRatio >= 0 ? 'Average' : 'Poor'}
                         </Badge>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Risk-adjusted return metric (higher is better)
-                      </p>
                     </div>
                     <div className="text-right">
                       <div className="text-sm text-muted-foreground">Benchmark</div>
                       <div className="text-lg font-mono">&gt; 1.0</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Copy Suitability Card */}
+              <Card className={`glass-card ${copySuitability?.rating === 'Low' ? 'border-red-500/50' : copySuitability?.rating === 'Medium' ? 'border-yellow-500/50' : 'border-green-500/50'}`}>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                        <Target className="h-5 w-5" />
+                        <span className="text-sm font-medium">Copy Suitability</span>
+                        <HoverCard>
+                          <HoverCardTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-5 w-5 p-0">
+                              <Info className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                            </Button>
+                          </HoverCardTrigger>
+                          <HoverCardContent className="w-80">
+                            <div className="space-y-2">
+                              <h4 className="text-sm font-semibold">What is Copy Suitability?</h4>
+                              <p className="text-sm text-muted-foreground">
+                                Measures how realistically this trader can be copied on TradeFox given execution constraints.
+                              </p>
+                              <ul className="text-xs text-muted-foreground space-y-1 ml-4 list-disc">
+                                <li><strong>High</strong> - Directional trades, suitable for copy trading</li>
+                                <li><strong>Medium</strong> - Some execution-dependent patterns</li>
+                                <li><strong>Low</strong> - Market-making or HFT patterns</li>
+                              </ul>
+                              <p className="text-xs text-muted-foreground pt-2 border-t">
+                                Copy trading works best for directional traders who hold positions long enough for followers to get similar fills.
+                              </p>
+                            </div>
+                          </HoverCardContent>
+                        </HoverCard>
+                      </div>
+                      <div className="flex items-baseline gap-3">
+                        <span className={`text-4xl font-bold font-mono ${
+                          copySuitability?.rating === 'High' ? 'text-green-500' : 
+                          copySuitability?.rating === 'Medium' ? 'text-yellow-500' : 'text-red-500'
+                        }`}>
+                          {copySuitability?.rating || 'N/A'}
+                        </span>
+                        <Badge className={`${
+                          copySuitability?.rating === 'High' ? 'bg-green-500/20 text-green-500' : 
+                          copySuitability?.rating === 'Medium' ? 'bg-yellow-500/20 text-yellow-500' : 
+                          'bg-red-500/20 text-red-500'
+                        } border-0`}>
+                          {copySuitability?.rating === 'High' ? 'Suitable' : 
+                           copySuitability?.rating === 'Medium' ? 'Caution' : 'Risky'}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className={`h-16 w-16 rounded-full ${
+                      copySuitability?.rating === 'High' ? 'bg-green-500/20' : 
+                      copySuitability?.rating === 'Medium' ? 'bg-yellow-500/20' : 'bg-red-500/20'
+                    } flex items-center justify-center`}>
+                      {copySuitability?.rating === 'High' ? (
+                        <TrendingUp className="h-7 w-7 text-green-500" />
+                      ) : copySuitability?.rating === 'Medium' ? (
+                        <AlertTriangle className="h-7 w-7 text-yellow-500" />
+                      ) : (
+                        <AlertTriangle className="h-7 w-7 text-red-500" />
+                      )}
                     </div>
                   </div>
                 </CardContent>
@@ -1286,6 +1426,48 @@ export default function AnalyzeTrader() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-6 pt-6">
+                {/* Execution-Dependent Strategy Warning */}
+                {copySuitability?.executionDependent && (
+                  <div className="p-4 rounded-lg bg-red-500/10 border-2 border-red-500/40">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+                      <div className="space-y-2">
+                        <h4 className="font-semibold text-red-500 flex items-center gap-2">
+                          Execution-Dependent Strategy Detected
+                          <HoverCard>
+                            <HoverCardTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-5 w-5 p-0">
+                                <Info className="h-4 w-4 text-red-400 hover:text-red-300" />
+                              </Button>
+                            </HoverCardTrigger>
+                            <HoverCardContent className="w-80">
+                              <p className="text-xs text-muted-foreground">
+                                Copy trading works best for directional traders who hold positions long enough for followers to get similar fills. This trader's strategy may rely on precise execution timing.
+                              </p>
+                            </HoverCardContent>
+                          </HoverCard>
+                        </h4>
+                        <p className="text-sm text-muted-foreground">
+                          This trader's performance may rely on order execution tactics (fast limit orders, frequent updates, spread capture). TradeFox copy trading can't replicate timing and limit management, so results may differ.
+                        </p>
+                        <ul className="text-sm text-red-400 space-y-1">
+                          {copySuitability.flags.map((flag, i) => (
+                            <li key={i} className="flex items-center gap-2">
+                              <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                              {flag}
+                            </li>
+                          ))}
+                        </ul>
+                        <div className="pt-2 border-t border-red-500/20 mt-2">
+                          <p className="text-xs text-muted-foreground">
+                            <strong className="text-red-400">Recommendation:</strong> Not ideal for TradeFox copy trading. Consider copying longer-hold traders instead. Settings have been automatically reduced for safety.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Allocation Input - Centered and Bigger */}
                 <div className="flex flex-col items-center justify-center py-4">
                   <label className="text-sm text-muted-foreground mb-3">
