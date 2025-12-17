@@ -24,6 +24,24 @@ function samplePnlHistory(history: Array<{ timestamp: number; pnl: number; cumul
   return result;
 }
 
+// Reliability tracking for data accuracy warnings
+interface ReliabilityMetrics {
+  rateLimitHits: number;
+  hitOffsetLimit: boolean;
+  fetchErrors: number;
+  requestedMax: number;
+  receivedCount: number;
+}
+
+// Global reliability tracker (reset per request)
+let reliabilityMetrics: ReliabilityMetrics = {
+  rateLimitHits: 0,
+  hitOffsetLimit: false,
+  fetchErrors: 0,
+  requestedMax: 0,
+  receivedCount: 0,
+};
+
 // Helper to fetch with retry and exponential backoff
 async function fetchWithRetry(url: string, maxRetries = 3): Promise<Response> {
   let lastError: Error | null = null;
@@ -34,6 +52,7 @@ async function fetchWithRetry(url: string, maxRetries = 3): Promise<Response> {
       
       // Handle rate limiting (429) or server errors (5xx)
       if (res.status === 429 || res.status >= 500) {
+        reliabilityMetrics.rateLimitHits++; // Track rate limit hits
         const delay = Math.pow(2, attempt) * 500; // 500ms, 1s, 2s
         console.log(`Rate limited/error on ${url}, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`);
         await new Promise(resolve => setTimeout(resolve, delay));
@@ -43,6 +62,7 @@ async function fetchWithRetry(url: string, maxRetries = 3): Promise<Response> {
       return res;
     } catch (error) {
       lastError = error as Error;
+      reliabilityMetrics.fetchErrors++; // Track fetch errors
       const delay = Math.pow(2, attempt) * 500;
       console.log(`Fetch error on ${url}: ${lastError.message}, retrying in ${delay}ms`);
       await new Promise(resolve => setTimeout(resolve, delay));
@@ -64,6 +84,13 @@ async function fetchAllPaginated(baseUrl: string, maxItems = 5000, pageSize = 50
   let hasMore = true;
   
   while (hasMore && allItems.length < maxItems && offset <= 100000) {
+    // Check if we're hitting the API offset limit
+    if (offset >= 100000) {
+      reliabilityMetrics.hitOffsetLimit = true;
+      console.log(`Hit API offset limit (100,000) for ${baseUrl.split('?')[0]}`);
+      break;
+    }
+    
     // Create batch of page requests
     const batchPromises: Promise<any[]>[] = [];
     
@@ -75,7 +102,10 @@ async function fetchAllPaginated(baseUrl: string, maxItems = 5000, pageSize = 50
         fetchWithRetry(url)
           .then(res => res.ok ? res.json() : [])
           .then(data => Array.isArray(data) ? data : [])
-          .catch(() => [])
+          .catch(() => {
+            reliabilityMetrics.fetchErrors++;
+            return [];
+          })
       );
     }
     
@@ -116,6 +146,50 @@ async function fetchAllPaginated(baseUrl: string, maxItems = 5000, pageSize = 50
   return allItems;
 }
 
+// Calculate data reliability score
+function calculateReliability(metrics: ReliabilityMetrics): {
+  score: 'high' | 'medium' | 'low';
+  warnings: string[];
+  positionsAnalyzed: number;
+  rateLimitRetries: number;
+  hitApiLimit: boolean;
+} {
+  const warnings: string[] = [];
+  
+  // High-volume trader check (>15,000 closed positions = potential issues)
+  if (metrics.receivedCount > 15000) {
+    warnings.push('High-volume trader - data may be incomplete');
+  }
+  
+  // Hit API offset limit (100,000)
+  if (metrics.hitOffsetLimit) {
+    warnings.push('Reached API pagination limit - older positions may be missing');
+  }
+  
+  // Many rate limit retries (>50)
+  if (metrics.rateLimitHits > 50) {
+    warnings.push('Heavy API throttling detected - some data may be missing');
+  }
+  
+  // Fetch errors
+  if (metrics.fetchErrors > 10) {
+    warnings.push('Multiple fetch errors occurred during data retrieval');
+  }
+  
+  // Calculate score
+  let score: 'high' | 'medium' | 'low' = 'high';
+  if (warnings.length >= 2 || metrics.hitOffsetLimit) score = 'low';
+  else if (warnings.length === 1) score = 'medium';
+  
+  return { 
+    score, 
+    warnings, 
+    positionsAnalyzed: metrics.receivedCount,
+    rateLimitRetries: metrics.rateLimitHits,
+    hitApiLimit: metrics.hitOffsetLimit
+  };
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -123,6 +197,15 @@ serve(async (req) => {
   }
 
   try {
+    // Reset reliability metrics for this request
+    reliabilityMetrics = {
+      rateLimitHits: 0,
+      hitOffsetLimit: false,
+      fetchErrors: 0,
+      requestedMax: 20000,
+      receivedCount: 0,
+    };
+    
     const { address } = await req.json();
 
     if (!address || typeof address !== 'string') {
@@ -162,6 +245,9 @@ serve(async (req) => {
     ]);
 
     console.log(`Fetched ${positions.length} positions, ${trades.length} trades, ${closedPositions.length} closed positions`);
+
+    // Update reliability metrics with received counts
+    reliabilityMetrics.receivedCount = closedPositions.length;
 
     // Calculate aggregated stats
     const allPositions = Array.isArray(positions) ? positions : [];
@@ -353,6 +439,10 @@ serve(async (req) => {
       ? new Date(lastTrade.timestamp * 1000).toISOString() 
       : new Date().toISOString();
 
+    // Calculate data reliability
+    const dataReliability = calculateReliability(reliabilityMetrics);
+    console.log(`Data reliability: score=${dataReliability.score}, warnings=${dataReliability.warnings.length}, rateLimitRetries=${dataReliability.rateLimitRetries}`);
+
     // Build trader profile response
     const traderData = {
       address: trimmedAddress,
@@ -373,6 +463,7 @@ serve(async (req) => {
       closedPositions: resolvedPositions.length + closed.length, // Resolved + API closed
       lastActive,
       pnlHistory: samplePnlHistory(pnlHistory, 150), // Sample 150 points across full history
+      dataReliability, // Include reliability info for UI warnings
       // Raw data for detailed views
       openPositions: trulyOpenPositions.map((pos: any) => ({
         id: pos.conditionId,
