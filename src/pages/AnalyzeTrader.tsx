@@ -1695,7 +1695,7 @@ export default function AnalyzeTrader() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
                         <div className="flex items-center gap-1">
-                          <span className="text-sm text-muted-foreground">Est. Monthly Return</span>
+                          <span className="text-sm text-muted-foreground">Est. Max Monthly Return</span>
                           <HoverCard>
                             <HoverCardTrigger asChild>
                               <button>
@@ -1704,13 +1704,25 @@ export default function AnalyzeTrader() {
                             </HoverCardTrigger>
                             <HoverCardContent className="w-80 z-[100]" side="top">
                               <div className="space-y-2">
-                                <p className="text-sm font-semibold">How this is calculated</p>
+                                <p className="text-sm font-semibold">Maximum Potential Return</p>
                                 <p className="text-xs text-muted-foreground">
-                                  This is YOUR expected return based on the AI-recommended copy settings — not the trader's actual historical return.
+                                  This is the <span className="font-semibold">best-case scenario</span> return based on the AI-recommended copy settings — not the trader's actual historical return.
                                 </p>
+                                <p className="text-xs text-muted-foreground">
+                                  <span className="font-semibold">Assumes:</span>
+                                </p>
+                                <ul className="text-xs text-muted-foreground list-disc list-inside space-y-0.5">
+                                  <li>Same price execution as the trader</li>
+                                  <li>No slippage or delays</li>
+                                  <li>Similar market conditions continue</li>
+                                  <li>All signals are caught and copied</li>
+                                </ul>
                                 <p className="text-xs text-muted-foreground">
                                   <span className="font-semibold">Formula:</span> (Win Rate × Avg Win) − (Loss Rate × Avg Loss), 
                                   scaled by trade size ({copyStrategy.tradeSize}%) and copy % ({copyStrategy.copyPercentage}%).
+                                </p>
+                                <p className="text-xs text-yellow-400/80 font-medium">
+                                  💡 Reality check: Most copy traders achieve 40-70% of the maximum estimate.
                                 </p>
                                 {copySuitability?.executionDependent && (
                                   <p className="text-xs text-yellow-400">
@@ -1722,9 +1734,6 @@ export default function AnalyzeTrader() {
                                     📉 Win rate near break-even ({(trader.winRate * 100).toFixed(1)}%) — expected gain per trade is low.
                                   </p>
                                 )}
-                                <p className="text-xs text-muted-foreground italic">
-                                  Low returns may indicate: conservative settings, execution penalties, near-breakeven win rate, or few trades/month.
-                                </p>
                               </div>
                             </HoverCardContent>
                           </HoverCard>
