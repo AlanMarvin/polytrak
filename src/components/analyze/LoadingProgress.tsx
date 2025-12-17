@@ -97,7 +97,7 @@ export function LoadingProgress() {
         setTooltipIndex(prev => (prev + 1) % educationalTooltips.length);
         setTooltipVisible(true);
       }, 300);
-    }, 3120);
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [isPaused]);
