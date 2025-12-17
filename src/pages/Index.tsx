@@ -1,14 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Search, Brain, Sparkles, Target, ArrowRight, Zap, TrendingUp, Shield, Settings, BarChart3, Wallet, Copy } from 'lucide-react';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from '@/components/ui/carousel';
+import { Search, Brain, Sparkles, Target, ArrowRight, Zap, TrendingUp, Shield, Settings, BarChart3, Wallet, Copy, DollarSign, AlertTriangle, ChevronUp } from 'lucide-react';
 import tradeFoxLogo from '@/assets/tradefox-logo.png';
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [carouselApi, setCarouselApi] = useState<CarouselApi>();
+  const [currentSlide, setCurrentSlide] = useState(0);
   const navigate = useNavigate();
 
   const handleAnalyze = () => {
@@ -17,10 +20,127 @@ const Index = () => {
     }
   };
 
+  // Auto-play carousel
+  useEffect(() => {
+    if (!carouselApi) return;
+
+    const interval = setInterval(() => {
+      carouselApi.scrollNext();
+    }, 4000);
+
+    carouselApi.on('select', () => {
+      setCurrentSlide(carouselApi.selectedScrollSnap());
+    });
+
+    return () => clearInterval(interval);
+  }, [carouselApi]);
+
   const features = [
     { label: 'AI-Powered Analysis', description: 'Smart algorithms analyze trader performance', icon: Brain, useLogo: false },
     { label: 'Optimized Settings', description: 'Auto-calculate ideal copy trading config for TheTradeFox', icon: null, useLogo: true },
     { label: 'Personalized Strategy', description: 'Tailored to your risk & budget', icon: Sparkles, useLogo: false },
+  ];
+
+  const previewSlides = [
+    {
+      title: 'Smart Score Rating',
+      description: 'AI-calculated quality score based on profitability, consistency, and risk management',
+      icon: Brain,
+      preview: (
+        <div className="flex flex-col items-center gap-3">
+          <div className="relative w-32 h-32">
+            <svg className="w-32 h-32 -rotate-90" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="50" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" />
+              <circle cx="60" cy="60" r="50" fill="none" stroke="hsl(var(--primary))" strokeWidth="8" strokeDasharray="251.2" strokeDashoffset="37.68" strokeLinecap="round" />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-3xl font-bold text-primary">85</span>
+            </div>
+          </div>
+          <span className="text-sm text-muted-foreground">out of 100</span>
+        </div>
+      ),
+    },
+    {
+      title: 'PnL Performance Chart',
+      description: 'Visualize historical profit and loss across the trader\'s entire career',
+      icon: TrendingUp,
+      preview: (
+        <div className="w-full h-32 flex items-end gap-1 px-4">
+          {[20, 35, 25, 45, 40, 55, 50, 70, 65, 85, 75, 95].map((height, i) => (
+            <div 
+              key={i} 
+              className="flex-1 bg-gradient-to-t from-primary/50 to-primary rounded-t transition-all"
+              style={{ height: `${height}%` }}
+            />
+          ))}
+        </div>
+      ),
+    },
+    {
+      title: 'AI-Optimized Copy Settings',
+      description: 'Personalized configuration calculated for your specific budget and risk tolerance',
+      icon: Settings,
+      preview: (
+        <div className="space-y-3 w-full max-w-xs">
+          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border/50">
+            <span className="text-sm text-muted-foreground">% Size per trade</span>
+            <span className="font-mono font-semibold text-primary">15%</span>
+          </div>
+          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border/50">
+            <span className="text-sm text-muted-foreground">% of trade to copy</span>
+            <span className="font-mono font-semibold text-primary">35%</span>
+          </div>
+          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border/50">
+            <span className="text-sm text-muted-foreground">Follow exits</span>
+            <span className="font-mono font-semibold text-green-500">Enabled</span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: 'Risk Analysis',
+      description: 'Understand risk-adjusted returns with Sharpe ratio and max drawdown estimates',
+      icon: Shield,
+      preview: (
+        <div className="space-y-3 w-full max-w-xs">
+          <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm text-muted-foreground">Sharpe Ratio</span>
+              <span className="text-xs px-2 py-0.5 rounded bg-green-500/20 text-green-500">Excellent</span>
+            </div>
+            <span className="text-2xl font-bold text-green-500">1.85</span>
+          </div>
+          <div className="p-3 rounded-lg bg-muted/50 border border-border/50">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm text-muted-foreground">Est. Max Drawdown</span>
+              <AlertTriangle className="h-4 w-4 text-yellow-500" />
+            </div>
+            <span className="text-2xl font-bold">-12.5%</span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: 'Fee Impact Analysis',
+      description: 'See how TradeFox fees affect your expected returns before you start copying',
+      icon: DollarSign,
+      preview: (
+        <div className="space-y-3 w-full max-w-xs">
+          <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+            <div className="flex items-center gap-2 mb-2">
+              <DollarSign className="h-5 w-5 text-green-500" />
+              <span className="font-semibold text-green-500">Low Fee Impact</span>
+            </div>
+            <p className="text-xs text-muted-foreground">Fees represent less than 5% of expected returns</p>
+          </div>
+          <div className="flex items-center gap-2 p-2 rounded bg-muted/30">
+            <ChevronUp className="h-4 w-4 text-primary" />
+            <span className="text-xs text-muted-foreground">Higher tiers unlock better cashback</span>
+          </div>
+        </div>
+      ),
+    },
   ];
 
   const howItWorks = [
@@ -132,6 +252,62 @@ const Index = () => {
                 <div className="font-semibold mb-1">{feature.label}</div>
                 <div className="text-sm text-muted-foreground">{feature.description}</div>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* What You'll Discover Carousel Section */}
+      <section className="container py-16 border-b border-border/50">
+        <div className="text-center mb-10">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">What You'll Discover</h2>
+          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+            Comprehensive analysis for smarter copy trading decisions
+          </p>
+        </div>
+
+        <div className="max-w-4xl mx-auto px-8 md:px-12">
+          <Carousel
+            setApi={setCarouselApi}
+            opts={{ align: 'center', loop: true }}
+            className="w-full"
+          >
+            <CarouselContent>
+              {previewSlides.map((slide, index) => (
+                <CarouselItem key={slide.title} className="md:basis-full">
+                  <Card className="p-6 md:p-8 bg-card/80 border-border/50 hover:border-primary/30 transition-all min-h-[360px] flex flex-col">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="p-2.5 rounded-lg bg-primary/10">
+                        <slide.icon className="h-6 w-6 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-xl">{slide.title}</h3>
+                        <p className="text-sm text-muted-foreground">{slide.description}</p>
+                      </div>
+                    </div>
+                    <div className="flex-1 flex items-center justify-center">
+                      {slide.preview}
+                    </div>
+                  </Card>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <CarouselPrevious className="hidden md:flex" />
+            <CarouselNext className="hidden md:flex" />
+          </Carousel>
+
+          {/* Dot indicators */}
+          <div className="flex justify-center gap-2 mt-6">
+            {previewSlides.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => carouselApi?.scrollTo(index)}
+                className={`w-2 h-2 rounded-full transition-all ${
+                  currentSlide === index 
+                    ? 'bg-primary w-6' 
+                    : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
+                }`}
+              />
             ))}
           </div>
         </div>
