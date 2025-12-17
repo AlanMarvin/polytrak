@@ -224,8 +224,16 @@ const Index = () => {
               <span>AI-Powered Copy Trading Optimization</span>
             </div>
             
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
-              Let AI find the <span className="text-primary"><RotatingWord words={["perfect", "better", "smarter", "safer", "right", "recommended"]} interval={2500} /> settings</span> for copy trading
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight flex flex-col items-center gap-2 md:gap-3">
+              <span>Let AI find</span>
+              <span className="inline-flex items-center justify-center px-5 py-1.5 md:px-6 md:py-2 rounded-full bg-primary/20 border border-primary/40 text-primary">
+                <RotatingWord 
+                  words={["recommended", "safer", "starting", "suggested", "practical"]} 
+                  interval={2500}
+                  reducedMotionFallbackIndex={3}
+                />
+              </span>
+              <span>settings for copy trading</span>
             </h1>
             
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
