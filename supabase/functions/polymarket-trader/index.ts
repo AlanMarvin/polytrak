@@ -199,56 +199,77 @@ serve(async (req) => {
       totalCurrentValue += pos.currentValue || 0;
     });
 
-    // Calculate REALIZED PnL ONLY from /closed-positions endpoint
-    // CRITICAL FIX: Do NOT add from resolvedPositions because they overlap with closed-positions
-    // The /closed-positions endpoint is the authoritative source for realized PnL
-    let realizedPnl = 0;
+    // CRITICAL FIX: The /closed-positions API returns MULTIPLE entries per position (one per partial close)
+    // We must GROUP by asset and take ONLY the entry with the LATEST endDate
+    // That entry contains the FINAL cumulative realized PnL for that position
     
-    // Track conditionIds we've already counted to avoid any duplicates
-    const countedConditionIds = new Set<string>();
-    
-    // From closed positions endpoint - this is the authoritative source
-    // IMPORTANT: Use asset as key - it's the unique token identifier for each outcome
-    // This ensures we count each position only once
-    const countedAssets = new Set<string>();
-    let positivePnl = 0;
-    let negativePnl = 0;
-    let skippedDuplicates = 0;
+    // Step 1: Group closed positions by asset (unique outcome token) and keep only the LATEST entry
+    const finalPositions = new Map<string, any>();
     
     closed.forEach((pos: any) => {
-      // Use asset as primary unique key
+      // Use asset as primary unique key (it's the outcome token address)
+      // Fallback to conditionId+outcome if asset not available
       const key = pos.asset || `${pos.conditionId}-${pos.outcome}`;
-      if (countedAssets.has(key)) {
-        skippedDuplicates++;
-        return; // Skip duplicate
-      }
-      countedAssets.add(key);
       
+      const existing = finalPositions.get(key);
+      if (!existing) {
+        finalPositions.set(key, pos);
+      } else {
+        // Keep the entry with the LATEST endDate - this has the final cumulative realized PnL
+        const existingEndDate = existing.endDate ? new Date(existing.endDate).getTime() : 0;
+        const newEndDate = pos.endDate ? new Date(pos.endDate).getTime() : 0;
+        
+        if (newEndDate > existingEndDate) {
+          finalPositions.set(key, pos);
+        }
+      }
+    });
+    
+    console.log(`DEDUP: ${closed.length} raw closed entries -> ${finalPositions.size} unique final positions`);
+    
+    // Step 2: Calculate realized PnL from FINAL position states only
+    let realizedPnl = 0;
+    let positivePnl = 0;
+    let negativePnl = 0;
+    
+    finalPositions.forEach((pos) => {
       const pnl = pos.realizedPnl || 0;
       realizedPnl += pnl;
       if (pnl > 0) positivePnl += pnl;
       else negativePnl += pnl;
     });
 
-    // From partial closes on truly open positions (these are separate - active positions with some profit taken)
+    // Add realized PnL from partial closes on truly open positions (these are separate - active positions with some profit taken)
     trulyOpenPositions.forEach((pos: any) => {
       realizedPnl += pos.realizedPnl || 0;
     });
     
-    console.log(`Realized PnL breakdown: total=${realizedPnl.toFixed(2)}, wins=${positivePnl.toFixed(2)}, losses=${negativePnl.toFixed(2)}`);
-    console.log(`Positions: ${countedAssets.size} unique, ${skippedDuplicates} duplicates skipped, ${trulyOpenPositions.length} open`);
+    console.log(`Realized PnL: total=${realizedPnl.toFixed(2)}, wins=${positivePnl.toFixed(2)}, losses=${negativePnl.toFixed(2)}`);
+    console.log(`Unique closed: ${finalPositions.size}, Open positions: ${trulyOpenPositions.length}`);
 
     const totalPnl = realizedPnl + unrealizedPnl;
 
-    // Calculate win rate from resolved + closed positions
-    const allResolvedAndClosed = [...resolvedPositions, ...closed];
-    const winningSets = allResolvedAndClosed.filter((pos: any) => {
+    // Calculate win rate from DEDUPLICATED closed positions + resolved positions
+    // Also deduplicate resolved positions to prevent any overlap
+    const uniqueResolvedMap = new Map<string, any>();
+    resolvedPositions.forEach((pos: any) => {
+      const key = pos.asset || `${pos.conditionId}-${pos.outcome}`;
+      if (!uniqueResolvedMap.has(key) && !finalPositions.has(key)) {
+        uniqueResolvedMap.set(key, pos);
+      }
+    });
+    
+    const deduplicatedClosed = Array.from(finalPositions.values());
+    const deduplicatedResolved = Array.from(uniqueResolvedMap.values());
+    const allUniquePositions = [...deduplicatedResolved, ...deduplicatedClosed];
+    
+    const winningSets = allUniquePositions.filter((pos: any) => {
       const pnl = pos.cashPnl || pos.realizedPnl || 0;
       return pnl > 0;
     }).length;
-    const winRate = allResolvedAndClosed.length > 0 ? (winningSets / allResolvedAndClosed.length) * 100 : 0;
+    const winRate = allUniquePositions.length > 0 ? (winningSets / allUniquePositions.length) * 100 : 0;
 
-    console.log(`PnL: realized=${realizedPnl}, unrealized=${unrealizedPnl}, total=${totalPnl}, winRate=${winRate}%`);
+    console.log(`PnL: realized=${realizedPnl.toFixed(2)}, unrealized=${unrealizedPnl.toFixed(2)}, total=${totalPnl.toFixed(2)}, winRate=${winRate.toFixed(1)}%`);
 
     // Calculate volume from trades
     let totalVolume = 0;
@@ -264,46 +285,37 @@ serve(async (req) => {
     let pnl7d = 0;
     let pnl30d = 0;
 
-    // Build PnL history from CLOSED positions (they have timestamps when position was closed)
+    // Build PnL history from DEDUPLICATED closed positions (they have timestamps when position was closed)
     // This is more accurate than trades because it shows when PnL was actually realized
     const pnlHistory: Array<{ timestamp: number; pnl: number; cumulative: number }> = [];
     
-    // Combine closed positions from API + resolved positions (with estimated close times)
+    // Use deduplicated closed positions for history
     const allClosedForHistory: Array<{ timestamp: number; pnl: number }> = [];
-    const seenTimestamps = new Set<string>(); // Prevent duplicate entries
     
-    // Add closed positions from API
-    closed.forEach((pos: any) => {
+    // Add deduplicated closed positions from API
+    finalPositions.forEach((pos: any) => {
       const pnl = pos.realizedPnl || 0;
       // CRITICAL: Use endDate (when position closed) NOT timestamp (when position opened)
-      // This is essential for accurate time-based PnL (24h, 7d, 30d)
       let timestamp: number;
       
       if (pos.endDate) {
-        // endDate is when the position was actually closed/resolved
         timestamp = new Date(pos.endDate).getTime();
       } else if (pos.timestamp) {
-        // Fallback to timestamp if no endDate (convert seconds to ms if needed)
         timestamp = pos.timestamp < 10000000000 ? pos.timestamp * 1000 : pos.timestamp;
       } else {
         timestamp = now;
       }
       
-      const key = `${pos.conditionId || ''}-${timestamp}`;
-      if (pnl !== 0 && !seenTimestamps.has(key)) {
-        seenTimestamps.add(key);
+      if (pnl !== 0) {
         allClosedForHistory.push({ timestamp, pnl });
       }
     });
     
-    // Add resolved positions (estimate close time from endDate or use now)
-    resolvedPositions.forEach((pos: any) => {
+    // Add deduplicated resolved positions
+    uniqueResolvedMap.forEach((pos: any) => {
       const pnl = pos.cashPnl || 0;
-      // Use endDate if available, otherwise estimate based on position data
-      const timestamp = pos.endDate ? new Date(pos.endDate).getTime() : now - day; // Default to 1 day ago if no date
-      const key = `${pos.conditionId || ''}-${timestamp}`;
-      if (pnl !== 0 && !seenTimestamps.has(key)) {
-        seenTimestamps.add(key);
+      const timestamp = pos.endDate ? new Date(pos.endDate).getTime() : now - day;
+      if (pnl !== 0) {
         allClosedForHistory.push({ timestamp, pnl });
       }
     });
