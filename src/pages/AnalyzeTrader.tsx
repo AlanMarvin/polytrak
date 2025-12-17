@@ -962,14 +962,43 @@ export default function AnalyzeTrader() {
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={copyAddress}>
                       <Copy className="h-4 w-4" />
                     </Button>
+                  </div>
+                  <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                    <span>Verify on:</span>
+                    <a 
+                      href={`https://polymarket.com/profile/${trader.address}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:text-primary underline underline-offset-2"
+                    >
+                      Polymarket
+                    </a>
+                    <span className="text-border">•</span>
+                    <a 
+                      href={`https://hashdive.com/polymarket/${trader.address}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:text-primary underline underline-offset-2"
+                    >
+                      HashDive
+                    </a>
+                    <span className="text-border">•</span>
+                    <a 
+                      href={`https://polymarketanalytics.com/trader/${trader.address}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:text-primary underline underline-offset-2"
+                    >
+                      PolymarketAnalytics
+                    </a>
+                    <span className="text-border">•</span>
                     <a 
                       href={`https://polygonscan.com/address/${trader.address}`}
                       target="_blank"
                       rel="noopener noreferrer"
+                      className="hover:text-primary underline underline-offset-2"
                     >
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
+                      PolygonScan
                     </a>
                   </div>
                 </div>
