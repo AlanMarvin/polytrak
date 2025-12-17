@@ -674,36 +674,66 @@ const calculateCopySuitability = (trader: TraderData): CopySuitability => {
   
   const avgTradeSizeUsd = trader.volume / Math.max(1, trader.totalTrades);
   
-  // Rule 1: Very high trade frequency (>150 trades/day indicates market making)
-  if (tradesPerDay > 150) {
-    flags.push('Very high trade frequency');
+  // Thresholds (lowered for more realistic detection)
+  const HIGH_FREQUENCY_THRESHOLD = 25; // trades per day
+  const HIGH_CHURN_THRESHOLD = 2.0; // trades per position
+  const MICRO_TRADE_SIZE = 500; // USD
+  const MICRO_TRADE_FREQ = 15; // trades per day
+  const LOW_WIN_RATE = 48; // %
+  const SHORT_HISTORY_DAYS = 14;
+  
+  // Rule 1: High trade frequency (active trader/market maker behavior)
+  if (tradesPerDay > HIGH_FREQUENCY_THRESHOLD) {
+    flags.push('High trade frequency (>25/day)');
   }
   
-  // Rule 2: High churn - many trades per position (>3.0 ratio indicates constant adjustments)
-  if (tradesPerPosition > 3.0) {
-    flags.push('High churn (many adjustments per position)');
+  // Rule 2: High churn - many trades per position (constant adjustments)
+  if (tradesPerPosition > HIGH_CHURN_THRESHOLD) {
+    flags.push('High position churn (frequent adjustments)');
   }
   
-  // Rule 3: Micro-trade pattern - small trades + high frequency (spread capture behavior)
-  if (avgTradeSizeUsd < 300 && tradesPerDay > 50) {
-    flags.push('Micro-trade pattern (spread capture behavior)');
+  // Rule 3: Micro-trade pattern - small trades + moderate frequency
+  if (avgTradeSizeUsd < MICRO_TRADE_SIZE && tradesPerDay > MICRO_TRADE_FREQ) {
+    flags.push('Small trade sizes with high frequency');
   }
   
-  // Rule 4: Very high trade count relative to positions (order book manipulation)
-  if (trader.totalTrades > totalPositions * 5 && tradesPerDay > 30) {
-    flags.push('Frequent order adjustments');
+  // Rule 4: Low win rate - risky to copy
+  if (trader.winRate < LOW_WIN_RATE) {
+    flags.push('Below break-even win rate');
   }
   
-  // Classification
+  // Rule 5: Short trading history - insufficient data
+  if (tradingDays < SHORT_HISTORY_DAYS && trader.closedPositions < 20) {
+    flags.push('Limited trading history');
+  }
+  
+  // Rule 6: Negative PnL - losing trader
+  if (trader.pnl < 0) {
+    flags.push('Negative overall PnL');
+  }
+  
+  // Rule 7: High volume but low profit margin (execution-dependent)
+  const profitMargin = trader.volume > 0 ? (trader.pnl / trader.volume) * 100 : 0;
+  if (trader.volume > 100000 && profitMargin < 1 && profitMargin >= 0) {
+    flags.push('Low profit margin on high volume');
+  }
+  
+  // Classification - more nuanced
   let rating: 'High' | 'Medium' | 'Low';
   let executionDependent: boolean;
   
-  if (flags.length >= 2) {
+  // Critical flags that automatically lower rating
+  const criticalFlags = ['Negative overall PnL', 'Below break-even win rate'];
+  const hasCriticalFlag = flags.some(f => criticalFlags.includes(f));
+  
+  if (flags.length >= 3 || (flags.length >= 2 && hasCriticalFlag)) {
     rating = 'Low';
     executionDependent = true;
-  } else if (flags.length === 1) {
+  } else if (flags.length >= 1) {
     rating = 'Medium';
-    executionDependent = false;
+    executionDependent = flags.some(f => 
+      f.includes('frequency') || f.includes('churn') || f.includes('Small trade')
+    );
   } else {
     rating = 'High';
     executionDependent = false;
