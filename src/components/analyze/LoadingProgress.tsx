@@ -24,6 +24,11 @@ const educationalTooltips = [
   "Liquidity affects whether small accounts can follow large traders.",
   "PolyTrak focuses on configuration, not signals.",
   "These settings are tailored to your chosen allocation.",
+  "Polymarket predictions are ~90–95% accurate near resolution — market prices are statistically meaningful signals.",
+  "Short-term predictions (within hours of resolution) reach ~90–94% accuracy.",
+  "Longer horizons (~1 week or 1 month) still show ~88–91% accuracy.",
+  "Markets with high volume tend to be more accurate.",
+  "Copying 100% of a trader's size is rarely optimal.",
 ];
 
 const previewCards = [
@@ -92,7 +97,7 @@ export function LoadingProgress() {
         setTooltipIndex(prev => (prev + 1) % educationalTooltips.length);
         setTooltipVisible(true);
       }, 300);
-    }, 2000);
+    }, 2400);
 
     return () => clearInterval(interval);
   }, [isPaused]);
