@@ -206,10 +206,19 @@ serve(async (req) => {
     // Step 1: Group closed positions by asset (unique outcome token) and keep only the LATEST entry
     const finalPositions = new Map<string, any>();
     
+    // Count multi-entry groups for diagnostic logging
+    const groupSizes = new Map<string, number>();
     closed.forEach((pos: any) => {
-      // Use asset as primary unique key (it's the outcome token address)
-      // Fallback to conditionId+outcome if asset not available
-      const key = pos.asset || `${pos.conditionId}-${pos.outcome}`;
+      const groupKey = `${pos.conditionId}-${pos.outcome}`;
+      groupSizes.set(groupKey, (groupSizes.get(groupKey) || 0) + 1);
+    });
+    const multiEntryGroups = Array.from(groupSizes.values()).filter(c => c > 1).length;
+    console.log(`Found ${multiEntryGroups} positions with multiple entries (partial closes)`);
+    
+    closed.forEach((pos: any) => {
+      // CRITICAL: Use conditionId+outcome as key, NOT asset (asset is unique per entry)
+      // Multiple entries with same conditionId+outcome = partial closes of same position
+      const key = `${pos.conditionId}-${pos.outcome}`;
       
       const existing = finalPositions.get(key);
       if (!existing) {
@@ -253,7 +262,7 @@ serve(async (req) => {
     // Also deduplicate resolved positions to prevent any overlap
     const uniqueResolvedMap = new Map<string, any>();
     resolvedPositions.forEach((pos: any) => {
-      const key = pos.asset || `${pos.conditionId}-${pos.outcome}`;
+      const key = `${pos.conditionId}-${pos.outcome}`;
       if (!uniqueResolvedMap.has(key) && !finalPositions.has(key)) {
         uniqueResolvedMap.set(key, pos);
       }
