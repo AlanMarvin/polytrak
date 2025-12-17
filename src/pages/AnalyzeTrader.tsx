@@ -473,7 +473,13 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
   const expectedWinPct = winRate * avgWin;
   const expectedLossPct = (1 - winRate) * avgLoss;
   const expectedTradeReturn = (expectedWinPct - expectedLossPct) / avgTradeSize;
-  const tradesPerMonth = Math.min(totalTrades / Math.max(1, (Date.now() - (history[0]?.timestamp || Date.now())) / (30 * 24 * 60 * 60 * 1000)), 30);
+  
+  // Filter out invalid timestamps (timestamp 0 or before year 2001)
+  const validHistory = history.filter(h => h.timestamp > 1000000000000);
+  const firstValidTimestamp = validHistory.length > 0 
+    ? validHistory[0].timestamp 
+    : Date.now() - (30 * 24 * 60 * 60 * 1000);
+  const tradesPerMonth = Math.min(totalTrades / Math.max(1, (Date.now() - firstValidTimestamp) / (30 * 24 * 60 * 60 * 1000)), 30);
   const expectedMonthlyReturn = expectedTradeReturn * (copyPercentage / 100) * (tradeSize / 100) * tradesPerMonth * 100;
   
   // Max drawdown estimation (simplified)
@@ -648,9 +654,12 @@ interface CopySuitability {
 const calculateCopySuitability = (trader: TraderData): CopySuitability => {
   const flags: string[] = [];
   
-  // Calculate metrics
+  // Calculate metrics - filter out invalid timestamps (timestamp 0 or before year 2001)
   const history = trader.pnlHistory || [];
-  const firstTrade = history.length > 0 ? history[0].timestamp : Date.now() - (30 * 24 * 60 * 60 * 1000);
+  const validHistory = history.filter(h => h.timestamp > 1000000000000);
+  const firstTrade = validHistory.length > 0 
+    ? validHistory[0].timestamp 
+    : Date.now() - (30 * 24 * 60 * 60 * 1000);
   const tradingDays = Math.max(1, (Date.now() - firstTrade) / (24 * 60 * 60 * 1000));
   const tradesPerDay = trader.totalTrades / tradingDays;
   
