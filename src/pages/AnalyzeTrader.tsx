@@ -320,25 +320,32 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
   const experience = trader.closedPositions;
   const sharpeRatio = calculateSharpeRatio(trader);
   
-  // Calculate average win/loss from PnL history
+  // Calculate average win/loss from PnL history using DELTAS between consecutive points
+  // This fixes the bug where cumulative PnL values were being used instead of per-trade returns
   const history = trader.pnlHistory || [];
-  let avgWin = 0;
-  let avgLoss = 0;
+  let totalWin = 0;
+  let totalLoss = 0;
   let winCount = 0;
   let lossCount = 0;
   
-  history.forEach(h => {
-    if (h.pnl > 0) {
-      avgWin += h.pnl;
+  // Filter out invalid timestamps (before year 2001 or in the future)
+  const now = Date.now();
+  const validHistory = history.filter(h => h.timestamp > 1000000000000 && h.timestamp <= now);
+  
+  // Calculate per-trade PnL from consecutive deltas
+  for (let i = 1; i < validHistory.length; i++) {
+    const delta = validHistory[i].pnl - validHistory[i - 1].pnl;
+    if (delta > 0) {
+      totalWin += delta;
       winCount++;
-    } else if (h.pnl < 0) {
-      avgLoss += Math.abs(h.pnl);
+    } else if (delta < 0) {
+      totalLoss += Math.abs(delta);
       lossCount++;
     }
-  });
+  }
   
-  avgWin = winCount > 0 ? avgWin / winCount : avgTradeSize * 0.3;
-  avgLoss = lossCount > 0 ? avgLoss / lossCount : avgTradeSize * 0.2;
+  const avgWin = winCount > 0 ? totalWin / winCount : avgTradeSize * 0.3;
+  const avgLoss = lossCount > 0 ? totalLoss / lossCount : avgTradeSize * 0.2;
   
   // Calculate profit factor
   const profitFactor = avgLoss > 0 ? (avgWin * winRate) / (avgLoss * (1 - winRate)) : 1;
@@ -474,8 +481,7 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
   const expectedLossPct = (1 - winRate) * avgLoss;
   const expectedTradeReturn = (expectedWinPct - expectedLossPct) / avgTradeSize;
   
-  // Filter out invalid timestamps (timestamp 0 or before year 2001)
-  const validHistory = history.filter(h => h.timestamp > 1000000000000);
+  // Reuse validHistory from earlier or filter for timestamp calculation
   const firstValidTimestamp = validHistory.length > 0 
     ? validHistory[0].timestamp 
     : Date.now() - (30 * 24 * 60 * 60 * 1000);
@@ -1629,7 +1635,41 @@ export default function AnalyzeTrader() {
                     {/* Expected Outcomes */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
-                        <span className="text-sm text-muted-foreground">Est. Monthly Return</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-sm text-muted-foreground">Est. Monthly Return</span>
+                          <HoverCard>
+                            <HoverCardTrigger asChild>
+                              <button>
+                                <Info className="h-3 w-3 text-muted-foreground hover:text-foreground cursor-help transition-colors" />
+                              </button>
+                            </HoverCardTrigger>
+                            <HoverCardContent className="w-80 z-[100]" side="top">
+                              <div className="space-y-2">
+                                <p className="text-sm font-semibold">How this is calculated</p>
+                                <p className="text-xs text-muted-foreground">
+                                  This is YOUR expected return based on the AI-recommended copy settings — not the trader's actual historical return.
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  <span className="font-semibold">Formula:</span> (Win Rate × Avg Win) − (Loss Rate × Avg Loss), 
+                                  scaled by trade size ({copyStrategy.tradeSize}%) and copy % ({copyStrategy.copyPercentage}%).
+                                </p>
+                                {copySuitability?.executionDependent && (
+                                  <p className="text-xs text-yellow-400">
+                                    ⚠️ Execution-dependent strategy detected — settings reduced by ~80% for safety.
+                                  </p>
+                                )}
+                                {trader && trader.winRate < 0.52 && (
+                                  <p className="text-xs text-orange-400">
+                                    📉 Win rate near break-even ({(trader.winRate * 100).toFixed(1)}%) — expected gain per trade is low.
+                                  </p>
+                                )}
+                                <p className="text-xs text-muted-foreground italic">
+                                  Low returns may indicate: conservative settings, execution penalties, near-breakeven win rate, or few trades/month.
+                                </p>
+                              </div>
+                            </HoverCardContent>
+                          </HoverCard>
+                        </div>
                         <p className={`text-2xl font-bold font-mono ${copyStrategy.expectedMonthlyReturn >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                           {copyStrategy.expectedMonthlyReturn >= 0 ? '+' : ''}{copyStrategy.expectedMonthlyReturn}%
                         </p>
