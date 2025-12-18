@@ -280,6 +280,28 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Demo Video Section */}
+      <section className="container py-16 border-b border-border/50">
+        <div className="text-center mb-10">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">Turn wallet data into copy settings</h2>
+        </div>
+        
+        <div className="max-w-4xl mx-auto">
+          <div className="relative rounded-2xl overflow-hidden border border-border/50 shadow-2xl">
+            <video
+              autoPlay
+              loop
+              muted
+              playsInline
+              controls
+              className="w-full"
+            >
+              <source src="/video/demo-video.mp4" type="video/mp4" />
+            </video>
+          </div>
+        </div>
+      </section>
+
       {/* What You'll Discover Carousel Section */}
       <section className="container py-16 border-b border-border/50">
         <div className="text-center mb-10">
