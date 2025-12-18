@@ -198,19 +198,6 @@ const Index = () => {
     <Layout>
       {/* Hero Section */}
       <section className="relative overflow-hidden border-b border-border/50">
-        {/* Background Video */}
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover"
-        >
-          <source src="/video/hero-bg.mp4" type="video/mp4" />
-        </video>
-        
-        {/* Heavy dark overlay */}
-        <div className="absolute inset-0 bg-black/75" />
         
         {/* Gradient effects on top */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-accent/10" />
@@ -413,8 +400,18 @@ const Index = () => {
           </div>
         </div>
 
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary/20 via-primary/10 to-accent/20 border border-primary/20 p-8 md:p-12">
-          <div className="absolute inset-0 bg-grid-pattern opacity-5" />
+        <div className="relative overflow-hidden rounded-2xl border border-primary/20 p-8 md:p-12">
+          {/* Background Video */}
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover"
+          >
+            <source src="/video/hero-bg.mp4" type="video/mp4" />
+          </video>
+          <div className="absolute inset-0 bg-black/70" />
           <div className="relative text-center space-y-4 max-w-2xl mx-auto">
             <h3 className="text-2xl md:text-3xl font-bold">
               Ready to copy the best traders?
