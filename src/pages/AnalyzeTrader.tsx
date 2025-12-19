@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +19,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { saveRecentSearch } from '@/hooks/useRecentSearches';
 import {
   HoverCard,
   HoverCardContent,
@@ -1010,6 +1011,25 @@ export default function AnalyzeTrader() {
     
     return copySuitability;
   }, [copySuitability, feeImpact]);
+
+  // Save to recent searches when analysis completes
+  const savedAddressRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      trader && 
+      adjustedCopySuitability && 
+      !loading && 
+      savedAddressRef.current !== trader.address
+    ) {
+      savedAddressRef.current = trader.address;
+      saveRecentSearch({
+        address: trader.address,
+        smartScore,
+        sharpeRatio,
+        copySuitability: adjustedCopySuitability.rating
+      });
+    }
+  }, [trader, smartScore, sharpeRatio, adjustedCopySuitability, loading]);
 
   const watching = trader ? isWatching(trader.address) : false;
 
