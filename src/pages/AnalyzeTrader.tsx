@@ -656,6 +656,75 @@ const calculateMarketFocus = (trader: TraderData) => {
   };
 };
 
+// Trader Classification for TradeFox settings
+type TraderClassification = 'Conservative' | 'Moderate' | 'Aggressive';
+
+interface TradeFoxAdvancedSettings {
+  maxMarket: number;
+  minMarket: number;
+  maxCopyPerTrade: number;
+  traderClassification: TraderClassification;
+}
+
+const classifyTrader = (avgTradeSizeUsd: number, tradesPerDay: number): TraderClassification => {
+  // Conservative if avgTradeSizeUsd < 200 AND tradesPerDay <= 3
+  if (avgTradeSizeUsd < 200 && tradesPerDay <= 3) {
+    return 'Conservative';
+  }
+  // Aggressive if avgTradeSizeUsd > 1000 OR tradesPerDay > 10
+  if (avgTradeSizeUsd > 1000 || tradesPerDay > 10) {
+    return 'Aggressive';
+  }
+  // Else Moderate
+  return 'Moderate';
+};
+
+const calculateAdvancedSettings = (allocation: number, classification: TraderClassification): TradeFoxAdvancedSettings => {
+  let maxMarket: number;
+  let minMarket: number;
+  let maxCopyPerTrade: number;
+
+  switch (classification) {
+    case 'Conservative':
+      maxMarket = allocation * 0.20;
+      minMarket = Math.max(allocation * 0.03, 25);
+      maxCopyPerTrade = allocation * 0.05;
+      break;
+    case 'Aggressive':
+      maxMarket = allocation * 0.35;
+      minMarket = Math.max(allocation * 0.04, 30);
+      maxCopyPerTrade = allocation * 0.08;
+      break;
+    case 'Moderate':
+    default:
+      maxMarket = allocation * 0.25;
+      minMarket = Math.max(allocation * 0.03, 25);
+      maxCopyPerTrade = allocation * 0.06;
+      break;
+  }
+
+  // Round maxMarket and maxCopyPerTrade to nearest $5
+  maxMarket = Math.round(maxMarket / 5) * 5;
+  maxCopyPerTrade = Math.round(maxCopyPerTrade / 5) * 5;
+
+  // Validations (auto-fix silently)
+  // Ensure minMarket <= maxMarket
+  if (minMarket > maxMarket) {
+    minMarket = maxMarket;
+  }
+  // Ensure maxCopyPerTrade <= maxMarket
+  if (maxCopyPerTrade > maxMarket) {
+    maxCopyPerTrade = maxMarket;
+  }
+
+  return {
+    maxMarket,
+    minMarket,
+    maxCopyPerTrade,
+    traderClassification: classification,
+  };
+};
+
 // Calculate Copy Suitability - detects execution-dependent strategies
 interface CopySuitability {
   rating: 'High' | 'Medium' | 'Low';
@@ -900,6 +969,14 @@ export default function AnalyzeTrader() {
     trader ? calculateOptimalStrategy(trader, allocatedFunds, copySuitability || undefined) : null,
     [trader, allocatedFunds, copySuitability]
   );
+  
+  // TradeFox Advanced Settings - deterministic calculation based on trader classification
+  const advancedSettings = useMemo(() => {
+    if (!copySuitability) return null;
+    const classification = classifyTrader(copySuitability.avgTradeSizeUsd, copySuitability.tradesPerDay);
+    return calculateAdvancedSettings(allocatedFunds, classification);
+  }, [copySuitability, allocatedFunds]);
+  
   const riskRegime = useMemo(() => trader ? calculateRiskRegime(trader) : null, [trader]);
   const marketFocus = useMemo(() => trader ? calculateMarketFocus(trader) : null, [trader]);
   const feeImpact = useMemo(() => 
@@ -1733,13 +1810,34 @@ export default function AnalyzeTrader() {
                   </div>
                 </div>
 
-                {/* AI Recommended Settings */}
-                {copyStrategy && (
+                {/* Copy Settings - Read-Only Auto-Calculated */}
+                {copyStrategy && advancedSettings && (
                   <>
+                    {/* Follow Exits Status Pill */}
+                    <div className="flex items-center justify-center">
+                      <Badge className="bg-green-500/20 text-green-400 border-green-500/30 px-4 py-1">
+                        Follow Exits: ON
+                      </Badge>
+                    </div>
+
+                    {/* Trader Classification */}
+                    <div className="flex items-center justify-center">
+                      <Badge className={
+                        advancedSettings.traderClassification === 'Aggressive' 
+                          ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                          : advancedSettings.traderClassification === 'Conservative'
+                          ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                          : 'bg-orange-500/20 text-orange-400 border-orange-500/30'
+                      }>
+                        {advancedSettings.traderClassification} Trader Profile
+                      </Badge>
+                    </div>
+
+                    {/* Main % Settings - Read Only */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/30">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm text-muted-foreground">What percent of that should go into each trade</span>
+                          <span className="text-sm text-muted-foreground">% Size for each trade</span>
                           <HoverCard>
                             <HoverCardTrigger asChild>
                               <Button variant="ghost" size="icon" className="h-6 w-6 text-orange-400 hover:bg-orange-500/20">
@@ -1771,7 +1869,7 @@ export default function AnalyzeTrader() {
                       
                       <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/30">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm text-muted-foreground">Enter the percentage of each trade to copy</span>
+                          <span className="text-sm text-muted-foreground">% of each trade to copy</span>
                           <HoverCard>
                             <HoverCardTrigger asChild>
                               <Button variant="ghost" size="icon" className="h-6 w-6 text-orange-400 hover:bg-orange-500/20">
@@ -1799,6 +1897,43 @@ export default function AnalyzeTrader() {
                         <p className="text-xs text-muted-foreground mt-1">
                           of trader's order size
                         </p>
+                      </div>
+                    </div>
+
+                    {/* Advanced Settings (TradeFox) - Read Only */}
+                    <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                      <h4 className="text-sm font-semibold text-amber-400 mb-4 flex items-center gap-2">
+                        <Zap className="h-4 w-4" />
+                        Advanced Settings (TradeFox)
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-1">
+                          <span className="text-sm text-muted-foreground">Max amount per market</span>
+                          <p className="text-2xl font-bold text-amber-400 font-mono">
+                            ${advancedSettings.maxMarket.toLocaleString()}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Caps total exposure to a single market.
+                          </p>
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-sm text-muted-foreground">Min amount per market</span>
+                          <p className="text-2xl font-bold text-amber-400 font-mono">
+                            ${advancedSettings.minMarket.toLocaleString()}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Avoids inefficient micro-trades.
+                          </p>
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-sm text-muted-foreground">Max copy amount per trade</span>
+                          <p className="text-2xl font-bold text-amber-400 font-mono">
+                            ${advancedSettings.maxCopyPerTrade.toLocaleString()}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Caps each copied execution.
+                          </p>
+                        </div>
                       </div>
                     </div>
 
