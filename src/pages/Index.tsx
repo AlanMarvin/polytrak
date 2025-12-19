@@ -8,6 +8,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { RotatingWord } from '@/components/ui/rotating-word';
 import { Search, Brain, Sparkles, Target, ArrowRight, Zap, TrendingUp, Shield, Settings, BarChart3, Wallet, Copy, DollarSign, AlertTriangle, ChevronUp } from 'lucide-react';
 import tradeFoxLogo from '@/assets/tradefox-logo.png';
+import { RecentSearches } from '@/components/home/RecentSearches';
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -266,6 +267,9 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      {/* Recent Searches Section */}
+      <RecentSearches />
 
       {/* Demo Video Section */}
       <section className="container py-16 border-b border-border/50">
