@@ -41,6 +41,39 @@ export type Database = {
         }
         Relationships: []
       }
+      public_recent_analyses: {
+        Row: {
+          address: string
+          analyzed_at: string
+          copy_suitability: string
+          id: string
+          profile_image: string | null
+          sharpe_ratio: number
+          smart_score: number
+          username: string | null
+        }
+        Insert: {
+          address: string
+          analyzed_at?: string
+          copy_suitability: string
+          id?: string
+          profile_image?: string | null
+          sharpe_ratio: number
+          smart_score: number
+          username?: string | null
+        }
+        Update: {
+          address?: string
+          analyzed_at?: string
+          copy_suitability?: string
+          id?: string
+          profile_image?: string | null
+          sharpe_ratio?: number
+          smart_score?: number
+          username?: string | null
+        }
+        Relationships: []
+      }
       watchlist: {
         Row: {
           created_at: string

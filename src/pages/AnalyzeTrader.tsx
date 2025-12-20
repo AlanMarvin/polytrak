@@ -20,6 +20,10 @@ import { useWatchlist } from '@/hooks/useWatchlist';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { saveRecentSearch } from '@/hooks/useRecentSearches';
+import { savePublicAnalysis } from '@/hooks/usePublicRecentAnalyses';
+import { ThreeColorRing } from '@/components/ui/three-color-ring';
+import { PublicRecentAnalyses } from '@/components/analyze/PublicRecentAnalyses';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   HoverCard,
   HoverCardContent,
@@ -1012,7 +1016,7 @@ export default function AnalyzeTrader() {
     return copySuitability;
   }, [copySuitability, feeImpact]);
 
-  // Save to recent searches when analysis completes
+  // Save to recent searches (localStorage) and public analyses (DB) when analysis completes
   const savedAddressRef = useRef<string | null>(null);
   useEffect(() => {
     if (
@@ -1022,8 +1026,20 @@ export default function AnalyzeTrader() {
       savedAddressRef.current !== trader.address
     ) {
       savedAddressRef.current = trader.address;
+      
+      // Save to localStorage (personal recent searches)
       saveRecentSearch({
         address: trader.address,
+        smartScore,
+        sharpeRatio,
+        copySuitability: adjustedCopySuitability.rating
+      });
+      
+      // Save to public DB (global recent analyses)
+      savePublicAnalysis({
+        address: trader.address,
+        username: trader.username,
+        profileImage: trader.profileImage,
         smartScore,
         sharpeRatio,
         copySuitability: adjustedCopySuitability.rating
@@ -1123,6 +1139,9 @@ export default function AnalyzeTrader() {
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Analyze <ArrowRight className="ml-2 h-4 w-4" /></>}
               </Button>
             </form>
+            
+            {/* Public Recent Analyses - below analyze button */}
+            <PublicRecentAnalyses className="mt-6" />
           </div>
         </div>
 
@@ -1151,21 +1170,23 @@ export default function AnalyzeTrader() {
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-3 mb-2">
-                    <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary/30 to-accent/30 flex items-center justify-center overflow-hidden border-2 border-primary/20">
-                      {trader.profileImage ? (
-                        <img 
-                          src={trader.profileImage} 
-                          alt="Profile" 
-                          className="h-full w-full object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none';
-                          }}
-                        />
-                      ) : (
-                        <span className="text-lg font-bold text-primary">
-                          {(trader.username || trader.address).slice(0, 2).toUpperCase()}
-                        </span>
-                      )}
+                    {/* Avatar with tri-color ring */}
+                    <div className="relative w-14 h-14 flex items-center justify-center">
+                      <ThreeColorRing
+                        smartScore={smartScore}
+                        sharpeRatio={sharpeRatio}
+                        copySuitability={adjustedCopySuitability?.rating || 'Low'}
+                        size={56}
+                        strokeWidth={4}
+                      />
+                      <div className="absolute inset-[6px]">
+                        <Avatar className="w-full h-full border-2 border-background">
+                          <AvatarImage src={trader.profileImage || undefined} alt={trader.username || 'Profile'} />
+                          <AvatarFallback className="text-sm font-bold bg-gradient-to-br from-primary/30 to-accent/30 text-primary">
+                            {(trader.username || trader.address).slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                      </div>
                     </div>
                     <h2 className="text-2xl font-bold">
                       {trader.username || formatAddress(trader.address)}

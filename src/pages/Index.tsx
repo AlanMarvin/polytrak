@@ -9,6 +9,7 @@ import { RotatingWord } from '@/components/ui/rotating-word';
 import { Search, Brain, Sparkles, Target, ArrowRight, Zap, TrendingUp, Shield, Settings, BarChart3, Wallet, Copy, DollarSign, AlertTriangle, ChevronUp } from 'lucide-react';
 import tradeFoxLogo from '@/assets/tradefox-logo.png';
 import { RecentSearches } from '@/components/home/RecentSearches';
+import { PublicRecentAnalyses } from '@/components/analyze/PublicRecentAnalyses';
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -266,6 +267,11 @@ const Index = () => {
             ))}
           </div>
         </div>
+      </section>
+
+      {/* Public Recent Analyses Section */}
+      <section className="container py-8 border-b border-border/50">
+        <PublicRecentAnalyses />
       </section>
 
       {/* Recent Searches Section */}
