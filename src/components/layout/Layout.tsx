@@ -46,9 +46,6 @@ export function Layout({ children }: LayoutProps) {
             <div className="space-y-4">
               <h4 className="text-sm font-semibold">Resources</h4>
               <nav className="flex flex-col space-y-2">
-                <a href="/dashboard" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                  Dashboard
-                </a>
                 <a
                   href="https://github.com/AlanMarvin/polytrak"
                   target="_blank"
