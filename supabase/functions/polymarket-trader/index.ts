@@ -433,6 +433,35 @@ serve(async (req) => {
     
     console.log(`Time-based PnL: 24h=${pnl24h.toFixed(2)}, 7d=${pnl7d.toFixed(2)}, 30d=${pnl30d.toFixed(2)} from ${allClosedForHistory.length} closed positions`);
 
+    // Calculate trades in last 30 days from trade history (fills)
+    const thirtyDaysAgo = now - (30 * day);
+    const trades30d = allTrades.filter((trade: any) => {
+      const timestamp = trade.timestamp 
+        ? (trade.timestamp < 10000000000 ? trade.timestamp * 1000 : trade.timestamp)
+        : 0;
+      return timestamp >= thirtyDaysAgo;
+    }).length;
+    
+    // Calculate unique markets entered in last 30 days (positions/month)
+    const marketsIn30d = new Set<string>();
+    allTrades.forEach((trade: any) => {
+      const timestamp = trade.timestamp 
+        ? (trade.timestamp < 10000000000 ? trade.timestamp * 1000 : trade.timestamp)
+        : 0;
+      if (timestamp >= thirtyDaysAgo && trade.side?.toLowerCase() === 'buy') {
+        // Use conditionId or market identifier
+        const marketId = trade.conditionId || trade.marketId || trade.title;
+        if (marketId) marketsIn30d.add(marketId);
+      }
+    });
+    const positions30d = marketsIn30d.size;
+    
+    console.log(`Activity last 30d: ${trades30d} trades, ${positions30d} unique markets`);
+
+    // Determine if trade history is incomplete (may undercount)
+    // If we hit the 10k limit on trades, history may be truncated
+    const tradeHistoryPartial = allTrades.length >= 9900;
+
     // Get last active timestamp
     const lastTrade = allTrades[0];
     const lastActive = lastTrade?.timestamp 
@@ -441,6 +470,13 @@ serve(async (req) => {
 
     // Calculate data reliability
     const dataReliability = calculateReliability(reliabilityMetrics);
+    
+    // Add trade history warning if partial
+    if (tradeHistoryPartial) {
+      dataReliability.warnings.push('Partial trade history — activity may be undercounted');
+      if (dataReliability.score === 'high') dataReliability.score = 'medium';
+    }
+    
     console.log(`Data reliability: score=${dataReliability.score}, warnings=${dataReliability.warnings.length}, rateLimitRetries=${dataReliability.rateLimitRetries}`);
 
     // Build trader profile response
@@ -456,6 +492,8 @@ serve(async (req) => {
       unrealizedPnl,
       winRate,
       totalTrades: allTrades.length,
+      trades30d, // Trades (fills) in last 30 days
+      positions30d, // Unique markets entered in last 30 days
       volume: totalVolume,
       totalInvested,
       totalCurrentValue,
@@ -491,7 +529,7 @@ serve(async (req) => {
       })),
     };
 
-    console.log(`Returning: PnL=${totalPnl}, Realized=${realizedPnl}, Unrealized=${unrealizedPnl}, Open=${trulyOpenPositions.length}, Resolved=${resolvedPositions.length}, Closed=${closed.length}`);
+    console.log(`Returning: PnL=${totalPnl}, Realized=${realizedPnl}, Unrealized=${unrealizedPnl}, Open=${trulyOpenPositions.length}, Resolved=${resolvedPositions.length}, Closed=${closed.length}, Trades30d=${trades30d}, Positions30d=${positions30d}`);
 
     return new Response(
       JSON.stringify(traderData),

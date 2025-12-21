@@ -58,6 +58,8 @@ interface TraderData {
   unrealizedPnl: number;
   winRate: number;
   totalTrades: number;
+  trades30d: number; // Trades (fills) in last 30 days
+  positions30d: number; // Unique markets entered in last 30 days
   volume: number;
   totalInvested: number;
   totalCurrentValue: number;
@@ -101,7 +103,10 @@ interface TraderData {
 interface FeeImpact {
   level: 'Low' | 'Medium' | 'High';
   estimatedMonthlyTradeCount: number;
+  estimatedMonthlyFees: number; // $ amount
   estimatedFeePercentage: number;
+  netReturnLow: number; // Net return % (pessimistic)
+  netReturnHigh: number; // Net return % (optimistic)
   reasons: string[];
   recommendations: string[];
   assumedTier: string;
@@ -852,8 +857,8 @@ const calculateFeeImpact = (
   const CASHBACK_RATE = 0.05;  // 5%
   const EFFECTIVE_FEE = NET_FEE_RATE * (1 - CASHBACK_RATE); // ~0.90%
   
-  // Estimate monthly trade count
-  const tradesPerMonth = copySuitability.tradesPerDay * 30;
+  // Use actual trades30d from trader data if available, otherwise estimate
+  const tradesPerMonth = trader.trades30d || Math.round(copySuitability.tradesPerDay * 30);
   
   // Average trade size in $ based on allocated funds and trade size %
   const avgTradeUsd = allocatedFunds * (copyStrategy.tradeSize / 100);
@@ -866,6 +871,15 @@ const calculateFeeImpact = (
   const feesAsPercentOfReturn = expectedReturnUsd > 0 
     ? (monthlyFees / expectedReturnUsd) * 100 
     : 100;
+  
+  // Calculate net expected return range after fees
+  const grossReturnPct = copyStrategy.expectedMonthlyReturn;
+  const feesPct = (monthlyFees / allocatedFunds) * 100;
+  
+  // Pessimistic: assume 60% of expected return + full fees
+  const netReturnLow = Math.max(-10, (grossReturnPct * 0.6) - feesPct);
+  // Optimistic: assume full expected return - fees
+  const netReturnHigh = grossReturnPct - feesPct;
   
   // Build reasons and recommendations
   const reasons: string[] = [];
@@ -896,7 +910,10 @@ const calculateFeeImpact = (
   return {
     level,
     estimatedMonthlyTradeCount: Math.round(tradesPerMonth),
+    estimatedMonthlyFees: Math.round(monthlyFees * 100) / 100,
     estimatedFeePercentage: Math.round(feesAsPercentOfReturn),
+    netReturnLow: Math.round(netReturnLow * 10) / 10,
+    netReturnHigh: Math.round(netReturnHigh * 10) / 10,
     reasons,
     recommendations,
     assumedTier: 'Cub (lowest tier)'
@@ -1632,9 +1649,54 @@ export default function AnalyzeTrader() {
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 text-muted-foreground mb-1">
                     <Activity className="h-4 w-4" />
-                    <span className="text-sm">Total Trades</span>
+                    <span className="text-sm">Trades/Month</span>
+                    <HoverCard>
+                      <HoverCardTrigger asChild>
+                        <button className="ml-auto">
+                          <Info className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-help transition-colors" />
+                        </button>
+                      </HoverCardTrigger>
+                      <HoverCardContent className="w-64 z-50" side="top">
+                        <p className="text-sm text-muted-foreground">
+                          Trade executions (fills) in the last 30 days. This counts each buy/sell order.
+                        </p>
+                      </HoverCardContent>
+                    </HoverCard>
                   </div>
-                  <p className="text-2xl font-bold font-mono">{trader.totalTrades.toLocaleString()}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-2xl font-bold font-mono">{(trader.trades30d || 0).toLocaleString()}</p>
+                    {trader.dataReliability?.warnings?.some(w => w.includes('Partial trade history')) && (
+                      <Badge variant="outline" className="border-yellow-500/50 text-yellow-400 text-xs">
+                        <AlertTriangle className="h-3 w-3 mr-1" />
+                        Partial
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {trader.totalTrades.toLocaleString()} total
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="glass-card">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                    <Target className="h-4 w-4" />
+                    <span className="text-sm">Markets/Month</span>
+                    <HoverCard>
+                      <HoverCardTrigger asChild>
+                        <button className="ml-auto">
+                          <Info className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-help transition-colors" />
+                        </button>
+                      </HoverCardTrigger>
+                      <HoverCardContent className="w-64 z-50" side="top">
+                        <p className="text-sm text-muted-foreground">
+                          Unique markets entered in the last 30 days. Shows how diversified the trader's recent activity is.
+                        </p>
+                      </HoverCardContent>
+                    </HoverCard>
+                  </div>
+                  <p className="text-2xl font-bold font-mono">{(trader.positions30d || 0).toLocaleString()}</p>
                 </CardContent>
               </Card>
 
@@ -1645,7 +1707,12 @@ export default function AnalyzeTrader() {
                     <span className="text-sm">Total Invested</span>
                   </div>
                   <p className="text-2xl font-bold font-mono">
-                    ${(trader.totalInvested / 1000000).toFixed(2)}M
+                    ${trader.totalInvested >= 1000000 
+                      ? (trader.totalInvested / 1000000).toFixed(2) + 'M' 
+                      : trader.totalInvested >= 1000 
+                        ? (trader.totalInvested / 1000).toFixed(1) + 'K'
+                        : trader.totalInvested.toFixed(0)
+                    }
                   </p>
                 </CardContent>
               </Card>
@@ -2172,7 +2239,7 @@ export default function AnalyzeTrader() {
                       }`}>
                         <div className="flex items-center gap-2 mb-3">
                           <Activity className="h-4 w-4" />
-                          <span className="text-sm font-semibold">Fee Impact Analysis</span>
+                          <span className="text-sm font-semibold">Fee Impact (Est.)</span>
                           <Badge variant="outline" className={`ml-auto ${
                             feeImpact.level === 'High' ? 'border-red-500/50 text-red-400' :
                             feeImpact.level === 'Medium' ? 'border-yellow-500/50 text-yellow-400' :
@@ -2203,6 +2270,48 @@ export default function AnalyzeTrader() {
                               </div>
                             </HoverCardContent>
                           </HoverCard>
+                        </div>
+                        
+                        {/* Key Fee Metrics */}
+                        <div className="grid grid-cols-2 gap-3 mb-4">
+                          <div className="p-3 rounded-lg bg-background/50">
+                            <div className="flex items-center gap-1 mb-1">
+                              <p className="text-xs text-muted-foreground">Est. Monthly Fees</p>
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 border-muted-foreground/30 text-muted-foreground">
+                                Estimated
+                              </Badge>
+                            </div>
+                            <p className={`text-lg font-bold font-mono ${
+                              feeImpact.level === 'High' ? 'text-red-400' :
+                              feeImpact.level === 'Medium' ? 'text-yellow-400' : 'text-foreground'
+                            }`}>
+                              ${feeImpact.estimatedMonthlyFees.toFixed(0)}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              ~{feeImpact.estimatedMonthlyTradeCount} trades × ${(allocatedFunds * (copyStrategy?.tradeSize || 5) / 100).toFixed(0)}/trade
+                            </p>
+                          </div>
+                          
+                          <div className="p-3 rounded-lg bg-background/50">
+                            <div className="flex items-center gap-1 mb-1">
+                              <p className="text-xs text-muted-foreground">Net Return Range</p>
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 border-muted-foreground/30 text-muted-foreground">
+                                After Fees
+                              </Badge>
+                            </div>
+                            <div className="flex items-baseline gap-1">
+                              <p className={`text-lg font-bold font-mono ${feeImpact.netReturnLow >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                {feeImpact.netReturnLow >= 0 ? '+' : ''}{feeImpact.netReturnLow}%
+                              </p>
+                              <span className="text-muted-foreground text-sm">to</span>
+                              <p className={`text-lg font-bold font-mono ${feeImpact.netReturnHigh >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                {feeImpact.netReturnHigh >= 0 ? '+' : ''}{feeImpact.netReturnHigh}%
+                              </p>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              ≈ ${((allocatedFunds * feeImpact.netReturnLow) / 100).toFixed(0)} to ${((allocatedFunds * feeImpact.netReturnHigh) / 100).toFixed(0)}/month
+                            </p>
+                          </div>
                         </div>
                         
                         {/* Reasons */}
