@@ -58,7 +58,7 @@ export function Layout({ children }: LayoutProps) {
                   Terms and Disclaimer
                 </a>
                 <a
-                  href="https://thetradefox.com"
+                  href="https://thetradefox.com?ref=POLYTRAK"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm text-muted-foreground hover:text-primary transition-colors"
@@ -90,7 +90,7 @@ export function Layout({ children }: LayoutProps) {
           <div className="border-t border-border/50 mt-8 pt-6 text-center text-sm text-muted-foreground">
             <p>© 2025 Polytrak.io. Use with{' '}
               <a
-                href="https://thetradefox.com"
+                href="https://thetradefox.com?ref=POLYTRAK"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary hover:underline"
