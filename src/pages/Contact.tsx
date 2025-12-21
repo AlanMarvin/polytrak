@@ -12,7 +12,7 @@ const Contact = () => {
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold mb-4">Contact Us</h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Have questions about PolyTrak or need help with copy trading analysis?
+            Have questions about Polytrak.io or need help with copy trading analysis?
             We'd love to hear from you.
           </p>
         </div>
@@ -122,7 +122,7 @@ const Contact = () => {
                   </p>
                 </div>
                 <div>
-                  <h4 className="font-medium">Is PolyTrak free to use?</h4>
+                  <h4 className="font-medium">Is Polytrak.io free to use?</h4>
                   <p className="text-sm text-muted-foreground">
                     Yes, basic trader analysis is completely free. Premium features may be added in the future.
                   </p>

@@ -17,7 +17,7 @@ export function Layout({ children }: LayoutProps) {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             {/* Brand */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">PolyTrak</h3>
+              <h3 className="text-lg font-semibold">Polytrak.io</h3>
               <p className="text-sm text-muted-foreground">
                 Analyze any Polymarket wallet, get AI-optimized copy trading configuration, and start mirroring profitable traders on TheTradeFox
               </p>
@@ -83,7 +83,7 @@ export function Layout({ children }: LayoutProps) {
           </div>
 
           <div className="border-t border-border/50 mt-8 pt-6 text-center text-sm text-muted-foreground">
-            <p>© 2025 PolyTrak. Use with{' '}
+            <p>© 2025 Polytrak.io. Use with{' '}
               <a
                 href="https://thetradefox.com"
                 target="_blank"

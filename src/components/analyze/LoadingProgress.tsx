@@ -22,7 +22,7 @@ const educationalTooltips = [
   "High win rate doesn't always mean low risk — trade size matters.",
   "Most copy-trading losses come from poor position sizing.",
   "Liquidity affects whether small accounts can follow large traders.",
-  "PolyTrak focuses on configuration, not signals.",
+  "Polytrak.io focuses on configuration, not signals.",
   "These settings are tailored to your chosen allocation.",
   "Polymarket predictions are ~90–95% accurate near resolution — market prices are statistically meaningful signals.",
   "Short-term predictions (within hours of resolution) reach ~90–94% accuracy.",
@@ -189,7 +189,7 @@ export function LoadingProgress() {
         <div className="text-center space-y-1">
           <h3 className="text-lg font-semibold text-foreground">What you'll get</h3>
           <p className="text-sm text-muted-foreground">
-            PolyTrak turns wallet history into copy-trading settings you can actually use.
+            Polytrak.io turns wallet history into copy-trading settings you can actually use.
           </p>
         </div>
 

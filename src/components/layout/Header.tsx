@@ -14,7 +14,7 @@ export function Header() {
             <TrendingUp className="h-5 w-5 text-primary-foreground" />
           </div>
           <span className="hidden font-display text-xl font-bold sm:inline-block">
-            PolyTrak
+            Polytrak.io
           </span>
         </Link>
 

@@ -2393,7 +2393,7 @@ export default function AnalyzeTrader() {
                 <p className="text-sm text-muted-foreground">
                   To copy this trader, you'll need a TradeFox account.
                   <br />
-                  If you sign up using my referral link, it really helps support PolyTrak and lets me keep building new features.
+                  If you sign up using my referral link, it really helps support Polytrak.io and lets me keep building new features.
                 </p>
                 
                 {/* Referral Link */}
@@ -2423,9 +2423,9 @@ export default function AnalyzeTrader() {
                 
                 {/* Disclaimer */}
                 <p className="text-xs text-muted-foreground/70 leading-relaxed">
-                  Disclaimer: PolyTrak is an independent analytics tool and is not affiliated with TradeFox.
+                  Disclaimer: Polytrak.io is an independent analytics tool and is not affiliated with TradeFox.
                   Using my referral link is optional, but I'd really appreciate it — it helps support the project.
-                  PolyTrak does not execute trades and this is not financial advice.
+                  Polytrak.io does not execute trades and this is not financial advice.
                 </p>
               </CardContent>
             </Card>
