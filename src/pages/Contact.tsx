@@ -76,7 +76,12 @@ const Contact = () => {
                   <Mail className="h-5 w-5 text-primary" />
                   <div>
                     <p className="font-medium">Email</p>
-                    <p className="text-sm text-muted-foreground">hello@polytrak.com</p>
+                    <a
+                      href="mailto:polytrak@mail.com"
+                      className="text-sm text-primary hover:underline"
+                    >
+                      Contact us
+                    </a>
                   </div>
                 </div>
 
@@ -100,12 +105,12 @@ const Contact = () => {
                   <div>
                     <p className="font-medium">Twitter</p>
                     <a
-                      href="https://twitter.com/polytrak"
+                      href="https://twitter.com/alanmarv"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-sm text-primary hover:underline"
                     >
-                      @polytrak
+                      @alanmarv
                     </a>
                   </div>
                 </div>
