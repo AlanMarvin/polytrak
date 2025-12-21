@@ -75,8 +75,8 @@ export function Layout({ children }: LayoutProps) {
                 <a href="/contact" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                   Contact Us
                 </a>
-                <a href="mailto:hello@polytrak.com" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                  hello@polytrak.com
+                <a href="mailto:polytrak@mail.com" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                  Contact us
                 </a>
               </nav>
             </div>
