@@ -291,7 +291,7 @@ const Index = () => {
               muted
               playsInline
               controls
-              className="w-full h-[600px] object-cover"
+              className="w-full h-[800px] object-cover"
             >
               <source src="/video/demo-video.mp4" type="video/mp4" />
             </video>
