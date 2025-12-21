@@ -24,7 +24,8 @@ const AnalysisItem = ({ analysis, onClick }: AnalysisItemProps) => {
         <TooltipTrigger asChild>
           <button
             onClick={onClick}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card/50 border border-border/50 hover:border-primary/30 hover:bg-card transition-all group shrink-0"
+            className="relative flex items-center justify-center p-1.5 rounded-full hover:bg-card/80 transition-all group shrink-0"
+            aria-label={`Analyze ${displayName}`}
           >
             {/* Avatar with tri-color ring */}
             <div className="relative w-10 h-10 flex items-center justify-center">
@@ -44,23 +45,11 @@ const AnalysisItem = ({ analysis, onClick }: AnalysisItemProps) => {
                 </Avatar>
               </div>
             </div>
-            
-            {/* Name / Address */}
-            <div className="text-left min-w-0">
-              <p className="text-sm font-medium truncate max-w-[100px] group-hover:text-primary transition-colors">
-                {displayName}
-              </p>
-              {analysis.username && (
-                <p className="text-[10px] font-mono text-muted-foreground truncate max-w-[100px]">
-                  {shortenAddress(analysis.address)}
-                </p>
-              )}
-            </div>
           </button>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="bg-card border-border">
           <div className="space-y-1.5 text-xs">
-            <p className="font-mono text-muted-foreground">{shortenAddress(analysis.address)}</p>
+            <p className="font-mono text-muted-foreground">{analysis.address}</p>
             {analysis.username && (
               <p className="font-medium">{analysis.username}</p>
             )}
