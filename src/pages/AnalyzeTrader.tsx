@@ -905,8 +905,9 @@ const calculateFeeImpact = (
 
 export default function AnalyzeTrader() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [inputAddress, setInputAddress] = useState(searchParams.get('address') || '');
-  const [analyzedAddress, setAnalyzedAddress] = useState(searchParams.get('address') || '');
+  const urlAddress = searchParams.get('address') || '';
+  const [inputAddress, setInputAddress] = useState(urlAddress);
+  const [analyzedAddress, setAnalyzedAddress] = useState(urlAddress);
   const [chartTimeFilter, setChartTimeFilter] = useState<ChartTimeFilter>('ALL');
   const [trader, setTrader] = useState<TraderData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -920,6 +921,16 @@ export default function AnalyzeTrader() {
     navigator.clipboard.writeText('https://thetradefox.com?ref=POLYTRAK');
     toast({ title: 'Link copied to clipboard!' });
   };
+
+  // Watch for URL query param changes and trigger re-analysis
+  useEffect(() => {
+    if (urlAddress && urlAddress !== analyzedAddress) {
+      setInputAddress(urlAddress);
+      setAnalyzedAddress(urlAddress);
+      setTrader(null);
+      setError(null);
+    }
+  }, [urlAddress]);
 
   // Fetch trader data when address changes
   useEffect(() => {
