@@ -34,16 +34,17 @@ const Contact = () => {
     setSubmitStatus({ type: null, message: '' });
 
     try {
-      // For now, we'll use a fallback approach since the Supabase function may not be deployed
-      // In production, this would call the Supabase function
+      // Call the Supabase function to send email
+      const { data, error } = await supabase.functions.invoke('contact-form', {
+        body: formData
+      });
 
-      console.log('Contact form submission:', formData);
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw new Error(error.message || 'Failed to send message');
+      }
 
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // For now, show success message but log that backend integration is needed
-      console.log('⚠️  Contact form submission received. Backend email integration needed.');
+      console.log('Contact form submitted successfully:', data);
 
       // Success
       setSubmitStatus({
@@ -58,17 +59,6 @@ const Contact = () => {
         subject: '',
         message: ''
       });
-
-      // Uncomment below when Supabase function is deployed:
-      /*
-      const { data, error } = await supabase.functions.invoke('contact-form', {
-        body: formData
-      });
-
-      if (error) {
-        throw error;
-      }
-      */
 
     } catch (error) {
       console.error('Error submitting form:', error);
