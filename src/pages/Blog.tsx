@@ -5,8 +5,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import {
-  ExternalLink, Star, Zap, Brain, BarChart3, Users,
+import { 
+  ExternalLink, Star, Zap, Brain, BarChart3, Users, 
   MessageSquare, Smartphone, Bell, ArrowRight, Calendar,
   Clock, User, DollarSign
 } from 'lucide-react';
@@ -44,9 +44,9 @@ const Blog = () => {
 
     if (currentPost) {
       document.title = `${currentPost.title} | Polytrak.io Blog`;
-
-      const metaDescription = document.querySelector('meta[name="description"]');
-      if (metaDescription) {
+    
+    const metaDescription = document.querySelector('meta[name="description"]');
+    if (metaDescription) {
         metaDescription.setAttribute('content', currentPost.excerpt);
       } else {
         const meta = document.createElement('meta');
@@ -60,11 +60,11 @@ const Blog = () => {
       const metaDescription = document.querySelector('meta[name="description"]');
       if (metaDescription) {
         metaDescription.setAttribute('content', 'Comprehensive guides and insights for Polymarket trading. Learn about fees, tools, strategies, and maximize your prediction market profits.');
-      } else {
-        const meta = document.createElement('meta');
-        meta.name = 'description';
+    } else {
+      const meta = document.createElement('meta');
+      meta.name = 'description';
         meta.content = 'Comprehensive guides and insights for Polymarket trading. Learn about fees, tools, strategies, and maximize your prediction market profits.';
-        document.head.appendChild(meta);
+      document.head.appendChild(meta);
       }
     }
 
@@ -75,7 +75,6 @@ const Blog = () => {
 
   // Polymarket Fees Guide Content
   const PolymarketFeesGuide = () => (
-    <article className="container py-12 max-w-4xl">
       {/* Article Header */}
       <header className="mb-12">
         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
@@ -407,6 +406,17 @@ const Blog = () => {
     </article>
   );
 
+  // Wrapper component to ensure footer visibility
+  const BlogPageWrapper = ({ children }: { children: React.ReactNode }) => (
+    <Layout>
+      <div className="flex flex-col min-h-screen">
+        <div className="flex-1 pb-16">
+          {children}
+        </div>
+      </div>
+    </Layout>
+  );
+
   const coreTools = [
     { name: 'TradeFox', handle: '@tradefoxai', desc: 'Best liquidity across platforms. Spreads matter. Easy Bot Trading.', url: 'https://thetradefox.com', recommended: true },
     { name: 'Polymarket', handle: '@Polymarket', desc: 'The platform itself. Where your money goes.', url: 'https://polymarket.com', recommended: true },
@@ -615,7 +625,6 @@ const Blog = () => {
 
   // Polymarket Tools Guide (original content)
   const PolymarketToolsGuide = () => (
-    <Layout>
       {/* Hero Section */}
       <article className="container py-12 max-w-4xl">
         {/* Article Header */}
@@ -633,13 +642,13 @@ const Blog = () => {
               <span>10 min read</span>
             </div>
           </div>
-
+          
           <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight">
             Polymarket Tools - The Complete No-BS Guide for 2025
           </h1>
-
+          
           <p className="text-xl text-muted-foreground leading-relaxed">
-            Tested every tool in the Polymarket ecosystem. Most are mediocre. Some actually make money.
+            Tested every tool in the Polymarket ecosystem. Most are mediocre. Some actually make money. 
             Here is what matters when you are trying to profit from prediction markets. No fluff, only what gives you an edge.
           </p>
         </header>
@@ -654,7 +663,7 @@ const Blog = () => {
               <div>
                 <h3 className="font-semibold mb-2">The Bottom Line</h3>
                 <p className="text-muted-foreground">
-                  Cut through the noise. Focus on execution. These are the tools that actually move your PnL.
+                  Cut through the noise. Focus on execution. These are the tools that actually move your PnL. 
                   Tools marked with <Star className="h-3 w-3 inline text-primary" /> are personally tested and recommended.
                 </p>
               </div>
@@ -684,36 +693,36 @@ const Blog = () => {
         <Separator className="mb-12" />
 
         {/* Tool Sections */}
-        <ToolSection
-          title="Core Accounts - You Need These"
+        <ToolSection 
+          title="Core Accounts - You Need These" 
           icon={Zap}
           tools={coreTools}
           description="These are the essential accounts to follow. The foundation of staying informed in the Polymarket ecosystem."
         />
 
-        <ToolSection
-          title="AI Assistance"
+        <ToolSection 
+          title="AI Assistance" 
           icon={Brain}
           tools={aiTools}
           description="AI assistants for research, market analysis, and filtering noise. Pick one that fits your style and save hours of manual work."
         />
 
-        <ToolSection
-          title="Data & Analytics"
+        <ToolSection 
+          title="Data & Analytics" 
           icon={BarChart3}
           tools={analyticsTools}
           description="Information is everything. These tools give you the data edge - whale tracking, alerts, smart scores, and portfolio analytics."
         />
 
-        <ToolSection
-          title="Trading Terminals & Bots"
+        <ToolSection 
+          title="Trading Terminals & Bots" 
           icon={Smartphone}
           tools={tradingTools}
           description="Execute trades faster with terminals and bots. Trade from Telegram, mobile, or advanced desktop interfaces."
         />
 
-        <ToolSection
-          title="Communities"
+        <ToolSection 
+          title="Communities" 
           icon={Users}
           tools={communities}
           description="Connect with other traders. Learn from winners. Network matters in prediction markets."
@@ -726,7 +735,7 @@ const Blog = () => {
           <h2 className="text-2xl font-bold mb-4">Final Thoughts</h2>
           <div className="prose prose-invert max-w-none">
             <p className="text-muted-foreground mb-4">
-              The Polymarket ecosystem has exploded with tools. Not all of them are worth your time.
+              The Polymarket ecosystem has exploded with tools. Not all of them are worth your time. 
               Focus on the ones that directly impact your trading edge:
             </p>
             <ul className="list-disc list-inside text-muted-foreground space-y-2 mb-4">
@@ -775,11 +784,11 @@ const Blog = () => {
 
   // Main return - show either listing or selected post
   if (selectedPost === 'polymarket-fees-guide') {
-    return <PolymarketFeesGuide />;
+    return <BlogPageWrapper><PolymarketFeesGuide /></BlogPageWrapper>;
   } else if (selectedPost === 'polymarket-tools-guide') {
-    return <PolymarketToolsGuide />;
+    return <BlogPageWrapper><PolymarketToolsGuide /></BlogPageWrapper>;
   } else {
-    return <BlogListing />;
+    return <BlogPageWrapper><BlogListing /></BlogPageWrapper>;
   }
 };
 
