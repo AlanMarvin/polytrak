@@ -54,6 +54,9 @@ export function Layout({ children }: LayoutProps) {
                 >
                   GitHub
                 </a>
+                <a href="/disclaimer" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                  Terms and Disclaimer
+                </a>
                 <a
                   href="https://thetradefox.com"
                   target="_blank"
