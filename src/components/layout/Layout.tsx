@@ -73,7 +73,15 @@ export function Layout({ children }: LayoutProps) {
               <h4 className="text-sm font-semibold">Contact</h4>
               <nav className="flex flex-col space-y-2">
                 <a href="/contact" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                  Contact Us
+                  Contact
+                </a>
+                <a
+                  href="https://twitter.com/alanmarv"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                >
+                  X (Twitter)
                 </a>
               </nav>
             </div>
