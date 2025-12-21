@@ -1,61 +1,278 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { 
-  ExternalLink, Star, Zap, Brain, BarChart3, Users, 
+import {
+  ExternalLink, Star, Zap, Brain, BarChart3, Users,
   MessageSquare, Smartphone, Bell, ArrowRight, Calendar,
-  Clock, User
+  Clock, User, DollarSign
 } from 'lucide-react';
 
 const Blog = () => {
+  const [selectedPost, setSelectedPost] = useState<string | null>(null);
+
+  // Blog posts data
+  const blogPosts = [
+    {
+      id: 'polymarket-fees-guide',
+      title: 'Polymarket Fees & Costs Guide 2025: Complete Breakdown',
+      excerpt: 'Everything you need to know about Polymarket trading fees, platform costs, gas fees, and hidden charges that can eat into your profits.',
+      date: '2025-01-20',
+      readTime: '8 min read',
+      category: 'Guide',
+      icon: DollarSign,
+      featured: true
+    },
+    {
+      id: 'polymarket-tools-guide',
+      title: 'Polymarket Tools - The Complete No-BS Guide for 2025',
+      excerpt: 'Tested every tool in the Polymarket ecosystem. Most are mediocre. Some actually make money. Here is what matters when you are trying to profit from prediction markets.',
+      date: '2025-01-15',
+      readTime: '10 min read',
+      category: 'Guide',
+      icon: Zap,
+      featured: false
+    }
+  ];
+
   // SEO: Set document title and meta tags
   useEffect(() => {
-    document.title = 'Polymarket Tools Guide 2025 - Best Trading Tools & Resources | PolyTracker';
-    
-    // Set meta description
-    const metaDescription = document.querySelector('meta[name="description"]');
-    if (metaDescription) {
-      metaDescription.setAttribute('content', 'Complete guide to Polymarket trading tools in 2025. Discover the best analytics, copy trading, AI assistants, and portfolio tracking tools to maximize your prediction market profits.');
+    const currentPost = selectedPost ? blogPosts.find(p => p.id === selectedPost) : null;
+
+    if (currentPost) {
+      document.title = `${currentPost.title} | Polytrak.io Blog`;
+
+      const metaDescription = document.querySelector('meta[name="description"]');
+      if (metaDescription) {
+        metaDescription.setAttribute('content', currentPost.excerpt);
+      } else {
+        const meta = document.createElement('meta');
+        meta.name = 'description';
+        meta.content = currentPost.excerpt;
+        document.head.appendChild(meta);
+      }
     } else {
-      const meta = document.createElement('meta');
-      meta.name = 'description';
-      meta.content = 'Complete guide to Polymarket trading tools in 2025. Discover the best analytics, copy trading, AI assistants, and portfolio tracking tools to maximize your prediction market profits.';
-      document.head.appendChild(meta);
+      document.title = 'Blog - Polymarket Guides & Trading Insights | Polytrak.io';
+
+      const metaDescription = document.querySelector('meta[name="description"]');
+      if (metaDescription) {
+        metaDescription.setAttribute('content', 'Comprehensive guides and insights for Polymarket trading. Learn about fees, tools, strategies, and maximize your prediction market profits.');
+      } else {
+        const meta = document.createElement('meta');
+        meta.name = 'description';
+        meta.content = 'Comprehensive guides and insights for Polymarket trading. Learn about fees, tools, strategies, and maximize your prediction market profits.';
+        document.head.appendChild(meta);
+      }
     }
 
-    // Add structured data for SEO
-    const structuredData = {
-      "@context": "https://schema.org",
-      "@type": "Article",
-      "headline": "Polymarket Tools - The Complete No-BS Guide for 2025",
-      "description": "Comprehensive guide to Polymarket trading tools, analytics platforms, and resources for prediction market traders.",
-      "author": {
-        "@type": "Organization",
-        "name": "PolyTracker"
-      },
-      "publisher": {
-        "@type": "Organization",
-        "name": "PolyTracker"
-      },
-      "datePublished": "2025-01-15",
-      "dateModified": "2025-01-15"
-    };
-
-    const script = document.createElement('script');
-    script.type = 'application/ld+json';
-    script.text = JSON.stringify(structuredData);
-    script.id = 'structured-data';
-    document.head.appendChild(script);
-
     return () => {
-      const existingScript = document.getElementById('structured-data');
-      if (existingScript) existingScript.remove();
+      // Cleanup will be handled by the next effect
     };
-  }, []);
+  }, [selectedPost]);
+
+  // Polymarket Fees Guide Content
+  const PolymarketFeesGuide = () => (
+    <article className="container py-12 max-w-4xl">
+      {/* Article Header */}
+      <header className="mb-12">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+          <Badge variant="outline">Guide</Badge>
+          <span>•</span>
+          <div className="flex items-center gap-1">
+            <Calendar className="h-4 w-4" />
+            <time dateTime="2025-01-20">January 20, 2025</time>
+          </div>
+          <span>•</span>
+          <div className="flex items-center gap-1">
+            <Clock className="h-4 w-4" />
+            <span>8 min read</span>
+          </div>
+        </div>
+
+        <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight">
+          Polymarket Fees & Costs Guide 2025: Complete Breakdown
+        </h1>
+
+        <p className="text-xl text-muted-foreground leading-relaxed">
+          Understanding Polymarket fees is crucial for profitable trading. Hidden costs can eat into your profits.
+          Here's the complete breakdown of all fees, costs, and charges on Polymarket in 2025.
+        </p>
+      </header>
+
+      {/* Key Takeaway Box */}
+      <Card className="bg-primary/5 border-primary/20 mb-12">
+        <CardContent className="p-6">
+          <div className="flex items-start gap-4">
+            <div className="p-2 rounded-lg bg-primary/20">
+              <DollarSign className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-semibold mb-2">The Bottom Line</h3>
+              <p className="text-muted-foreground">
+                Polymarket fees are transparent but can add up. Trading fees are 2% per side, gas fees vary by network,
+                and withdrawal fees depend on your method. Always factor these into your trading strategy.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="prose prose-invert max-w-none">
+        <h2>1. Trading Fees</h2>
+        <p>The most straightforward fee on Polymarket is the trading fee.</p>
+
+        <h3>Standard Trading Fee</h3>
+        <ul>
+          <li><strong>2% per trade side</strong> - This means 2% when you buy and 2% when you sell</li>
+          <li>For a complete round trip (buy + sell), you're paying 4% total in trading fees</li>
+          <li>This fee is deducted from your winnings when you sell a position</li>
+        </ul>
+
+        <h3>Example Calculation</h3>
+        <p>If you buy $100 worth of YES shares and they resolve to YES (you win):</p>
+        <ul>
+          <li>You get back your $100 stake + winnings</li>
+          <li>2% fee is deducted from your total payout</li>
+          <li>If the market pays out $150 total, you receive $147 after fees</li>
+        </ul>
+
+        <h2>2. Gas Fees (Network Fees)</h2>
+        <p>Gas fees are paid to blockchain networks for transaction processing.</p>
+
+        <h3>Ethereum Mainnet</h3>
+        <ul>
+          <li><strong>Variable fees</strong> - Depend on network congestion</li>
+          <li><strong>Typical range</strong> - $5-50 per transaction</li>
+          <li><strong>Higher during peaks</strong> - Can exceed $100 during high network activity</li>
+        </ul>
+
+        <h3>Polygon Network</h3>
+        <ul>
+          <li><strong>Much lower fees</strong> - Often under $1</li>
+          <li><strong>Recommended for most traders</strong> - Significantly reduces costs</li>
+          <li><strong>Bridge fees</strong> - Small fee to move funds between networks</li>
+        </ul>
+
+        <h2>3. Withdrawal Fees</h2>
+        <p>Fees for withdrawing funds from Polymarket to your bank or wallet.</p>
+
+        <h3>Bank Transfer (ACH)</h3>
+        <ul>
+          <li><strong>Free for amounts over $100</strong></li>
+          <li><strong>$1 fee for amounts under $100</strong></li>
+          <li><strong>Processing time</strong> - 3-5 business days</li>
+        </ul>
+
+        <h3>Wire Transfer</h3>
+        <ul>
+          <li><strong>$35 fee</strong> - Higher cost but faster</li>
+          <li><strong>Processing time</strong> - 1-2 business days</li>
+          <li><strong>Best for large withdrawals</strong></li>
+        </ul>
+
+        <h3>Crypto Withdrawal</h3>
+        <ul>
+          <li><strong>Network gas fees only</strong></li>
+          <li><strong>No Polymarket withdrawal fee</strong></li>
+          <li><strong>To external wallet</strong> - Pay gas fees for the transfer</li>
+        </ul>
+
+        <h2>4. Deposit Fees</h2>
+        <p>Most deposit methods are free, but there are some exceptions.</p>
+
+        <h3>Bank Deposits</h3>
+        <ul>
+          <li><strong>ACH deposits</strong> - Free</li>
+          <li><strong>Wire deposits</strong> - May have bank fees (not Polymarket fees)</li>
+        </ul>
+
+        <h3>Crypto Deposits</h3>
+        <ul>
+          <li><strong>Gas fees only</strong> - Pay network fees for the transfer</li>
+          <li><strong>No Polymarket fees</strong></li>
+        </ul>
+
+        <h2>5. Platform Fees</h2>
+
+        <h3>USDC Conversion Fee</h3>
+        <ul>
+          <li><strong>0.1% fee</strong> when converting between stablecoins</li>
+          <li><strong>Applies to</strong> - USDC → USDT conversions and vice versa</li>
+        </ul>
+
+        <h3>Inactive Account Fee</h3>
+        <ul>
+          <li><strong>$5 monthly fee</strong> for accounts inactive for 6+ months</li>
+          <li><strong>Waived if</strong> - Account has balance or recent activity</li>
+        </ul>
+
+        <h2>6. Copy Trading Fees</h2>
+        <p>When using copy trading services (not Polymarket's built-in feature).</p>
+
+        <h3>Third-Party Copy Trading</h3>
+        <ul>
+          <li><strong>Platform fees</strong> - Vary by provider (typically 5-15% of profits)</li>
+          <li><strong>Performance fees</strong> - Charged by copy trading platforms</li>
+          <li><strong>Withdrawal fees</strong> - Additional fees from the platform</li>
+        </ul>
+
+        <h2>7. Tax Considerations</h2>
+        <p>Trading profits may be taxable depending on your jurisdiction.</p>
+
+        <h3>US Traders</h3>
+        <ul>
+          <li><strong>Report as miscellaneous income</strong></li>
+          <li><strong>Self-employment tax</strong> may apply</li>
+          <li><strong>Keep detailed records</strong> of all trades</li>
+        </ul>
+
+        <h2>8. Fee Optimization Strategies</h2>
+
+        <h3>Minimize Trading Costs</h3>
+        <ul>
+          <li><strong>Use Polygon network</strong> - Much lower gas fees</li>
+          <li><strong>Trade during off-peak hours</strong> - Lower gas fees</li>
+          <li><strong>Batch transactions</strong> - Reduce gas costs</li>
+          <li><strong>Hold positions longer</strong> - Reduce round-trip fees</li>
+        </ul>
+
+        <h3>Smart Withdrawal Strategy</h3>
+        <ul>
+          <li><strong>Withdraw over $100</strong> - Avoid ACH fees</li>
+          <li><strong>Use crypto withdrawals</strong> - Lowest fees</li>
+          <li><strong>Time withdrawals strategically</strong> - Avoid peak network congestion</li>
+        </ul>
+
+        <h2>9. Complete Fee Breakdown Example</h2>
+
+        <h3>Scenario: $1000 Investment</h3>
+        <ul>
+          <li><strong>Deposit</strong> - $0 (ACH free)</li>
+          <li><strong>Buy transaction</strong> - $20 (2% of $1000)</li>
+          <li><strong>Gas fee</strong> - $2 (Polygon network)</li>
+          <li><strong>Sell transaction</strong> - $20 (2% of $1000)</li>
+          <li><strong>Gas fee</strong> - $2 (Polygon network)</li>
+          <li><strong>Withdrawal</strong> - $0 (ACH over $100)</li>
+          <li><strong>Total fees</strong> - $44 (4.4% of principal)</li>
+        </ul>
+
+        <h2>Conclusion</h2>
+        <p>Polymarket's fee structure is relatively transparent compared to traditional financial markets. The 2% trading fee per side is standard for prediction markets, and using Polygon significantly reduces gas costs.</p>
+
+        <p>The key to profitable trading is understanding how fees impact your returns and developing strategies to minimize them. Always calculate your expected returns after fees, and consider the total cost of each trade before entering positions.</p>
+      </div>
+
+      {/* Back to Blog */}
+      <div className="mt-12 pt-8 border-t border-border">
+        <Button variant="outline" onClick={() => setSelectedPost(null)}>
+          ← Back to Blog
+        </Button>
+      </div>
+    </article>
+  );
 
   const coreTools = [
     { name: 'TradeFox', handle: '@tradefoxai', desc: 'Best liquidity across platforms. Spreads matter. Easy Bot Trading.', url: 'https://thetradefox.com', recommended: true },
@@ -184,7 +401,87 @@ const Blog = () => {
     </section>
   );
 
-  return (
+  // Blog Listing Component
+  const BlogListing = () => (
+    <Layout>
+      <div className="container py-12 max-w-4xl">
+        {/* Header */}
+        <header className="mb-12 text-center">
+          <h1 className="text-4xl md:text-5xl font-bold mb-6">Blog</h1>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            Comprehensive guides and insights for Polymarket trading.
+            Learn about fees, tools, strategies, and maximize your profits.
+          </p>
+        </header>
+
+        {/* Featured Post */}
+        {blogPosts.filter(post => post.featured).map((post) => (
+          <Card key={post.id} className="mb-8 bg-gradient-to-r from-primary/5 via-primary/10 to-accent/5 border-primary/20">
+            <CardContent className="p-8">
+              <div className="flex items-start gap-6">
+                <div className="p-3 rounded-lg bg-primary/20 flex-shrink-0">
+                  <post.icon className="h-8 w-8 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Badge variant="secondary" className="bg-primary/20 text-primary">
+                      Featured
+                    </Badge>
+                    <Badge variant="outline">{post.category}</Badge>
+                  </div>
+                  <h2 className="text-2xl md:text-3xl font-bold mb-3">{post.title}</h2>
+                  <p className="text-muted-foreground mb-4 leading-relaxed">{post.excerpt}</p>
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-4 w-4" />
+                      <span>{post.date}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-4 w-4" />
+                      <span>{post.readTime}</span>
+                    </div>
+                  </div>
+                  <Button onClick={() => setSelectedPost(post.id)}>
+                    Read Full Article <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+
+        {/* Other Posts */}
+        <div className="grid gap-6">
+          {blogPosts.filter(post => !post.featured).map((post) => (
+            <Card key={post.id} className="hover:border-primary/30 transition-colors cursor-pointer" onClick={() => setSelectedPost(post.id)}>
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="p-2 rounded-lg bg-muted flex-shrink-0">
+                    <post.icon className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Badge variant="outline">{post.category}</Badge>
+                      <span className="text-sm text-muted-foreground">{post.date}</span>
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2 hover:text-primary transition-colors">{post.title}</h3>
+                    <p className="text-muted-foreground text-sm leading-relaxed">{post.excerpt}</p>
+                    <div className="flex items-center gap-1 mt-3 text-sm text-muted-foreground">
+                      <Clock className="h-4 w-4" />
+                      <span>{post.readTime}</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    </Layout>
+  );
+
+  // Polymarket Tools Guide (original content)
+  const PolymarketToolsGuide = () => (
     <Layout>
       {/* Hero Section */}
       <article className="container py-12 max-w-4xl">
@@ -203,13 +500,13 @@ const Blog = () => {
               <span>10 min read</span>
             </div>
           </div>
-          
+
           <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight">
             Polymarket Tools - The Complete No-BS Guide for 2025
           </h1>
-          
+
           <p className="text-xl text-muted-foreground leading-relaxed">
-            Tested every tool in the Polymarket ecosystem. Most are mediocre. Some actually make money. 
+            Tested every tool in the Polymarket ecosystem. Most are mediocre. Some actually make money.
             Here is what matters when you are trying to profit from prediction markets. No fluff, only what gives you an edge.
           </p>
         </header>
@@ -224,7 +521,7 @@ const Blog = () => {
               <div>
                 <h3 className="font-semibold mb-2">The Bottom Line</h3>
                 <p className="text-muted-foreground">
-                  Cut through the noise. Focus on execution. These are the tools that actually move your PnL. 
+                  Cut through the noise. Focus on execution. These are the tools that actually move your PnL.
                   Tools marked with <Star className="h-3 w-3 inline text-primary" /> are personally tested and recommended.
                 </p>
               </div>
@@ -239,7 +536,7 @@ const Blog = () => {
               <div>
                 <h3 className="font-semibold mb-1">Want to analyze any trader instantly?</h3>
                 <p className="text-muted-foreground text-sm">
-                  Use our free Trader Analyzer to check any wallet is PnL, win rate, and positions.
+                  Use our free Trader Analyzer to check any wallet's PnL, win rate, and positions.
                 </p>
               </div>
               <Link to="/analyze">
@@ -254,36 +551,36 @@ const Blog = () => {
         <Separator className="mb-12" />
 
         {/* Tool Sections */}
-        <ToolSection 
-          title="Core Accounts - You Need These" 
+        <ToolSection
+          title="Core Accounts - You Need These"
           icon={Zap}
           tools={coreTools}
           description="These are the essential accounts to follow. The foundation of staying informed in the Polymarket ecosystem."
         />
 
-        <ToolSection 
-          title="AI Assistance" 
+        <ToolSection
+          title="AI Assistance"
           icon={Brain}
           tools={aiTools}
           description="AI assistants for research, market analysis, and filtering noise. Pick one that fits your style and save hours of manual work."
         />
 
-        <ToolSection 
-          title="Data & Analytics" 
+        <ToolSection
+          title="Data & Analytics"
           icon={BarChart3}
           tools={analyticsTools}
           description="Information is everything. These tools give you the data edge - whale tracking, alerts, smart scores, and portfolio analytics."
         />
 
-        <ToolSection 
-          title="Trading Terminals & Bots" 
+        <ToolSection
+          title="Trading Terminals & Bots"
           icon={Smartphone}
           tools={tradingTools}
           description="Execute trades faster with terminals and bots. Trade from Telegram, mobile, or advanced desktop interfaces."
         />
 
-        <ToolSection 
-          title="Communities" 
+        <ToolSection
+          title="Communities"
           icon={Users}
           tools={communities}
           description="Connect with other traders. Learn from winners. Network matters in prediction markets."
@@ -296,7 +593,7 @@ const Blog = () => {
           <h2 className="text-2xl font-bold mb-4">Final Thoughts</h2>
           <div className="prose prose-invert max-w-none">
             <p className="text-muted-foreground mb-4">
-              The Polymarket ecosystem has exploded with tools. Not all of them are worth your time. 
+              The Polymarket ecosystem has exploded with tools. Not all of them are worth your time.
               Focus on the ones that directly impact your trading edge:
             </p>
             <ul className="list-disc list-inside text-muted-foreground space-y-2 mb-4">
@@ -316,7 +613,7 @@ const Blog = () => {
           <CardContent className="p-8 text-center">
             <h3 className="text-2xl font-bold mb-2">Ready to find profitable traders?</h3>
             <p className="text-muted-foreground mb-6">
-              Use PolyTracker to discover and analyze the smartest traders on Polymarket.
+              Use Polytrak.io to discover and analyze the smartest traders on Polymarket.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link to="/">
@@ -333,8 +630,24 @@ const Blog = () => {
           </CardContent>
         </Card>
       </article>
+
+      {/* Back to Blog */}
+      <div className="container py-8 border-t border-border">
+        <Button variant="outline" onClick={() => setSelectedPost(null)}>
+          ← Back to Blog
+        </Button>
+      </div>
     </Layout>
   );
+
+  // Main return - show either listing or selected post
+  if (selectedPost === 'polymarket-fees-guide') {
+    return <PolymarketFeesGuide />;
+  } else if (selectedPost === 'polymarket-tools-guide') {
+    return <PolymarketToolsGuide />;
+  } else {
+    return <BlogListing />;
+  }
 };
 
 export default Blog;
