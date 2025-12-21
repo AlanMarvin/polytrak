@@ -429,9 +429,6 @@ const Index = () => {
             <h3 className="text-2xl md:text-3xl font-bold">
               Ready to copy the best traders?
             </h3>
-            <p className="text-green-600 font-medium">
-              Analyze any Polymarket wallet and get AI-optimized settings for TheTradeFox copy trading.
-            </p>
             <div className="flex justify-center pt-2">
               <Button
                 size="lg"
