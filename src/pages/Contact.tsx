@@ -1,11 +1,72 @@
+import { useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Mail, MessageSquare, Github, Twitter } from 'lucide-react';
+import { Mail, MessageSquare, Github, Twitter, CheckCircle, AlertCircle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const Contact = () => {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    subject: '',
+    message: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<{
+    type: 'success' | 'error' | null;
+    message: string;
+  }>({ type: null, message: '' });
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setSubmitStatus({ type: null, message: '' });
+
+    try {
+      // Call the Supabase function
+      const { data, error } = await supabase.functions.invoke('contact-form', {
+        body: formData
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      // Success
+      setSubmitStatus({
+        type: 'success',
+        message: 'Thank you for your message! We will get back to you soon.'
+      });
+
+      // Reset form
+      setFormData({
+        name: '',
+        email: '',
+        subject: '',
+        message: ''
+      });
+
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      setSubmitStatus({
+        type: 'error',
+        message: 'Failed to send message. Please try again or contact us directly.'
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   return (
     <Layout>
       <div className="container py-16 max-w-4xl mx-auto">
@@ -27,26 +88,65 @@ const Contact = () => {
               </p>
             </div>
 
-            <form className="space-y-4">
+            {submitStatus.type && (
+              <div className={`p-4 rounded-lg mb-4 ${
+                submitStatus.type === 'success'
+                  ? 'bg-green-500/10 border border-green-500/30 text-green-700 dark:text-green-400'
+                  : 'bg-red-500/10 border border-red-500/30 text-red-700 dark:text-red-400'
+              }`}>
+                <div className="flex items-center gap-2">
+                  {submitStatus.type === 'success' ? (
+                    <CheckCircle className="h-4 w-4" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4" />
+                  )}
+                  <span className="text-sm">{submitStatus.message}</span>
+                </div>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label htmlFor="name" className="block text-sm font-medium mb-2">
                   Name
                 </label>
-                <Input id="name" placeholder="Your name" />
+                <Input
+                  id="name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  placeholder="Your name"
+                  required
+                />
               </div>
 
               <div>
                 <label htmlFor="email" className="block text-sm font-medium mb-2">
                   Email
                 </label>
-                <Input id="email" type="email" placeholder="your@email.com" />
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  placeholder="your@email.com"
+                  required
+                />
               </div>
 
               <div>
                 <label htmlFor="subject" className="block text-sm font-medium mb-2">
                   Subject
                 </label>
-                <Input id="subject" placeholder="What's this about?" />
+                <Input
+                  id="subject"
+                  name="subject"
+                  value={formData.subject}
+                  onChange={handleInputChange}
+                  placeholder="What's this about?"
+                  required
+                />
               </div>
 
               <div>
@@ -55,14 +155,27 @@ const Contact = () => {
                 </label>
                 <Textarea
                   id="message"
+                  name="message"
+                  value={formData.message}
+                  onChange={handleInputChange}
                   placeholder="Tell us how we can help..."
                   rows={5}
+                  required
                 />
               </div>
 
-              <Button type="submit" className="w-full">
-                <MessageSquare className="mr-2 h-4 w-4" />
-                Send Message
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    Send Message
+                  </>
+                )}
               </Button>
             </form>
           </Card>
