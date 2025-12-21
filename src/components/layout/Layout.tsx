@@ -19,7 +19,7 @@ export function Layout({ children }: LayoutProps) {
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">PolyTrak</h3>
               <p className="text-sm text-muted-foreground">
-                AI-powered Polymarket analytics for optimized copy trading
+                use in tradefox
               </p>
             </div>
 
