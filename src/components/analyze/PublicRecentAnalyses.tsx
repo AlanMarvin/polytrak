@@ -24,22 +24,21 @@ const AnalysisItem = ({ analysis, onClick }: AnalysisItemProps) => {
         <TooltipTrigger asChild>
           <button
             onClick={onClick}
-            className="relative flex items-center justify-center p-1.5 rounded-full hover:bg-card/80 transition-all group shrink-0"
+            className="relative flex items-center justify-center p-1 rounded-full hover:bg-card/80 transition-all group shrink-0"
             aria-label={`Analyze ${displayName}`}
           >
-            {/* Avatar with tri-color ring */}
-            <div className="relative w-10 h-10 flex items-center justify-center">
+            <div className="relative w-8 h-8 flex items-center justify-center">
               <ThreeColorRing
                 smartScore={analysis.smartScore}
                 sharpeRatio={analysis.sharpeRatio}
                 copySuitability={analysis.copySuitability}
-                size={40}
-                strokeWidth={3}
+                size={32}
+                strokeWidth={2.5}
               />
-              <div className="absolute inset-[5px]">
+              <div className="absolute inset-[4px]">
                 <Avatar className="w-full h-full">
                   <AvatarImage src={analysis.profileImage || undefined} alt={displayName} />
-                  <AvatarFallback className="text-[10px] font-mono bg-muted">
+                  <AvatarFallback className="text-[8px] font-mono bg-muted">
                     {analysis.address.slice(2, 4).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
@@ -125,7 +124,7 @@ export const PublicRecentAnalyses = ({ className = '', compact = false }: Public
         <Globe className="h-4 w-4 text-muted-foreground" />
         <h3 className="text-sm font-medium text-muted-foreground">Recent public analyses</h3>
       </div>
-      <div className={`flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent ${compact ? 'flex-wrap' : ''}`}>
+      <div className="flex flex-wrap gap-1.5">
         {analyses.map((analysis) => (
           <AnalysisItem
             key={analysis.id}
