@@ -413,7 +413,7 @@ const Index = () => {
 
       {/* CTA Section */}
       <section className="container pb-16">
-        <div className="relative overflow-hidden rounded-2xl border border-primary/20 p-12 md:p-16 max-w-lg mx-auto">
+        <div className="relative overflow-hidden rounded-2xl border border-primary/20 p-8 md:p-12">
           {/* Background Video */}
           <video
             autoPlay
@@ -429,15 +429,28 @@ const Index = () => {
             <h3 className="text-2xl md:text-3xl font-bold">
               Ready to copy the best traders?
             </h3>
-            <div className="flex justify-center pt-2">
-              <Button
-                size="lg"
+            <p className="text-muted-foreground">
+              Analyze any Polymarket wallet and get AI-optimized settings for TheTradeFox copy trading.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+              <Button 
+                size="lg" 
                 className="min-w-[180px]"
                 onClick={() => document.querySelector('input')?.focus()}
               >
                 <Search className="mr-2 h-4 w-4" />
                 Start Analyzing
               </Button>
+              <a 
+                href="https://thetradefox.com?ref=POLYTRAK" 
+                target="_blank" 
+                rel="noopener noreferrer"
+              >
+                <Button variant="outline" size="lg" className="min-w-[180px]">
+                  Visit TheTradeFox
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </a>
             </div>
           </div>
         </div>
