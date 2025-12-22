@@ -19,7 +19,7 @@ export function Layout({ children }: LayoutProps) {
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Polytrak.io</h3>
               <p className="text-sm text-muted-foreground">
-                Analyze any Polymarket wallet, get AI-optimized copy trading configuration, and start mirroring profitable traders on TheTradeFox
+                analytics + copy-trading config for thetradefox
               </p>
             </div>
 
