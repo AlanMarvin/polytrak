@@ -21,24 +21,22 @@ const WalletCircle = ({ search, onClick }: WalletCircleProps) => {
         <TooltipTrigger asChild>
           <button
             onClick={onClick}
-            className="flex flex-col items-center gap-1.5 group"
+            className="flex items-center justify-center p-1 rounded-full hover:bg-card/80 transition-all group"
           >
-            <div className="relative w-[52px] h-[52px] flex items-center justify-center transition-transform group-hover:scale-110">
+            <div className="relative w-8 h-8 flex items-center justify-center transition-transform group-hover:scale-110">
               <ThreeColorRing
                 smartScore={search.smartScore}
                 sharpeRatio={search.sharpeRatio}
                 copySuitability={search.copySuitability}
+                size={32}
+                strokeWidth={2.5}
               />
-              {/* Inner circle with initials */}
-              <div className="absolute inset-[6px] rounded-full bg-card flex items-center justify-center">
-                <span className="text-xs font-mono text-muted-foreground">
+              <div className="absolute inset-[4px] rounded-full bg-card flex items-center justify-center">
+                <span className="text-[8px] font-mono text-muted-foreground">
                   {search.address.slice(2, 4).toUpperCase()}
                 </span>
               </div>
             </div>
-            <span className="text-[10px] font-mono text-muted-foreground group-hover:text-foreground transition-colors">
-              {shortenAddress(search.address)}
-            </span>
           </button>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="bg-card border-border">
@@ -96,7 +94,7 @@ export const RecentSearches = () => {
         <History className="h-4 w-4 text-muted-foreground" />
         <h2 className="text-sm font-medium text-muted-foreground">Recent searches</h2>
       </div>
-      <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+      <div className="flex flex-wrap gap-1.5">
         {recentSearches.map((search) => (
           <WalletCircle
             key={search.address}
