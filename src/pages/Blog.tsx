@@ -5,8 +5,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { 
-  ExternalLink, Star, Zap, Brain, BarChart3, Users, 
+import {
+  ExternalLink, Star, Zap, Brain, BarChart3, Users,
   MessageSquare, Smartphone, Bell, ArrowRight, Calendar,
   Clock, User, DollarSign
 } from 'lucide-react';
@@ -44,9 +44,9 @@ const Blog = () => {
 
     if (currentPost) {
       document.title = `${currentPost.title} | Polytrak.io Blog`;
-    
-    const metaDescription = document.querySelector('meta[name="description"]');
-    if (metaDescription) {
+
+      const metaDescription = document.querySelector('meta[name="description"]');
+      if (metaDescription) {
         metaDescription.setAttribute('content', currentPost.excerpt);
       } else {
         const meta = document.createElement('meta');
@@ -60,11 +60,11 @@ const Blog = () => {
       const metaDescription = document.querySelector('meta[name="description"]');
       if (metaDescription) {
         metaDescription.setAttribute('content', 'Comprehensive guides and insights for Polymarket trading. Learn about fees, tools, strategies, and maximize your prediction market profits.');
-    } else {
-      const meta = document.createElement('meta');
-      meta.name = 'description';
+      } else {
+        const meta = document.createElement('meta');
+        meta.name = 'description';
         meta.content = 'Comprehensive guides and insights for Polymarket trading. Learn about fees, tools, strategies, and maximize your prediction market profits.';
-      document.head.appendChild(meta);
+        document.head.appendChild(meta);
       }
     }
 
@@ -120,282 +120,149 @@ const Blog = () => {
         </CardContent>
       </Card>
 
-      <div className="prose prose-invert max-w-none space-y-8">
+      <div className="prose prose-invert max-w-none">
+        <h2>1. Trading Fees</h2>
+        <p>The most straightforward fee on Polymarket is the trading fee.</p>
 
-        {/* Trading Fees */}
-        <section className="space-y-4">
-          <h2 className="text-2xl font-bold text-primary border-b border-primary/20 pb-2">1. Trading Fees</h2>
-          <p className="text-lg text-muted-foreground">The most straightforward fee on Polymarket.</p>
+        <h3>Standard Trading Fee</h3>
+        <ul>
+          <li><strong>2% per trade side</strong> - This means 2% when you buy and 2% when you sell</li>
+          <li>For a complete round trip (buy + sell), you're paying 4% total in trading fees</li>
+          <li>This fee is deducted from your winnings when you sell a position</li>
+        </ul>
 
-          <div className="bg-muted/30 p-4 rounded-lg">
-            <h3 className="text-lg font-semibold mb-3">Standard Trading Fee</h3>
-            <div className="grid gap-2">
-              <div className="flex items-start gap-2">
-                <span className="text-primary font-bold mt-0.5">•</span>
-                <span><strong className="text-primary">2% per trade side</strong> - This means 2% when you buy and 2% when you sell</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="text-primary font-bold mt-0.5">•</span>
-                <span>For a complete round trip (buy + sell), you're paying <strong className="text-primary">4% total</strong> in trading fees</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="text-primary font-bold mt-0.5">•</span>
-                <span>This fee is deducted from your winnings when you sell a position</span>
-              </div>
-            </div>
-          </div>
+        <h3>Example Calculation</h3>
+        <p>If you buy $100 worth of YES shares and they resolve to YES (you win):</p>
+        <ul>
+          <li>You get back your $100 stake + winnings</li>
+          <li>2% fee is deducted from your total payout</li>
+          <li>If the market pays out $150 total, you receive $147 after fees</li>
+        </ul>
 
-          <div className="bg-green-500/10 border border-green-500/30 p-4 rounded-lg">
-            <h4 className="font-semibold text-green-400 mb-2">💡 Example Calculation</h4>
-            <p className="text-sm text-muted-foreground mb-2">If you buy $100 worth of YES shares and they resolve to YES (you win):</p>
-            <ul className="text-sm space-y-1">
-              <li>You get back your $100 stake + winnings</li>
-              <li>2% fee is deducted from your total payout</li>
-              <li>If the market pays out $150 total, you receive $147 after fees</li>
-            </ul>
-          </div>
-        </section>
+        <h2>2. Gas Fees (Network Fees)</h2>
+        <p>Gas fees are paid to blockchain networks for transaction processing.</p>
 
-        {/* Gas Fees */}
-        <section className="space-y-4">
-          <h2 className="text-2xl font-bold text-primary border-b border-primary/20 pb-2">2. Gas Fees (Network Fees)</h2>
-          <p className="text-lg text-muted-foreground">Paid to blockchain networks for transaction processing.</p>
+        <h3>Ethereum Mainnet</h3>
+        <ul>
+          <li><strong>Variable fees</strong> - Depend on network congestion</li>
+          <li><strong>Typical range</strong> - $5-50 per transaction</li>
+          <li><strong>Higher during peaks</strong> - Can exceed $100 during high network activity</li>
+        </ul>
 
-          <div className="grid md:grid-cols-2 gap-4">
-            <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-lg">
-              <h3 className="text-lg font-semibold text-red-400 mb-3">🚫 Ethereum Mainnet</h3>
-              <ul className="space-y-2 text-sm">
-                <li><strong>Variable fees</strong> - Depend on network congestion</li>
-                <li><strong>Typical range:</strong> $5-50 per transaction</li>
-                <li><strong>Higher during peaks:</strong> Can exceed $100</li>
-              </ul>
-            </div>
+        <h3>Polygon Network</h3>
+        <ul>
+          <li><strong>Much lower fees</strong> - Often under $1</li>
+          <li><strong>Recommended for most traders</strong> - Significantly reduces costs</li>
+          <li><strong>Bridge fees</strong> - Small fee to move funds between networks</li>
+        </ul>
 
-            <div className="bg-green-500/10 border border-green-500/30 p-4 rounded-lg">
-              <h3 className="text-lg font-semibold text-green-400 mb-3">✅ Polygon Network</h3>
-              <ul className="space-y-2 text-sm">
-                <li><strong>Much lower fees</strong> - Often under $1</li>
-                <li><strong>Recommended for most traders</strong></li>
-                <li><strong>Bridge fees:</strong> Small fee to move funds</li>
-              </ul>
-            </div>
-          </div>
-        </section>
+        <h2>3. Withdrawal Fees</h2>
+        <p>Fees for withdrawing funds from Polymarket to your bank or wallet.</p>
 
-        {/* Withdrawal Fees */}
-        <section className="space-y-4">
-          <h2 className="text-2xl font-bold text-primary border-b border-primary/20 pb-2">3. Withdrawal Fees</h2>
-          <p className="text-lg text-muted-foreground">Fees for withdrawing funds from Polymarket.</p>
+        <h3>Bank Transfer (ACH)</h3>
+        <ul>
+          <li><strong>Free for amounts over $100</strong></li>
+          <li><strong>$1 fee for amounts under $100</strong></li>
+          <li><strong>Processing time</strong> - 3-5 business days</li>
+        </ul>
 
-          <div className="grid gap-4">
-            <div className="bg-blue-500/10 border border-blue-500/30 p-4 rounded-lg">
-              <h3 className="font-semibold text-blue-400 mb-2">🏦 Bank Transfer (ACH)</h3>
-              <div className="grid md:grid-cols-3 gap-4 text-sm">
-                <div><strong className="text-green-400">Free</strong> for amounts over $100</div>
-                <div><strong className="text-yellow-400">$1 fee</strong> for amounts under $100</div>
-                <div><strong className="text-blue-400">3-5 business days</strong></div>
-              </div>
-            </div>
+        <h3>Wire Transfer</h3>
+        <ul>
+          <li><strong>$35 fee</strong> - Higher cost but faster</li>
+          <li><strong>Processing time</strong> - 1-2 business days</li>
+          <li><strong>Best for large withdrawals</strong></li>
+        </ul>
 
-            <div className="bg-purple-500/10 border border-purple-500/30 p-4 rounded-lg">
-              <h3 className="font-semibold text-purple-400 mb-2">💰 Wire Transfer</h3>
-              <div className="grid md:grid-cols-3 gap-4 text-sm">
-                <div><strong className="text-red-400">$35 fee</strong></div>
-                <div>Higher cost but faster</div>
-                <div><strong className="text-green-400">1-2 business days</strong></div>
-              </div>
-            </div>
+        <h3>Crypto Withdrawal</h3>
+        <ul>
+          <li><strong>Network gas fees only</strong></li>
+          <li><strong>No Polymarket withdrawal fee</strong></li>
+          <li><strong>To external wallet</strong> - Pay gas fees for the transfer</li>
+        </ul>
 
-            <div className="bg-green-500/10 border border-green-500/30 p-4 rounded-lg">
-              <h3 className="font-semibold text-green-400 mb-2">₿ Crypto Withdrawal</h3>
-              <div className="grid md:grid-cols-3 gap-4 text-sm">
-                <div><strong className="text-green-400">Network gas fees only</strong></div>
-                <div>No Polymarket withdrawal fee</div>
-                <div>Pay gas fees for transfer</div>
-              </div>
-            </div>
-          </div>
-        </section>
+        <h2>4. Deposit Fees</h2>
+        <p>Most deposit methods are free, but there are some exceptions.</p>
 
-        {/* Deposit Fees */}
-        <section className="space-y-4">
-          <h2 className="text-2xl font-bold text-primary border-b border-primary/20 pb-2">4. Deposit Fees</h2>
-          <p className="text-lg text-muted-foreground">Most deposit methods are free.</p>
+        <h3>Bank Deposits</h3>
+        <ul>
+          <li><strong>ACH deposits</strong> - Free</li>
+          <li><strong>Wire deposits</strong> - May have bank fees (not Polymarket fees)</li>
+        </ul>
 
-          <div className="grid md:grid-cols-2 gap-4">
-            <div className="bg-green-500/10 border border-green-500/30 p-4 rounded-lg">
-              <h3 className="font-semibold text-green-400 mb-2">🏦 Bank Deposits</h3>
-              <ul className="space-y-1 text-sm">
-                <li><strong className="text-green-400">ACH deposits: Free</strong></li>
-                <li>Wire deposits: May have bank fees</li>
-              </ul>
-            </div>
+        <h3>Crypto Deposits</h3>
+        <ul>
+          <li><strong>Gas fees only</strong> - Pay network fees for the transfer</li>
+          <li><strong>No Polymarket fees</strong></li>
+        </ul>
 
-            <div className="bg-blue-500/10 border border-blue-500/30 p-4 rounded-lg">
-              <h3 className="font-semibold text-blue-400 mb-2">₿ Crypto Deposits</h3>
-              <ul className="space-y-1 text-sm">
-                <li><strong className="text-green-400">Gas fees only</strong></li>
-                <li>No Polymarket fees</li>
-              </ul>
-            </div>
-          </div>
-        </section>
+        <h2>5. Platform Fees</h2>
 
-        {/* Platform Fees */}
-        <section className="space-y-4">
-          <h2 className="text-2xl font-bold text-primary border-b border-primary/20 pb-2">5. Platform Fees</h2>
+        <h3>USDC Conversion Fee</h3>
+        <ul>
+          <li><strong>0.1% fee</strong> when converting between stablecoins</li>
+          <li><strong>Applies to</strong> - USDC → USDT conversions and vice versa</li>
+        </ul>
 
-          <div className="grid md:grid-cols-2 gap-4">
-            <div className="bg-yellow-500/10 border border-yellow-500/30 p-4 rounded-lg">
-              <h3 className="font-semibold text-yellow-400 mb-2">🔄 USDC Conversion Fee</h3>
-              <ul className="space-y-1 text-sm">
-                <li><strong>0.1% fee</strong> when converting between stablecoins</li>
-                <li>Applies to USDC ↔ USDT conversions</li>
-              </ul>
-            </div>
+        <h3>Inactive Account Fee</h3>
+        <ul>
+          <li><strong>$5 monthly fee</strong> for accounts inactive for 6+ months</li>
+          <li><strong>Waived if</strong> - Account has balance or recent activity</li>
+        </ul>
 
-            <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-lg">
-              <h3 className="font-semibold text-red-400 mb-2">💤 Inactive Account Fee</h3>
-              <ul className="space-y-1 text-sm">
-                <li><strong>$5 monthly fee</strong> for accounts inactive 6+ months</li>
-                <li>Waived if account has balance or recent activity</li>
-              </ul>
-            </div>
-          </div>
-        </section>
+        <h2>6. Copy Trading Fees</h2>
+        <p>When using copy trading services (not Polymarket's built-in feature).</p>
 
-        {/* Copy Trading Fees */}
-        <section className="space-y-4">
-          <h2 className="text-2xl font-bold text-primary border-b border-primary/20 pb-2">6. Copy Trading Fees</h2>
-          <p className="text-lg text-muted-foreground">When using third-party copy trading services.</p>
+        <h3>Third-Party Copy Trading</h3>
+        <ul>
+          <li><strong>Platform fees</strong> - Vary by provider (typically 5-15% of profits)</li>
+          <li><strong>Performance fees</strong> - Charged by copy trading platforms</li>
+          <li><strong>Withdrawal fees</strong> - Additional fees from the platform</li>
+        </ul>
 
-          <div className="bg-orange-500/10 border border-orange-500/30 p-4 rounded-lg">
-            <h3 className="font-semibold text-orange-400 mb-3">🤖 Third-Party Copy Trading</h3>
-            <div className="grid md:grid-cols-3 gap-4 text-sm">
-              <div>
-                <strong className="text-orange-400">Platform fees:</strong><br />
-                Vary by provider (5-15% of profits)
-              </div>
-              <div>
-                <strong className="text-orange-400">Performance fees:</strong><br />
-                Charged by copy trading platforms
-              </div>
-              <div>
-                <strong className="text-orange-400">Withdrawal fees:</strong><br />
-                Additional fees from the platform
-              </div>
-            </div>
-          </div>
-        </section>
+        <h2>7. Tax Considerations</h2>
+        <p>Trading profits may be taxable depending on your jurisdiction.</p>
 
-        {/* Tax Considerations */}
-        <section className="space-y-4">
-          <h2 className="text-2xl font-bold text-primary border-b border-primary/20 pb-2">7. Tax Considerations</h2>
-          <p className="text-lg text-muted-foreground">Trading profits may be taxable depending on your jurisdiction.</p>
+        <h3>US Traders</h3>
+        <ul>
+          <li><strong>Report as miscellaneous income</strong></li>
+          <li><strong>Self-employment tax</strong> may apply</li>
+          <li><strong>Keep detailed records</strong> of all trades</li>
+        </ul>
 
-          <div className="bg-blue-500/10 border border-blue-500/30 p-4 rounded-lg">
-            <h3 className="font-semibold text-blue-400 mb-3">🇺🇸 US Traders</h3>
-            <ul className="space-y-2 text-sm">
-              <li><strong>Report as miscellaneous income</strong></li>
-              <li><strong>Self-employment tax</strong> may apply</li>
-              <li><strong>Keep detailed records</strong> of all trades</li>
-            </ul>
-          </div>
-        </section>
+        <h2>8. Fee Optimization Strategies</h2>
 
-        {/* Fee Optimization */}
-        <section className="space-y-4">
-          <h2 className="text-2xl font-bold text-primary border-b border-primary/20 pb-2">8. Fee Optimization Strategies</h2>
+        <h3>Minimize Trading Costs</h3>
+        <ul>
+          <li><strong>Use Polygon network</strong> - Much lower gas fees</li>
+          <li><strong>Trade during off-peak hours</strong> - Lower gas fees</li>
+          <li><strong>Batch transactions</strong> - Reduce gas costs</li>
+          <li><strong>Hold positions longer</strong> - Reduce round-trip fees</li>
+        </ul>
 
-          <div className="grid md:grid-cols-2 gap-4">
-            <div className="bg-green-500/10 border border-green-500/30 p-4 rounded-lg">
-              <h3 className="font-semibold text-green-400 mb-3">📉 Minimize Trading Costs</h3>
-              <ul className="space-y-1 text-sm">
-                <li><strong className="text-green-400">Use Polygon network</strong> - Much lower gas fees</li>
-                <li><strong className="text-green-400">Trade during off-peak hours</strong> - Lower gas fees</li>
-                <li><strong className="text-green-400">Batch transactions</strong> - Reduce gas costs</li>
-                <li><strong className="text-green-400">Hold positions longer</strong> - Reduce round-trip fees</li>
-              </ul>
-            </div>
+        <h3>Smart Withdrawal Strategy</h3>
+        <ul>
+          <li><strong>Withdraw over $100</strong> - Avoid ACH fees</li>
+          <li><strong>Use crypto withdrawals</strong> - Lowest fees</li>
+          <li><strong>Time withdrawals strategically</strong> - Avoid peak network congestion</li>
+        </ul>
 
-            <div className="bg-blue-500/10 border border-blue-500/30 p-4 rounded-lg">
-              <h3 className="font-semibold text-blue-400 mb-3">💰 Smart Withdrawal Strategy</h3>
-              <ul className="space-y-1 text-sm">
-                <li><strong className="text-blue-400">Withdraw over $100</strong> - Avoid ACH fees</li>
-                <li><strong className="text-blue-400">Use crypto withdrawals</strong> - Lowest fees</li>
-                <li><strong className="text-blue-400">Time withdrawals strategically</strong> - Avoid peak congestion</li>
-              </ul>
-            </div>
-          </div>
-        </section>
+        <h2>9. Complete Fee Breakdown Example</h2>
 
-        {/* Complete Fee Breakdown */}
-        <section className="space-y-4">
-          <h2 className="text-2xl font-bold text-primary border-b border-primary/20 pb-2">9. Complete Fee Breakdown Example</h2>
+        <h3>Scenario: $1000 Investment</h3>
+        <ul>
+          <li><strong>Deposit</strong> - $0 (ACH free)</li>
+          <li><strong>Buy transaction</strong> - $20 (2% of $1000)</li>
+          <li><strong>Gas fee</strong> - $2 (Polygon network)</li>
+          <li><strong>Sell transaction</strong> - $20 (2% of $1000)</li>
+          <li><strong>Gas fee</strong> - $2 (Polygon network)</li>
+          <li><strong>Withdrawal</strong> - $0 (ACH over $100)</li>
+          <li><strong>Total fees</strong> - $44 (4.4% of principal)</li>
+        </ul>
 
-          <div className="bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/30 p-6 rounded-lg">
-            <h3 className="text-xl font-semibold mb-4 text-center">💵 Scenario: $1000 Investment</h3>
+        <h2>Conclusion</h2>
+        <p>Polymarket's fee structure is relatively transparent compared to traditional financial markets. The 2% trading fee per side is standard for prediction markets, and using Polygon significantly reduces gas costs.</p>
 
-            <div className="grid gap-3">
-              <div className="flex justify-between items-center py-2 border-b border-primary/20">
-                <span className="font-medium">Deposit</span>
-                <span className="text-green-400 font-bold">$0 (ACH free)</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-primary/20">
-                <span className="font-medium">Buy transaction</span>
-                <span className="text-red-400 font-bold">$20 (2% of $1000)</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-primary/20">
-                <span className="font-medium">Gas fee (Polygon)</span>
-                <span className="text-yellow-400 font-bold">$2</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-primary/20">
-                <span className="font-medium">Sell transaction</span>
-                <span className="text-red-400 font-bold">$20 (2% of $1000)</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-primary/20">
-                <span className="font-medium">Gas fee (Polygon)</span>
-                <span className="text-yellow-400 font-bold">$2</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b-2 border-primary/40">
-                <span className="font-medium">Withdrawal</span>
-                <span className="text-green-400 font-bold">$0 (ACH over $100)</span>
-              </div>
-              <div className="flex justify-between items-center py-3 bg-primary/20 rounded px-3">
-                <span className="font-bold text-lg">Total fees</span>
-                <span className="font-bold text-lg text-primary">$44 (4.4% of principal)</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Key Takeaways */}
-        <section className="space-y-4">
-          <h2 className="text-2xl font-bold text-primary border-b border-primary/20 pb-2">🔑 Key Takeaways</h2>
-
-          <div className="grid gap-4">
-            <div className="bg-primary/5 border border-primary/30 p-4 rounded-lg">
-              <h3 className="font-semibold text-primary mb-2">💡 Fee Transparency</h3>
-              <p className="text-sm text-muted-foreground">Polymarket's fee structure is relatively transparent compared to traditional financial markets.</p>
-            </div>
-
-            <div className="bg-green-500/10 border border-green-500/30 p-4 rounded-lg">
-              <h3 className="font-semibold text-green-400 mb-2">✅ Network Choice Matters</h3>
-              <p className="text-sm text-muted-foreground">The 2% trading fee per side is standard for prediction markets, but using Polygon significantly reduces gas costs.</p>
-            </div>
-
-            <div className="bg-blue-500/10 border border-blue-500/30 p-4 rounded-lg">
-              <h3 className="font-semibold text-blue-400 mb-2">🎯 Profit Strategy</h3>
-              <p className="text-sm text-muted-foreground">The key to profitable trading is understanding how fees impact your returns and developing strategies to minimize them.</p>
-            </div>
-          </div>
-
-          <div className="bg-yellow-500/10 border border-yellow-500/30 p-4 rounded-lg mt-6">
-            <p className="text-center font-medium text-yellow-400">
-              Always calculate your expected returns after fees, and consider the total cost of each trade before entering positions.
-            </p>
-          </div>
-        </section>
+        <p>The key to profitable trading is understanding how fees impact your returns and developing strategies to minimize them. Always calculate your expected returns after fees, and consider the total cost of each trade before entering positions.</p>
       </div>
 
       {/* Back to Blog */}
@@ -405,17 +272,6 @@ const Blog = () => {
         </Button>
       </div>
     </article>
-  );
-
-  // Wrapper component to ensure footer visibility
-  const BlogPageWrapper = ({ children }: { children: React.ReactNode }) => (
-    <Layout>
-      <div className="flex flex-col min-h-screen">
-        <div className="flex-1 pb-16">
-          {children}
-        </div>
-      </div>
-    </Layout>
   );
 
   const coreTools = [
@@ -626,7 +482,7 @@ const Blog = () => {
 
   // Polymarket Tools Guide (original content)
   const PolymarketToolsGuide = () => (
-    <>
+    <Layout>
       {/* Hero Section */}
       <article className="container py-12 max-w-4xl">
         {/* Article Header */}
@@ -644,13 +500,13 @@ const Blog = () => {
               <span>10 min read</span>
             </div>
           </div>
-          
+
           <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight">
             Polymarket Tools - The Complete No-BS Guide for 2025
           </h1>
-          
+
           <p className="text-xl text-muted-foreground leading-relaxed">
-            Tested every tool in the Polymarket ecosystem. Most are mediocre. Some actually make money. 
+            Tested every tool in the Polymarket ecosystem. Most are mediocre. Some actually make money.
             Here is what matters when you are trying to profit from prediction markets. No fluff, only what gives you an edge.
           </p>
         </header>
@@ -665,7 +521,7 @@ const Blog = () => {
               <div>
                 <h3 className="font-semibold mb-2">The Bottom Line</h3>
                 <p className="text-muted-foreground">
-                  Cut through the noise. Focus on execution. These are the tools that actually move your PnL. 
+                  Cut through the noise. Focus on execution. These are the tools that actually move your PnL.
                   Tools marked with <Star className="h-3 w-3 inline text-primary" /> are personally tested and recommended.
                 </p>
               </div>
@@ -695,36 +551,36 @@ const Blog = () => {
         <Separator className="mb-12" />
 
         {/* Tool Sections */}
-        <ToolSection 
-          title="Core Accounts - You Need These" 
+        <ToolSection
+          title="Core Accounts - You Need These"
           icon={Zap}
           tools={coreTools}
           description="These are the essential accounts to follow. The foundation of staying informed in the Polymarket ecosystem."
         />
 
-        <ToolSection 
-          title="AI Assistance" 
+        <ToolSection
+          title="AI Assistance"
           icon={Brain}
           tools={aiTools}
           description="AI assistants for research, market analysis, and filtering noise. Pick one that fits your style and save hours of manual work."
         />
 
-        <ToolSection 
-          title="Data & Analytics" 
+        <ToolSection
+          title="Data & Analytics"
           icon={BarChart3}
           tools={analyticsTools}
           description="Information is everything. These tools give you the data edge - whale tracking, alerts, smart scores, and portfolio analytics."
         />
 
-        <ToolSection 
-          title="Trading Terminals & Bots" 
+        <ToolSection
+          title="Trading Terminals & Bots"
           icon={Smartphone}
           tools={tradingTools}
           description="Execute trades faster with terminals and bots. Trade from Telegram, mobile, or advanced desktop interfaces."
         />
 
-        <ToolSection 
-          title="Communities" 
+        <ToolSection
+          title="Communities"
           icon={Users}
           tools={communities}
           description="Connect with other traders. Learn from winners. Network matters in prediction markets."
@@ -737,7 +593,7 @@ const Blog = () => {
           <h2 className="text-2xl font-bold mb-4">Final Thoughts</h2>
           <div className="prose prose-invert max-w-none">
             <p className="text-muted-foreground mb-4">
-              The Polymarket ecosystem has exploded with tools. Not all of them are worth your time. 
+              The Polymarket ecosystem has exploded with tools. Not all of them are worth your time.
               Focus on the ones that directly impact your trading edge:
             </p>
             <ul className="list-disc list-inside text-muted-foreground space-y-2 mb-4">
@@ -781,16 +637,16 @@ const Blog = () => {
           ← Back to Blog
         </Button>
       </div>
-    </>
+    </Layout>
   );
 
   // Main return - show either listing or selected post
   if (selectedPost === 'polymarket-fees-guide') {
-    return <BlogPageWrapper><PolymarketFeesGuide /></BlogPageWrapper>;
+    return <PolymarketFeesGuide />;
   } else if (selectedPost === 'polymarket-tools-guide') {
-    return <BlogPageWrapper><PolymarketToolsGuide /></BlogPageWrapper>;
+    return <PolymarketToolsGuide />;
   } else {
-    return <BlogPageWrapper><BlogListing /></BlogPageWrapper>;
+    return <BlogListing />;
   }
 };
 

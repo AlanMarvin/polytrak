@@ -125,7 +125,7 @@ export const PublicRecentAnalyses = ({ className = '', compact = false }: Public
         <Globe className="h-4 w-4 text-muted-foreground" />
         <h3 className="text-sm font-medium text-muted-foreground">Recent public analyses</h3>
       </div>
-      <div className={`flex gap-2 overflow-x-auto pb-1 ${compact ? 'flex-wrap' : ''}`} style={{ scrollbarWidth: 'thin', scrollbarColor: 'hsl(var(--muted)) transparent' }}>
+      <div className={`flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent ${compact ? 'flex-wrap' : ''}`}>
         {analyses.map((analysis) => (
           <AnalysisItem
             key={analysis.id}
