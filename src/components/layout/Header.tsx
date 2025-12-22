@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, Moon, Sun } from 'lucide-react';
+import { Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import tradefoxLogo from '@/assets/tradefox-logo.png';
 
 export function Header() {
   const { theme, setTheme } = useTheme();
@@ -10,9 +11,11 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl">
       <div className="container flex h-16 items-center justify-between gap-4">
         <Link to="/" className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-            <TrendingUp className="h-5 w-5 text-primary-foreground" />
-          </div>
+          <img 
+            src={tradefoxLogo} 
+            alt="TradeFox" 
+            className="h-8 w-auto dark:brightness-100 brightness-0"
+          />
           <span className="hidden font-display text-xl font-bold sm:inline-block">
             Polytrak.io
           </span>
