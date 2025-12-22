@@ -39,6 +39,9 @@ export function Layout({ children }: LayoutProps) {
                 <a href="/blog" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                   Blog
                 </a>
+                <a href="/how-it-works" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                  How It Works
+                </a>
               </nav>
             </div>
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -358,7 +358,9 @@ const Index = () => {
       {/* How It Works Section */}
       <section className="container py-16">
         <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">How It Works</h2>
+          <Link to="/how-it-works" className="hover:text-primary transition-colors">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">How It Works</h2>
+          </Link>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
             From wallet address to optimized copy trading in 4 simple steps
           </p>

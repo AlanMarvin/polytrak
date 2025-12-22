@@ -28,6 +28,9 @@ export function Header() {
           <Link to="/blog" className="hidden sm:block">
             <Button variant="ghost" size="sm">Blog</Button>
           </Link>
+          <Link to="/how-it-works" className="hidden sm:block">
+            <Button variant="ghost" size="sm">How It Works</Button>
+          </Link>
           
           <Button 
             variant="ghost" 
