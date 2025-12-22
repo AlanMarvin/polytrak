@@ -413,7 +413,7 @@ const Index = () => {
 
       {/* CTA Section */}
       <section className="container pb-16">
-        <div className="relative overflow-hidden rounded-2xl border border-primary/20 p-12 md:p-16 max-w-lg mx-auto">
+        <div className="relative overflow-hidden rounded-2xl border border-primary/20 p-8 md:p-12">
           {/* Background Video */}
           <video
             autoPlay
