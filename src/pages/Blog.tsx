@@ -75,6 +75,7 @@ const Blog = () => {
 
   // Polymarket Fees Guide Content
   const PolymarketFeesGuide = () => (
+    <article className="container py-12 max-w-4xl">
       {/* Article Header */}
       <header className="mb-12">
         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
@@ -625,6 +626,7 @@ const Blog = () => {
 
   // Polymarket Tools Guide (original content)
   const PolymarketToolsGuide = () => (
+    <>
       {/* Hero Section */}
       <article className="container py-12 max-w-4xl">
         {/* Article Header */}
@@ -779,7 +781,7 @@ const Blog = () => {
           ← Back to Blog
         </Button>
       </div>
-    </Layout>
+    </>
   );
 
   // Main return - show either listing or selected post
