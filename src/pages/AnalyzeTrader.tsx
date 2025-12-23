@@ -703,12 +703,16 @@ const classifyTrader = (avgTradeSizeUsd: number, tradesPerDay: number): TraderCl
   return 'Moderate';
 };
 
+interface TradeFoxAdvancedSettingsWithHighFreq extends TradeFoxAdvancedSettings {
+  isHighFrequency: boolean;
+}
+
 const calculateAdvancedSettings = (
   allocation: number, 
   classification: TraderClassification,
   trader: TraderData | null,
   copySuitability: CopySuitability | null
-): TradeFoxAdvancedSettings => {
+): TradeFoxAdvancedSettingsWithHighFreq => {
   // Base calculations
   let maxMarket: number;
   let minMarket: number;
@@ -745,6 +749,11 @@ const calculateAdvancedSettings = (
   // Calculate trader-specific metrics
   const avgTradeSize = trader ? trader.volume / Math.max(1, trader.totalTrades) : 500;
   const tradesPerDay = copySuitability?.tradesPerDay || 3;
+  const tradesPerMonth = tradesPerDay * 30;
+  const closedPositions = trader?.closedPositions || 0;
+  
+  // High-frequency trader detection
+  const isHighFrequency = tradesPerMonth > 100 || closedPositions > 2000;
   
   // Min volume per market - based on trader's average trade size and liquidity needs
   // Higher frequency traders need more liquid markets
@@ -834,6 +843,15 @@ const calculateAdvancedSettings = (
   }
   maxTimeResolution = Math.round(maxTimeResolution);
 
+  // High-frequency overrides
+  if (isHighFrequency) {
+    maxTimeResolution = 14;
+    timeReason = 'Capped to 14 days for high-frequency trader';
+    maxSlippage = 2;
+    slippageReason = 'Tighter slippage control for high-frequency trading';
+    minMarket = Math.max(25, minMarket);
+  }
+
   return {
     maxMarket,
     maxMarketReason: `Caps exposure to ${Math.round((maxMarket / allocation) * 100)}% per market based on ${classification.toLowerCase()} profile`,
@@ -853,6 +871,7 @@ const calculateAdvancedSettings = (
     maxTimeUntilResolution: maxTimeResolution,
     maxTimeUntilResolutionReason: timeReason,
     traderClassification: classification,
+    isHighFrequency,
   };
 };
 
@@ -1314,6 +1333,18 @@ export default function AnalyzeTrader() {
         {/* Results Section */}
         {trader && !loading && (
           <>
+            {/* High-Frequency Trader Warning Banner */}
+            {(advancedSettings?.isHighFrequency || feeImpact?.level === 'High' || (feeImpact && feeImpact.netReturnLow < 0)) && (
+              <div className="mb-6 p-4 rounded-lg bg-orange-500/10 border border-orange-500/30 flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-orange-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm text-orange-300 font-medium">High-frequency trader detected</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Copy performance may differ due to fees &amp; slippage. Consider a smaller allocation.
+                  </p>
+                </div>
+              </div>
+            )}
             {/* Header */}
             <div className="mb-8">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
