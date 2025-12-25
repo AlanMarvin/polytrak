@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/hooks/useAuth";
+import { SiteStructuredData } from "@/components/seo/StructuredData";
 import Index from "./pages/Index";
 import TraderProfile from "./pages/TraderProfile";
 import AnalyzeTrader from "./pages/AnalyzeTrader";
@@ -24,6 +25,7 @@ const App = () => (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
       <AuthProvider>
         <TooltipProvider>
+          <SiteStructuredData />
           <Toaster />
           <Sonner />
           <BrowserRouter>

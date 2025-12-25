@@ -1,8 +1,14 @@
 import { Layout } from '@/components/layout/Layout';
+import { SEOHead } from '@/components/seo/SEOHead';
 
 const Disclaimer = () => {
   return (
     <Layout>
+      <SEOHead
+        title="Disclaimer & Terms of Use - PolyTrak | Legal Information"
+        description="Read PolyTrak's disclaimer and terms of use. Important legal information about our Polymarket analysis tool, data accuracy, and risk disclosure."
+        canonicalUrl="/disclaimer"
+      />
       <div className="container py-16 max-w-4xl mx-auto">
         <div className="prose prose-slate dark:prose-invert max-w-none">
           <h1 className="text-4xl font-bold mb-8">Disclaimer & Terms of Use</h1>

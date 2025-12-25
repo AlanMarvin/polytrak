@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { mockMarkets } from '@/lib/mock-data';
 import { Search, TrendingUp } from 'lucide-react';
+import { SEOHead } from '@/components/seo/SEOHead';
 
 const categories = ['All', 'Crypto', 'Politics', 'Sports', 'Tech', 'Entertainment', 'Economics'];
 
@@ -21,6 +22,11 @@ export default function Markets() {
 
   return (
     <Layout>
+      <SEOHead
+        title="Polymarket Markets - Browse Prediction Markets | PolyTrak"
+        description="Explore active Polymarket prediction markets. Browse crypto, politics, sports, and tech markets with real-time odds and trading activity."
+        canonicalUrl="/markets"
+      />
       <div className="container py-8">
         <div className="flex items-center gap-2 mb-6">
           <TrendingUp className="h-6 w-6 text-primary" />

@@ -10,6 +10,7 @@ import { Search, Brain, Sparkles, Target, ArrowRight, Zap, TrendingUp, Shield, S
 import tradeFoxLogo from '@/assets/tradefox-logo.png';
 import { RecentSearches } from '@/components/home/RecentSearches';
 import { PublicRecentAnalyses } from '@/components/analyze/PublicRecentAnalyses';
+import { SEOHead } from '@/components/seo/SEOHead';
 
 const Index = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -198,6 +199,11 @@ const Index = () => {
 
   return (
     <Layout>
+      <SEOHead
+        title="PolyTrak - AI-Powered Polymarket Trader Analysis | Copy Trading Optimizer"
+        description="Analyze any Polymarket trader's performance with AI. Get optimized copy trading settings for TheTradeFox based on Smart Score, Sharpe ratio, and risk analysis."
+        canonicalUrl="/"
+      />
       {/* Hero Section */}
       <section className="relative overflow-hidden border-b border-border/50">
         

@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import tradefoxLogo from '@/assets/tradefox-logo.png';
 import { LoadingProgress } from '@/components/analyze/LoadingProgress';
+import { SEOHead } from '@/components/seo/SEOHead';
 
 type ChartTimeFilter = '1D' | '1W' | '1M' | 'ALL';
 
@@ -1280,6 +1281,11 @@ export default function AnalyzeTrader() {
 
   return (
     <Layout>
+      <SEOHead
+        title="Analyze Polymarket Trader - AI Performance Analysis | PolyTrak"
+        description="Analyze any Polymarket trader's wallet. Get Smart Score, Sharpe ratio, PnL history, and AI-optimized copy trading settings for TheTradeFox."
+        canonicalUrl="/analyze"
+      />
       <div className="container py-8">
         {/* Search Section */}
         <div className="mb-8">
