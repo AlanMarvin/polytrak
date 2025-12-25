@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,53 +9,10 @@ import {
   MessageSquare, Smartphone, Bell, ArrowRight, Calendar,
   Clock, User
 } from 'lucide-react';
+import { SEOHead } from '@/components/seo/SEOHead';
+import { StructuredData } from '@/components/seo/StructuredData';
 
 const Blog = () => {
-  // SEO: Set document title and meta tags
-  useEffect(() => {
-    document.title = 'Polymarket Tools Guide 2025 - Best Trading Tools & Resources | PolyTracker';
-    
-    // Set meta description
-    const metaDescription = document.querySelector('meta[name="description"]');
-    if (metaDescription) {
-      metaDescription.setAttribute('content', 'Complete guide to Polymarket trading tools in 2025. Discover the best analytics, copy trading, AI assistants, and portfolio tracking tools to maximize your prediction market profits.');
-    } else {
-      const meta = document.createElement('meta');
-      meta.name = 'description';
-      meta.content = 'Complete guide to Polymarket trading tools in 2025. Discover the best analytics, copy trading, AI assistants, and portfolio tracking tools to maximize your prediction market profits.';
-      document.head.appendChild(meta);
-    }
-
-    // Add structured data for SEO
-    const structuredData = {
-      "@context": "https://schema.org",
-      "@type": "Article",
-      "headline": "Polymarket Tools - The Complete No-BS Guide for 2025",
-      "description": "Comprehensive guide to Polymarket trading tools, analytics platforms, and resources for prediction market traders.",
-      "author": {
-        "@type": "Organization",
-        "name": "PolyTracker"
-      },
-      "publisher": {
-        "@type": "Organization",
-        "name": "PolyTracker"
-      },
-      "datePublished": "2025-01-15",
-      "dateModified": "2025-01-15"
-    };
-
-    const script = document.createElement('script');
-    script.type = 'application/ld+json';
-    script.text = JSON.stringify(structuredData);
-    script.id = 'structured-data';
-    document.head.appendChild(script);
-
-    return () => {
-      const existingScript = document.getElementById('structured-data');
-      if (existingScript) existingScript.remove();
-    };
-  }, []);
-
   const coreTools = [
     { name: 'TradeFox', handle: '@tradefoxai', desc: 'Best liquidity across platforms. Spreads matter. Easy Bot Trading.', url: 'https://thetradefox.com', recommended: true },
     { name: 'Polymarket', handle: '@Polymarket', desc: 'The platform itself. Where your money goes.', url: 'https://polymarket.com', recommended: true },
@@ -186,6 +142,29 @@ const Blog = () => {
 
   return (
     <Layout>
+      <SEOHead
+        title="Polymarket Tools Guide 2025 - Best Trading Tools & Resources | PolyTrak"
+        description="Complete guide to Polymarket trading tools in 2025. Discover the best analytics, copy trading, AI assistants, and portfolio tracking tools."
+        canonicalUrl="/blog"
+        ogType="article"
+        article={{
+          publishedTime: '2025-01-15',
+          modifiedTime: '2025-01-15',
+          author: 'PolyTrak',
+        }}
+      />
+      <StructuredData
+        schema={{
+          type: 'Article',
+          headline: 'Polymarket Tools - The Complete No-BS Guide for 2025',
+          description: 'Comprehensive guide to Polymarket trading tools, analytics platforms, and resources for prediction market traders.',
+          author: 'PolyTrak',
+          publisher: 'PolyTrak',
+          datePublished: '2025-01-15',
+          dateModified: '2025-01-15',
+          url: 'https://polytrak.io/blog',
+        }}
+      />
       {/* Hero Section */}
       <article className="container py-12 max-w-4xl">
         {/* Article Header */}

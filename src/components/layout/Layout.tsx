@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { Header } from './Header';
 
 interface LayoutProps {
@@ -27,21 +28,21 @@ export function Layout({ children }: LayoutProps) {
             <div className="space-y-4">
               <h4 className="text-sm font-semibold">Navigation</h4>
               <nav className="flex flex-col space-y-2">
-                <a href="/" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                <Link to="/" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                   Home
-                </a>
-                <a href="/analyze" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                </Link>
+                <Link to="/analyze" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                   Analyze Trader
-                </a>
-                <a href="/markets" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                </Link>
+                <Link to="/markets" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                   Markets
-                </a>
-                <a href="/blog" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                </Link>
+                <Link to="/blog" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                   Blog
-                </a>
-                <a href="/how-it-works" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                </Link>
+                <Link to="/how-it-works" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                   How It Works
-                </a>
+                </Link>
               </nav>
             </div>
 
@@ -57,9 +58,9 @@ export function Layout({ children }: LayoutProps) {
                 >
                   GitHub
                 </a>
-                <a href="/disclaimer" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                <Link to="/disclaimer" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                   Terms and Disclaimer
-                </a>
+                </Link>
                 <a
                   href="https://thetradefox.com?ref=POLYTRAK"
                   target="_blank"
@@ -75,9 +76,9 @@ export function Layout({ children }: LayoutProps) {
             <div className="space-y-4">
               <h4 className="text-sm font-semibold">Contact</h4>
               <nav className="flex flex-col space-y-2">
-                <a href="/contact" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                <Link to="/contact" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                   Contact
-                </a>
+                </Link>
                 <a
                   href="https://twitter.com/alanmarv"
                   target="_blank"
