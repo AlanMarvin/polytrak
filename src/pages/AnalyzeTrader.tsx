@@ -33,11 +33,12 @@ import {
   Star, Copy, ExternalLink, TrendingUp, TrendingDown, 
   Wallet, Activity, Target, Clock, Search, ArrowRight,
   BarChart3, PieChart, Calendar, Zap, Brain, Gauge, Loader2, Info,
-  AlertTriangle
+  AlertTriangle, Settings2
 } from 'lucide-react';
 import tradefoxLogo from '@/assets/tradefox-logo.png';
 import { LoadingProgress } from '@/components/analyze/LoadingProgress';
 import { SEOHead } from '@/components/seo/SEOHead';
+import { EditCopyTradingModal, AdvancedSettingsModal } from '@/components/copy-trading';
 
 type ChartTimeFilter = '1D' | '1W' | '1M' | 'ALL';
 
@@ -1071,6 +1072,8 @@ export default function AnalyzeTrader() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [allocatedFunds, setAllocatedFunds] = useState(1000);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [advancedModalOpen, setAdvancedModalOpen] = useState(false);
   
   const { user } = useAuth();
   const { isWatching, addToWatchlist, removeFromWatchlist } = useWatchlist();
@@ -2620,6 +2623,19 @@ export default function AnalyzeTrader() {
                   If you sign up using my referral link, it really helps support Polytrak.io and lets me keep building new features.
                 </p>
                 
+                {/* Configure Copy Settings Button */}
+                {copyStrategy && advancedSettings && (
+                  <Button
+                    onClick={() => setEditModalOpen(true)}
+                    variant="outline"
+                    className="w-full border-primary/50 text-primary hover:bg-primary/10"
+                    size="lg"
+                  >
+                    <Settings2 className="h-4 w-4 mr-2" />
+                    View Copy Settings
+                  </Button>
+                )}
+                
                 {/* Referral Link */}
                 <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30 border border-border/50">
                   <code className="text-sm text-primary flex-1 break-all">
@@ -2778,6 +2794,72 @@ export default function AnalyzeTrader() {
           </div>
         )}
       </div>
+
+      {/* Copy Trading Modals */}
+      {copyStrategy && advancedSettings && (
+        <>
+          <EditCopyTradingModal
+            open={editModalOpen}
+            onOpenChange={setEditModalOpen}
+            settings={{
+              allocatedFunds,
+              tradeSizePercent: copyStrategy.tradeSize,
+              copyPercentage: copyStrategy.copyPercentage,
+              followExits: copyStrategy.followExits,
+              availableBalance: allocatedFunds * 0.26, // Placeholder - shows ~26% available
+              spentOnTrader: allocatedFunds * 0.74, // Placeholder - shows ~74% spent
+            }}
+            onSettingsChange={(updates) => {
+              if (updates.allocatedFunds !== undefined) {
+                setAllocatedFunds(updates.allocatedFunds);
+              }
+            }}
+            onOpenAdvanced={() => {
+              setEditModalOpen(false);
+              setAdvancedModalOpen(true);
+            }}
+            onSave={() => {
+              setEditModalOpen(false);
+              toast({ title: 'Settings saved', description: 'Your copy trading settings have been updated.' });
+            }}
+            onStopCopy={() => {
+              setEditModalOpen(false);
+              toast({ title: 'Copy trading stopped', variant: 'destructive' });
+            }}
+            traderName={trader?.username || undefined}
+          />
+
+          <AdvancedSettingsModal
+            open={advancedModalOpen}
+            onOpenChange={setAdvancedModalOpen}
+            settings={{
+              maxAmountPerMarket: advancedSettings.maxMarket,
+              minAmountPerMarket: advancedSettings.minMarket,
+              maxCopyAmountPerTrade: advancedSettings.maxCopyPerTrade,
+              minVolumePerMarket: advancedSettings.minVolumePerMarket,
+              minLiquidityPerMarket: advancedSettings.minLiquidityPerMarket,
+              marketPriceRangeMin: advancedSettings.marketPriceRangeMin,
+              marketPriceRangeMax: advancedSettings.marketPriceRangeMax,
+              maxSlippagePerMarket: advancedSettings.maxSlippagePerMarket,
+              maxTimeUntilResolution: advancedSettings.maxTimeUntilResolution,
+            }}
+            onSettingsChange={() => {
+              // Settings are read-only in PolyTrak
+            }}
+            onSave={() => {
+              setAdvancedModalOpen(false);
+              setEditModalOpen(true);
+            }}
+            onReset={() => {
+              toast({ title: 'Settings reset to default' });
+            }}
+            onBack={() => {
+              setAdvancedModalOpen(false);
+              setEditModalOpen(true);
+            }}
+          />
+        </>
+      )}
     </Layout>
   );
 }
