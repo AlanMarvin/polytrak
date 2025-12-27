@@ -505,7 +505,40 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
     ? validHistory[0].timestamp 
     : Date.now() - (30 * 24 * 60 * 60 * 1000);
   const tradesPerMonth = Math.min(totalTrades / Math.max(1, (Date.now() - firstValidTimestamp) / (30 * 24 * 60 * 60 * 1000)), 30);
-  const expectedMonthlyReturn = expectedTradeReturn * (copyPercentage / 100) * (tradeSize / 100) * tradesPerMonth * 100;
+  let expectedMonthlyReturn = expectedTradeReturn * (copyPercentage / 100) * (tradeSize / 100) * tradesPerMonth * 100;
+
+  // Apply bot detection adjustments to prevent unrealistic returns
+  if (copySuitability) {
+    const botFlags = copySuitability.flags;
+    let botReductionMultiplier = 1.0;
+
+    // Check for high-frequency trading (likely bot behavior)
+    if (botFlags.some(flag => flag.includes('High trade frequency') || flag.includes('Small trade sizes with high frequency'))) {
+      botReductionMultiplier *= 0.3; // Reduce by 70% for high-frequency patterns
+      reasoning.push('⚠️ High-frequency trading detected - return estimate significantly reduced');
+    }
+
+    // Check for execution-dependent strategies (difficult to replicate)
+    if (botFlags.some(flag => flag.includes('Low profit margin on high volume'))) {
+      botReductionMultiplier *= 0.5; // Reduce by 50% for execution-dependent strategies
+      reasoning.push('⚠️ Execution-dependent strategy - return estimate reduced for realism');
+    }
+
+    // Check for high position churn (frequent adjustments)
+    if (botFlags.some(flag => flag.includes('High position churn'))) {
+      botReductionMultiplier *= 0.7; // Reduce by 30% for high churn
+      reasoning.push('⚠️ High position adjustment frequency - return estimate moderated');
+    }
+
+    // Cap maximum expected monthly return to realistic levels
+    const maxRealisticReturn = 50; // 50% monthly maximum for realistic trading
+    if (expectedMonthlyReturn > maxRealisticReturn) {
+      botReductionMultiplier *= maxRealisticReturn / expectedMonthlyReturn;
+      reasoning.push(`⚠️ Return estimate capped at ${maxRealisticReturn}% for realistic expectations`);
+    }
+
+    expectedMonthlyReturn *= botReductionMultiplier;
+  }
   
   // Max drawdown estimation (simplified)
   const maxConsecutiveLosses = Math.ceil(Math.log(0.01) / Math.log(1 - winRate)); // 99% confidence
