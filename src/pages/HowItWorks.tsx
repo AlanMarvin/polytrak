@@ -9,6 +9,7 @@ import {
   Users, BarChart3, Settings, Wallet, ExternalLink
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { SEOHead } from '@/components/seo/SEOHead';
 
 const HowItWorks = () => {
   const steps = [
@@ -75,6 +76,11 @@ const HowItWorks = () => {
 
   return (
     <Layout>
+      <SEOHead
+        title="How PolyTrak Works - Copy Trading Optimization Guide | PolyTrak"
+        description="Learn how to use PolyTrak to analyze Polymarket traders and get optimized copy trading settings for TheTradeFox. Step-by-step guide."
+        canonicalUrl="/how-it-works"
+      />
       <div className="container py-16 max-w-4xl">
         {/* Header */}
         <div className="text-center mb-16">

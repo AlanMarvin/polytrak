@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Mail, MessageSquare, Github, Twitter, CheckCircle, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { SEOHead } from '@/components/seo/SEOHead';
+import { StructuredData } from '@/components/seo/StructuredData';
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -72,6 +74,30 @@ const Contact = () => {
   };
   return (
     <Layout>
+      <SEOHead
+        title="Contact Us - PolyTrak | Polymarket Trader Analysis Support"
+        description="Get in touch with the PolyTrak team. Questions about Polymarket trader analysis or copy trading optimization? We're here to help."
+        canonicalUrl="/contact"
+      />
+      <StructuredData
+        schema={{
+          type: 'FAQPage',
+          questions: [
+            {
+              question: 'How does the AI analysis work?',
+              answer: 'Our AI analyzes trading patterns, win rates, and risk metrics to provide optimized copy trading settings.',
+            },
+            {
+              question: 'Is PolyTrak free to use?',
+              answer: 'Yes, basic trader analysis is completely free. Premium features may be added in the future.',
+            },
+            {
+              question: 'How do I integrate with TheTradeFox?',
+              answer: 'Use the optimized settings provided by our analysis when setting up copy trading on TheTradeFox platform.',
+            },
+          ],
+        }}
+      />
       <div className="container py-16 max-w-4xl mx-auto">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold mb-4">Contact Us</h1>

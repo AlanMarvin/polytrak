@@ -33,10 +33,12 @@ import {
   Star, Copy, ExternalLink, TrendingUp, TrendingDown, 
   Wallet, Activity, Target, Clock, Search, ArrowRight,
   BarChart3, PieChart, Calendar, Zap, Brain, Gauge, Loader2, Info,
-  AlertTriangle
+  AlertTriangle, Settings2
 } from 'lucide-react';
 import tradefoxLogo from '@/assets/tradefox-logo.png';
 import { LoadingProgress } from '@/components/analyze/LoadingProgress';
+import { SEOHead } from '@/components/seo/SEOHead';
+import { EditCopyTradingModal, AdvancedSettingsModal } from '@/components/copy-trading';
 
 type ChartTimeFilter = '1D' | '1W' | '1M' | 'ALL';
 
@@ -704,8 +706,22 @@ type TraderClassification = 'Conservative' | 'Moderate' | 'Aggressive';
 
 interface TradeFoxAdvancedSettings {
   maxMarket: number;
+  maxMarketReason: string;
   minMarket: number;
+  minMarketReason: string;
   maxCopyPerTrade: number;
+  maxCopyPerTradeReason: string;
+  minVolumePerMarket: number;
+  minVolumePerMarketReason: string;
+  minLiquidityPerMarket: number;
+  minLiquidityPerMarketReason: string;
+  marketPriceRangeMin: number;
+  marketPriceRangeMax: number;
+  marketPriceRangeReason: string;
+  maxSlippagePerMarket: number;
+  maxSlippagePerMarketReason: string;
+  maxTimeUntilResolution: number;
+  maxTimeUntilResolutionReason: string;
   traderClassification: TraderClassification;
 }
 
@@ -722,7 +738,17 @@ const classifyTrader = (avgTradeSizeUsd: number, tradesPerDay: number): TraderCl
   return 'Moderate';
 };
 
-const calculateAdvancedSettings = (allocation: number, classification: TraderClassification): TradeFoxAdvancedSettings => {
+interface TradeFoxAdvancedSettingsWithHighFreq extends TradeFoxAdvancedSettings {
+  isHighFrequency: boolean;
+}
+
+const calculateAdvancedSettings = (
+  allocation: number, 
+  classification: TraderClassification,
+  trader: TraderData | null,
+  copySuitability: CopySuitability | null
+): TradeFoxAdvancedSettingsWithHighFreq => {
+  // Base calculations
   let maxMarket: number;
   let minMarket: number;
   let maxCopyPerTrade: number;
@@ -746,25 +772,141 @@ const calculateAdvancedSettings = (allocation: number, classification: TraderCla
       break;
   }
 
-  // Round maxMarket and maxCopyPerTrade to nearest $5
+  // Round to nearest $5
   maxMarket = Math.round(maxMarket / 5) * 5;
   maxCopyPerTrade = Math.round(maxCopyPerTrade / 5) * 5;
+  minMarket = Math.round(minMarket);
 
-  // Validations (auto-fix silently)
-  // Ensure minMarket <= maxMarket
-  if (minMarket > maxMarket) {
-    minMarket = maxMarket;
+  // Validations
+  if (minMarket > maxMarket) minMarket = maxMarket;
+  if (maxCopyPerTrade > maxMarket) maxCopyPerTrade = maxMarket;
+
+  // Calculate trader-specific metrics
+  const avgTradeSize = trader ? trader.volume / Math.max(1, trader.totalTrades) : 500;
+  const tradesPerDay = copySuitability?.tradesPerDay || 3;
+  const tradesPerMonth = tradesPerDay * 30;
+  const closedPositions = trader?.closedPositions || 0;
+  
+  // High-frequency trader detection
+  const isHighFrequency = tradesPerMonth > 100 || closedPositions > 2000;
+  
+  // Min volume per market - based on trader's average trade size and liquidity needs
+  // Higher frequency traders need more liquid markets
+  let minVolumePerMarket: number;
+  let minVolumeReason: string;
+  if (tradesPerDay > 10) {
+    minVolumePerMarket = Math.max(50000, avgTradeSize * 100);
+    minVolumeReason = 'High trade frequency requires deep market volume';
+  } else if (tradesPerDay > 5) {
+    minVolumePerMarket = Math.max(25000, avgTradeSize * 50);
+    minVolumeReason = 'Moderate frequency needs decent market depth';
+  } else {
+    minVolumePerMarket = Math.max(10000, avgTradeSize * 20);
+    minVolumeReason = 'Lower frequency allows smaller markets';
   }
-  // Ensure maxCopyPerTrade <= maxMarket
-  if (maxCopyPerTrade > maxMarket) {
-    maxCopyPerTrade = maxMarket;
+  minVolumePerMarket = Math.round(minVolumePerMarket / 1000) * 1000;
+
+  // Min liquidity per market - based on trade size vs slippage tolerance
+  let minLiquidityPerMarket: number;
+  let minLiquidityReason: string;
+  if (avgTradeSize > 1000) {
+    minLiquidityPerMarket = Math.max(10000, avgTradeSize * 10);
+    minLiquidityReason = 'Large trade sizes need high liquidity to avoid slippage';
+  } else if (avgTradeSize > 500) {
+    minLiquidityPerMarket = Math.max(5000, avgTradeSize * 8);
+    minLiquidityReason = 'Medium trades need moderate liquidity buffer';
+  } else {
+    minLiquidityPerMarket = Math.max(2000, avgTradeSize * 5);
+    minLiquidityReason = 'Smaller trades can handle lower liquidity';
+  }
+  minLiquidityPerMarket = Math.round(minLiquidityPerMarket / 500) * 500;
+
+  // Market price range - based on trader risk profile
+  let priceMin: number;
+  let priceMax: number;
+  let priceRangeReason: string;
+  switch (classification) {
+    case 'Conservative':
+      priceMin = 25;
+      priceMax = 75;
+      priceRangeReason = 'Avoids extreme outcomes for lower variance';
+      break;
+    case 'Aggressive':
+      priceMin = 5;
+      priceMax = 95;
+      priceRangeReason = 'Allows high-risk/high-reward positions';
+      break;
+    case 'Moderate':
+    default:
+      priceMin = 15;
+      priceMax = 85;
+      priceRangeReason = 'Balanced range avoiding extreme tails';
+      break;
+  }
+
+  // Max slippage - based on trade frequency
+  let maxSlippage: number;
+  let slippageReason: string;
+  if (tradesPerDay > 10) {
+    maxSlippage = 1;
+    slippageReason = 'Tight slippage for frequent trading';
+  } else if (tradesPerDay > 5) {
+    maxSlippage = 2;
+    slippageReason = 'Moderate slippage tolerance';
+  } else {
+    maxSlippage = 3;
+    slippageReason = 'Can accept more slippage for infrequent trades';
+  }
+
+  // Max time until resolution - based on trader's holding patterns
+  // Estimate from positions data or use defaults
+  let maxTimeResolution: number;
+  let timeReason: string;
+  const avgPositionDuration = trader && trader.closedPositions > 0 
+    ? Math.min(90, Math.max(7, trader.closedPositions / Math.max(1, trader.totalTrades / 30)))
+    : 30;
+  
+  if (classification === 'Conservative') {
+    maxTimeResolution = Math.min(60, avgPositionDuration * 1.5);
+    timeReason = 'Shorter horizons reduce uncertainty';
+  } else if (classification === 'Aggressive') {
+    maxTimeResolution = Math.min(180, avgPositionDuration * 3);
+    timeReason = 'Longer horizons for larger potential moves';
+  } else {
+    maxTimeResolution = Math.min(90, avgPositionDuration * 2);
+    timeReason = 'Balanced time horizon';
+  }
+  maxTimeResolution = Math.round(maxTimeResolution);
+
+  // High-frequency overrides
+  if (isHighFrequency) {
+    maxTimeResolution = 14;
+    timeReason = 'Capped to 14 days for high-frequency trader';
+    maxSlippage = 2;
+    slippageReason = 'Tighter slippage control for high-frequency trading';
+    minMarket = Math.max(25, minMarket);
   }
 
   return {
     maxMarket,
+    maxMarketReason: `Caps exposure to ${Math.round((maxMarket / allocation) * 100)}% per market based on ${classification.toLowerCase()} profile`,
     minMarket,
+    minMarketReason: minMarket >= 25 ? 'Avoids dust trades where fees exceed potential profit' : 'Set to minimum viable trade size',
     maxCopyPerTrade,
+    maxCopyPerTradeReason: `Limits single execution to control risk from volatile moves`,
+    minVolumePerMarket,
+    minVolumePerMarketReason: minVolumeReason,
+    minLiquidityPerMarket,
+    minLiquidityPerMarketReason: minLiquidityReason,
+    marketPriceRangeMin: priceMin,
+    marketPriceRangeMax: priceMax,
+    marketPriceRangeReason: priceRangeReason,
+    maxSlippagePerMarket: maxSlippage,
+    maxSlippagePerMarketReason: slippageReason,
+    maxTimeUntilResolution: maxTimeResolution,
+    maxTimeUntilResolutionReason: timeReason,
     traderClassification: classification,
+    isHighFrequency,
   };
 };
 
@@ -963,6 +1105,8 @@ export default function AnalyzeTrader() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [allocatedFunds, setAllocatedFunds] = useState(1000);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [advancedModalOpen, setAdvancedModalOpen] = useState(false);
   
   const { user } = useAuth();
   const { isWatching, addToWatchlist, removeFromWatchlist } = useWatchlist();
@@ -1040,8 +1184,8 @@ export default function AnalyzeTrader() {
   const advancedSettings = useMemo(() => {
     if (!copySuitability) return null;
     const classification = classifyTrader(copySuitability.avgTradeSizeUsd, copySuitability.tradesPerDay);
-    return calculateAdvancedSettings(allocatedFunds, classification);
-  }, [copySuitability, allocatedFunds]);
+    return calculateAdvancedSettings(allocatedFunds, classification, trader, copySuitability);
+  }, [copySuitability, allocatedFunds, trader]);
   
   const riskRegime = useMemo(() => trader ? calculateRiskRegime(trader) : null, [trader]);
   const marketFocus = useMemo(() => trader ? calculateMarketFocus(trader) : null, [trader]);
@@ -1173,6 +1317,11 @@ export default function AnalyzeTrader() {
 
   return (
     <Layout>
+      <SEOHead
+        title="Analyze Polymarket Trader - AI Performance Analysis | PolyTrak"
+        description="Analyze any Polymarket trader's wallet. Get Smart Score, Sharpe ratio, PnL history, and AI-optimized copy trading settings for TheTradeFox."
+        canonicalUrl="/analyze"
+      />
       <div className="container py-8">
         {/* Search Section */}
         <div className="mb-8">
@@ -1226,6 +1375,18 @@ export default function AnalyzeTrader() {
         {/* Results Section */}
         {trader && !loading && (
           <>
+            {/* High-Frequency Trader Warning Banner */}
+            {(advancedSettings?.isHighFrequency || feeImpact?.level === 'High' || (feeImpact && feeImpact.netReturnLow < 0)) && (
+              <div className="mb-6 p-4 rounded-lg bg-orange-500/10 border border-orange-500/30 flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-orange-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm text-orange-300 font-medium">High-frequency trader detected</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Copy performance may differ due to fees &amp; slippage. Consider a smaller allocation.
+                  </p>
+                </div>
+              </div>
+            )}
             {/* Header */}
             <div className="mb-8">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -2052,38 +2213,104 @@ export default function AnalyzeTrader() {
                       </div>
                     </div>
 
-                    {/* Advanced Settings (TradeFox) - Read Only */}
+                    {/* Advanced Copy Settings (Auto-Configured) */}
                     <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
-                      <h4 className="text-sm font-semibold text-amber-400 mb-4 flex items-center gap-2">
-                        <Zap className="h-4 w-4" />
-                        Advanced Settings (TradeFox)
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="space-y-1">
+                      <div className="mb-4">
+                        <h4 className="text-sm font-semibold text-amber-400 mb-2 flex items-center gap-2">
+                          <Zap className="h-4 w-4" />
+                          Advanced Copy Settings (Auto-Configured)
+                        </h4>
+                        <p className="text-xs text-muted-foreground">
+                          PolyTrak automatically configures TradeFox's advanced copy-trading settings based on this trader's real behavior and your budget. This helps reduce slippage, avoid illiquid markets, and control risk without manual tuning.
+                        </p>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Max amount per market */}
+                        <div className="p-3 rounded-lg bg-background/50 space-y-1">
                           <span className="text-sm text-muted-foreground">Max amount per market</span>
-                          <p className="text-2xl font-bold text-amber-400 font-mono">
+                          <p className="text-xl font-bold text-amber-400 font-mono">
                             ${advancedSettings.maxMarket.toLocaleString()}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Caps total exposure to a single market.
+                            {advancedSettings.maxMarketReason}
                           </p>
                         </div>
-                        <div className="space-y-1">
+                        
+                        {/* Min amount per market */}
+                        <div className="p-3 rounded-lg bg-background/50 space-y-1">
                           <span className="text-sm text-muted-foreground">Min amount per market</span>
-                          <p className="text-2xl font-bold text-amber-400 font-mono">
+                          <p className="text-xl font-bold text-amber-400 font-mono">
                             ${advancedSettings.minMarket.toLocaleString()}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Avoids inefficient micro-trades.
+                            {advancedSettings.minMarketReason}
                           </p>
                         </div>
-                        <div className="space-y-1">
+                        
+                        {/* Max copy amount per trade */}
+                        <div className="p-3 rounded-lg bg-background/50 space-y-1">
                           <span className="text-sm text-muted-foreground">Max copy amount per trade</span>
-                          <p className="text-2xl font-bold text-amber-400 font-mono">
+                          <p className="text-xl font-bold text-amber-400 font-mono">
                             ${advancedSettings.maxCopyPerTrade.toLocaleString()}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Caps each copied execution.
+                            {advancedSettings.maxCopyPerTradeReason}
+                          </p>
+                        </div>
+                        
+                        {/* Min volume per market */}
+                        <div className="p-3 rounded-lg bg-background/50 space-y-1">
+                          <span className="text-sm text-muted-foreground">Min volume per market</span>
+                          <p className="text-xl font-bold text-amber-400 font-mono">
+                            ${advancedSettings.minVolumePerMarket.toLocaleString()}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {advancedSettings.minVolumePerMarketReason}
+                          </p>
+                        </div>
+                        
+                        {/* Min liquidity per market */}
+                        <div className="p-3 rounded-lg bg-background/50 space-y-1">
+                          <span className="text-sm text-muted-foreground">Min liquidity per market</span>
+                          <p className="text-xl font-bold text-amber-400 font-mono">
+                            ${advancedSettings.minLiquidityPerMarket.toLocaleString()}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {advancedSettings.minLiquidityPerMarketReason}
+                          </p>
+                        </div>
+                        
+                        {/* Market price range */}
+                        <div className="p-3 rounded-lg bg-background/50 space-y-1">
+                          <span className="text-sm text-muted-foreground">Market price range</span>
+                          <p className="text-xl font-bold text-amber-400 font-mono">
+                            {advancedSettings.marketPriceRangeMin}¢ – {advancedSettings.marketPriceRangeMax}¢
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {advancedSettings.marketPriceRangeReason}
+                          </p>
+                        </div>
+                        
+                        {/* Max slippage per market */}
+                        <div className="p-3 rounded-lg bg-background/50 space-y-1">
+                          <span className="text-sm text-muted-foreground">Max slippage per market</span>
+                          <p className="text-xl font-bold text-amber-400 font-mono">
+                            {advancedSettings.maxSlippagePerMarket}%
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {advancedSettings.maxSlippagePerMarketReason}
+                          </p>
+                        </div>
+                        
+                        {/* Max time until resolution */}
+                        <div className="p-3 rounded-lg bg-background/50 space-y-1">
+                          <span className="text-sm text-muted-foreground">Max time until resolution</span>
+                          <p className="text-xl font-bold text-amber-400 font-mono">
+                            {advancedSettings.maxTimeUntilResolution} days
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {advancedSettings.maxTimeUntilResolutionReason}
                           </p>
                         </div>
                       </div>
@@ -2429,6 +2656,19 @@ export default function AnalyzeTrader() {
                   If you sign up using my referral link, it really helps support Polytrak.io and lets me keep building new features.
                 </p>
                 
+                {/* Configure Copy Settings Button */}
+                {copyStrategy && advancedSettings && (
+                  <Button
+                    onClick={() => setEditModalOpen(true)}
+                    variant="outline"
+                    className="w-full border-primary/50 text-primary hover:bg-primary/10"
+                    size="lg"
+                  >
+                    <Settings2 className="h-4 w-4 mr-2" />
+                    View Copy Settings
+                  </Button>
+                )}
+                
                 {/* Referral Link */}
                 <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30 border border-border/50">
                   <code className="text-sm text-primary flex-1 break-all">
@@ -2587,6 +2827,72 @@ export default function AnalyzeTrader() {
           </div>
         )}
       </div>
+
+      {/* Copy Trading Modals */}
+      {copyStrategy && advancedSettings && (
+        <>
+          <EditCopyTradingModal
+            open={editModalOpen}
+            onOpenChange={setEditModalOpen}
+            settings={{
+              allocatedFunds,
+              tradeSizePercent: copyStrategy.tradeSize,
+              copyPercentage: copyStrategy.copyPercentage,
+              followExits: copyStrategy.followExits,
+              availableBalance: allocatedFunds * 0.26, // Placeholder - shows ~26% available
+              spentOnTrader: allocatedFunds * 0.74, // Placeholder - shows ~74% spent
+            }}
+            onSettingsChange={(updates) => {
+              if (updates.allocatedFunds !== undefined) {
+                setAllocatedFunds(updates.allocatedFunds);
+              }
+            }}
+            onOpenAdvanced={() => {
+              setEditModalOpen(false);
+              setAdvancedModalOpen(true);
+            }}
+            onSave={() => {
+              setEditModalOpen(false);
+              toast({ title: 'Settings saved', description: 'Your copy trading settings have been updated.' });
+            }}
+            onStopCopy={() => {
+              setEditModalOpen(false);
+              toast({ title: 'Copy trading stopped', variant: 'destructive' });
+            }}
+            traderName={trader?.username || undefined}
+          />
+
+          <AdvancedSettingsModal
+            open={advancedModalOpen}
+            onOpenChange={setAdvancedModalOpen}
+            settings={{
+              maxAmountPerMarket: advancedSettings.maxMarket,
+              minAmountPerMarket: advancedSettings.minMarket,
+              maxCopyAmountPerTrade: advancedSettings.maxCopyPerTrade,
+              minVolumePerMarket: advancedSettings.minVolumePerMarket,
+              minLiquidityPerMarket: advancedSettings.minLiquidityPerMarket,
+              marketPriceRangeMin: advancedSettings.marketPriceRangeMin,
+              marketPriceRangeMax: advancedSettings.marketPriceRangeMax,
+              maxSlippagePerMarket: advancedSettings.maxSlippagePerMarket,
+              maxTimeUntilResolution: advancedSettings.maxTimeUntilResolution,
+            }}
+            onSettingsChange={() => {
+              // Settings are read-only in PolyTrak
+            }}
+            onSave={() => {
+              setAdvancedModalOpen(false);
+              setEditModalOpen(true);
+            }}
+            onReset={() => {
+              toast({ title: 'Settings reset to default' });
+            }}
+            onBack={() => {
+              setAdvancedModalOpen(false);
+              setEditModalOpen(true);
+            }}
+          />
+        </>
+      )}
     </Layout>
   );
 }
