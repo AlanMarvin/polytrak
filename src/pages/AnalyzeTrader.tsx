@@ -922,51 +922,62 @@ interface CopySuitability {
 
 const calculateCopySuitability = (trader: TraderData): CopySuitability => {
   const flags: string[] = [];
-  
+
   // Calculate metrics - filter out invalid timestamps (timestamp 0 or before year 2001)
   const history = trader.pnlHistory || [];
   const validHistory = history.filter(h => h.timestamp > 1000000000000);
-  const firstTrade = validHistory.length > 0 
-    ? validHistory[0].timestamp 
+
+  // Calculate trades per day based on recent activity (last 90 days) for more accurate assessment
+  const ninetyDaysAgo = Date.now() - (90 * 24 * 60 * 60 * 1000);
+  const recentHistory = validHistory.filter(h => h.timestamp > ninetyDaysAgo);
+  const recentTradingDays = Math.max(1, (Date.now() - ninetyDaysAgo) / (24 * 60 * 60 * 1000));
+  // Estimate trades per day from recent activity, but if no recent history, fall back to overall average
+  const recentTradesPerDay = recentHistory.length > 0
+    ? (recentHistory.length / recentTradingDays)
+    : (trader.totalTrades / Math.max(1, (Date.now() - (validHistory.length > 0 ? validHistory[0].timestamp : Date.now() - (30 * 24 * 60 * 60 * 1000))) / (24 * 60 * 60 * 1000)));
+  const tradesPerDay = recentTradesPerDay;
+
+  // Calculate total trading days for history assessment
+  const firstTrade = validHistory.length > 0
+    ? validHistory[0].timestamp
     : Date.now() - (30 * 24 * 60 * 60 * 1000);
   const tradingDays = Math.max(1, (Date.now() - firstTrade) / (24 * 60 * 60 * 1000));
-  const tradesPerDay = trader.totalTrades / tradingDays;
-  
+
   const totalPositions = Math.max(1, trader.closedPositions + trader.positions);
   const tradesPerPosition = trader.totalTrades / totalPositions;
-  
+
   const avgTradeSizeUsd = trader.volume / Math.max(1, trader.totalTrades);
-  
+
   // Thresholds (lowered for more realistic detection)
   const HIGH_FREQUENCY_THRESHOLD = 25; // trades per day
   const HIGH_CHURN_THRESHOLD = 2.0; // trades per position
   const MICRO_TRADE_SIZE = 500; // USD
   const MICRO_TRADE_FREQ = 15; // trades per day
   const LOW_WIN_RATE = 48; // %
-  const SHORT_HISTORY_DAYS = 14;
-  
+  const SHORT_HISTORY_DAYS = 30; // Increased from 14 for more conservative assessment
+
   // Rule 1: High trade frequency (active trader/market maker behavior)
   if (tradesPerDay > HIGH_FREQUENCY_THRESHOLD) {
     flags.push('High trade frequency (>25/day)');
   }
-  
+
   // Rule 2: High churn - many trades per position (constant adjustments)
   if (tradesPerPosition > HIGH_CHURN_THRESHOLD) {
     flags.push('High position churn (frequent adjustments)');
   }
-  
+
   // Rule 3: Micro-trade pattern - small trades + moderate frequency
   if (avgTradeSizeUsd < MICRO_TRADE_SIZE && tradesPerDay > MICRO_TRADE_FREQ) {
     flags.push('Small trade sizes with high frequency');
   }
-  
+
   // Rule 4: Low win rate - risky to copy
   if (trader.winRate < LOW_WIN_RATE) {
     flags.push('Below break-even win rate');
   }
-  
+
   // Rule 5: Short trading history - insufficient data
-  if (tradingDays < SHORT_HISTORY_DAYS && trader.closedPositions < 20) {
+  if (tradingDays < SHORT_HISTORY_DAYS || trader.closedPositions < 50) {
     flags.push('Limited trading history');
   }
   
@@ -985,8 +996,12 @@ const calculateCopySuitability = (trader: TraderData): CopySuitability => {
   let rating: 'High' | 'Medium' | 'Low';
   let executionDependent: boolean;
   
-  // Critical flags that automatically lower rating
-  const criticalFlags = ['Negative overall PnL', 'Below break-even win rate'];
+  // Critical flags that automatically lower rating to Low
+  const criticalFlags = [
+    'Negative overall PnL',
+    'Below break-even win rate',
+    'Limited trading history'
+  ];
   const hasCriticalFlag = flags.some(f => criticalFlags.includes(f));
   
   if (flags.length >= 3 || (flags.length >= 2 && hasCriticalFlag)) {
@@ -1032,8 +1047,21 @@ const calculateFeeImpact = (
   const CASHBACK_RATE = 0.05;  // 5%
   const EFFECTIVE_FEE = NET_FEE_RATE * (1 - CASHBACK_RATE); // ~0.90%
   
-  // Use actual trades30d from trader data if available, otherwise estimate
-  const tradesPerMonth = trader.trades30d || Math.round(copySuitability.tradesPerDay * 30);
+  // Use actual trades30d from trader data if available, otherwise estimate consistently
+  let tradesPerMonth: number;
+  if (trader.trades30d) {
+    tradesPerMonth = trader.trades30d;
+  } else {
+    // Calculate based on same logic as copySuitability (recent 90-day activity)
+    const ninetyDaysAgo = Date.now() - (90 * 24 * 60 * 60 * 1000);
+    const history = trader.pnlHistory || [];
+    const recentHistory = history.filter(h => h.timestamp > 1000000000000 && h.timestamp > ninetyDaysAgo);
+    const recentTradingDays = Math.max(1, (Date.now() - ninetyDaysAgo) / (24 * 60 * 60 * 1000));
+    const recentTradesPerDay = recentHistory.length > 0
+      ? (recentHistory.length / recentTradingDays)
+      : (trader.totalTrades / Math.max(1, (Date.now() - (history.length > 0 ? history[0].timestamp : Date.now() - (30 * 24 * 60 * 60 * 1000))) / (24 * 60 * 60 * 1000)));
+    tradesPerMonth = Math.round(recentTradesPerDay * 30);
+  }
   
   // Average trade size in $ based on allocated funds and trade size %
   const avgTradeUsd = allocatedFunds * (copyStrategy.tradeSize / 100);
@@ -1199,18 +1227,27 @@ export default function AnalyzeTrader() {
   // Adjust Copy Suitability based on Fee Impact (two-pass approach)
   const adjustedCopySuitability = useMemo(() => {
     if (!copySuitability || !feeImpact) return copySuitability;
-    
-    // If fee impact is High, potentially downgrade the rating
-    if (feeImpact.level === 'High') {
+
+    // Adjust based on fee impact level and trading frequency
+    const isHighFrequency = copySuitability.tradesPerDay > 15;
+    const shouldDowngrade = feeImpact.level === 'High' ||
+                           (feeImpact.level === 'Medium' && isHighFrequency);
+
+    if (shouldDowngrade) {
       const newFlags = [...copySuitability.flags];
-      newFlags.push('High fee impact may significantly affect returns');
-      
-      // Downgrade rating if currently High
+      const feeMessage = feeImpact.level === 'High'
+        ? 'High fee impact may significantly affect returns'
+        : 'Moderate fee impact may reduce returns for high-frequency trading';
+      newFlags.push(feeMessage);
+
+      // Downgrade rating if currently High, or from Medium to Low for very high frequency
       let newRating = copySuitability.rating;
       if (copySuitability.rating === 'High') {
         newRating = 'Medium';
+      } else if (copySuitability.rating === 'Medium' && feeImpact.level === 'High') {
+        newRating = 'Low';
       }
-      
+
       return {
         ...copySuitability,
         flags: newFlags,
