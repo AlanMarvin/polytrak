@@ -202,95 +202,131 @@ const getInactivityStatus = (lastActive: string): { isInactive: boolean; daysSin
   };
 };
 
+// Profit Factor utility functions (used by both Smart Score calculation and UI display)
+// Uses daily aggregation from pnlHistory when available. Each pnlHistory entry represents
+// a closed position's PnL, which we use as the atomic unit for profit factor calculation.
+const getProfitFactorColor = (pf: number) => {
+  if (pf < 1.0) return 'text-red-600';
+  if (pf < 1.3) return 'text-yellow-600';
+  if (pf < 1.7) return 'text-blue-600';
+  if (pf < 2.0) return 'text-green-600';
+  return 'text-purple-600';
+};
+
+const getProfitFactorBadge = (pf: number) => {
+  if (pf < 1.5) return '⚠️ Risky';
+  if (pf <= 2.5) return '✅ Healthy';
+  return '🟢 Elite';
+};
+
+interface ProfitFactorResult {
+  value: number;
+  display: string;
+  grossProfits: number;
+  grossLosses: number;
+}
+
+// Calculate Profit Factor: Total Gross Profits ÷ Total Gross Losses
+// Uses realized PnL from closed positions (pnlHistory entries)
+const calculateProfitFactor = (trader: TraderData): ProfitFactorResult => {
+  const pnlHistory = trader.pnlHistory || [];
+  
+  // Need minimum history for reliable calculation
+  if (pnlHistory.length < 20) {
+    return {
+      value: 0,
+      display: 'Insufficient data',
+      grossProfits: 0,
+      grossLosses: 0
+    };
+  }
+  
+  let grossProfits = 0;
+  let grossLosses = 0;
+  
+  // Sum all positive PnL (profits) and negative PnL (losses) separately
+  pnlHistory.forEach((entry) => {
+    if (entry && typeof entry.pnl === 'number') {
+      if (entry.pnl > 0) {
+        grossProfits += entry.pnl;
+      } else if (entry.pnl < 0) {
+        grossLosses += Math.abs(entry.pnl);
+      }
+    }
+  });
+  
+  // Handle edge cases
+  if (grossLosses === 0) {
+    // No losses - cap at display value to avoid infinity
+    return {
+      value: 10,
+      display: '>5.0',
+      grossProfits,
+      grossLosses
+    };
+  }
+  
+  const profitFactor = grossProfits / grossLosses;
+  
+  return {
+    value: profitFactor,
+    display: profitFactor.toFixed(2),
+    grossProfits,
+    grossLosses
+  };
+};
+
 // Calculate Smart Score - stricter algorithm based on real trading performance
 const calculateSmartScore = (trader: TraderData) => {
   // ROI is the most important metric - profit relative to volume traded
   const roi = trader.volume > 0 ? (trader.pnl / trader.volume) * 100 : 0; // as percentage
   
   // ROI component (max 35 pts) - the primary performance indicator
-  // 10% ROI = 20 pts, 20% ROI = 30 pts, 30%+ ROI = 35 pts
-  // Negative ROI results in negative points
   let roiScore: number;
   if (roi <= 0) {
-    roiScore = Math.max(-20, roi * 2); // Negative ROI penalizes heavily
+    roiScore = Math.max(-20, roi * 2);
   } else if (roi < 5) {
-    roiScore = roi * 2; // 0-10 pts for 0-5% ROI
+    roiScore = roi * 2;
   } else if (roi < 15) {
-    roiScore = 10 + (roi - 5) * 1.5; // 10-25 pts for 5-15% ROI
+    roiScore = 10 + (roi - 5) * 1.5;
   } else {
-    roiScore = Math.min(35, 25 + (roi - 15) * 0.5); // 25-35 pts for 15%+ ROI
+    roiScore = Math.min(35, 25 + (roi - 15) * 0.5);
   }
   
-  // Win rate component (max 25 pts) - only rewards above 55%
-  // 50% = 0 pts, 55% = 5 pts, 60% = 12 pts, 70% = 20 pts, 80%+ = 25 pts
+  // Win rate component (max 25 pts)
   const winRate = trader.winRate;
   let winRateScore: number;
   if (winRate < 50) {
-    winRateScore = Math.max(-10, (winRate - 50) * 0.5); // Penalty for <50%
+    winRateScore = Math.max(-10, (winRate - 50) * 0.5);
   } else if (winRate < 55) {
-    winRateScore = (winRate - 50) * 1; // 0-5 pts
+    winRateScore = (winRate - 50) * 1;
   } else if (winRate < 65) {
-    winRateScore = 5 + (winRate - 55) * 1.5; // 5-20 pts
+    winRateScore = 5 + (winRate - 55) * 1.5;
   } else {
-    winRateScore = Math.min(25, 20 + (winRate - 65) * 0.5); // 20-25 pts
+    winRateScore = Math.min(25, 20 + (winRate - 65) * 0.5);
   }
 
-  // Profit Factor calculation (trade-level)
-  let profitFactor: number;
-  let profitFactorDisplay: string;
-
-  try {
-    const pnlHistory = trader.pnlHistory || [];
-
-
-    if (pnlHistory.length < 20) {
-      profitFactor = 0;
-      profitFactorDisplay = 'Insufficient data';
+  // Profit Factor contribution to Smart Score (max 15 pts)
+  // Has less weight than Sharpe (consistency) but more than raw win rate
+  // This penalizes traders with high win rate but poor risk control
+  const profitFactorResult = calculateProfitFactor(trader);
+  let profitFactorScore = 0;
+  if (profitFactorResult.value > 0) {
+    const pf = profitFactorResult.value;
+    if (pf < 1.2) {
+      // Negative impact for poor profit factor
+      profitFactorScore = Math.max(-10, (pf - 1.2) * 20);
+    } else if (pf < 1.8) {
+      // Neutral: 0-5 pts
+      profitFactorScore = (pf - 1.2) * 8.33;
+    } else if (pf < 2.5) {
+      // Positive: 5-12 pts
+      profitFactorScore = 5 + (pf - 1.8) * 10;
     } else {
-      // Calculate Profit Factor: Gross Profits ÷ Gross Losses
-      let grossProfits = 0;
-      let grossLosses = 0;
-
-      pnlHistory.forEach((pnl) => {
-        if (pnl && typeof pnl.pnl === 'number') {
-          if (pnl.pnl > 0) {
-            grossProfits += pnl.pnl;
-          } else if (pnl.pnl < 0) {
-            grossLosses += Math.abs(pnl.pnl);
-          }
-        }
-      });
-
-      if (grossLosses === 0) {
-        profitFactor = 10; // Cap for no losses
-        profitFactorDisplay = '10+';
-      } else {
-        profitFactor = grossProfits / grossLosses;
-        profitFactorDisplay = profitFactor.toFixed(2);
-      }
+      // Strong positive (elite): 12-15 pts
+      profitFactorScore = Math.min(15, 12 + (pf - 2.5) * 3);
     }
-  } catch (error) {
-    console.error('Error calculating Profit Factor:', error);
-    profitFactor = 0;
-    profitFactorDisplay = 'Error';
   }
-
-  // Profit Factor interpretation bands
-  const getProfitFactorColor = (pf: number) => {
-    if (pf < 1.0) return 'text-red-600';
-    if (pf < 1.3) return 'text-yellow-600';
-    if (pf < 1.7) return 'text-blue-600';
-    if (pf < 2.0) return 'text-green-600';
-    return 'text-purple-600';
-  };
-
-  const getProfitFactorBadge = (pf: number) => {
-    if (pf < 1.0) return '❌ Unprofitable';
-    if (pf < 1.3) return '⚠️ Weak edge';
-    if (pf < 1.7) return '🟡 Decent';
-    if (pf < 2.0) return '🟢 Strong';
-    return '🔥 Elite';
-  };
   
   // Consistency component (max 20 pts) - based on Sharpe-like ratio
   // Uses PnL history to assess volatility of returns
@@ -1258,6 +1294,7 @@ export default function AnalyzeTrader() {
 
   const smartScore = useMemo(() => trader ? calculateSmartScore(trader) : 0, [trader]);
   const sharpeRatio = useMemo(() => trader ? calculateSharpeRatio(trader) : 0, [trader]);
+  const profitFactorResult = useMemo(() => trader ? calculateProfitFactor(trader) : { value: 0, display: 'N/A', grossProfits: 0, grossLosses: 0 }, [trader]);
   const smartScoreInfo = getSmartScoreInfo(smartScore);
   const copySuitability = useMemo(() => trader ? calculateCopySuitability(trader) : null, [trader]);
   const copyStrategy = useMemo(() => 
@@ -1969,15 +2006,18 @@ export default function AnalyzeTrader() {
                     </HoverCard>
                   </div>
                   <div className="flex items-center gap-2">
-                    <p className={`text-2xl font-bold font-mono ${profitFactorDisplay === 'Insufficient data' ? 'text-muted-foreground' : getProfitFactorColor(profitFactor)}`}>
-                      {profitFactorDisplay}
+                    <p className={`text-2xl font-bold font-mono ${profitFactorResult.display === 'Insufficient data' ? 'text-muted-foreground' : getProfitFactorColor(profitFactorResult.value)}`}>
+                      {profitFactorResult.display}
                     </p>
-                    {profitFactorDisplay !== 'Insufficient data' && profitFactorDisplay !== '10+' && profitFactorDisplay !== 'Error' && (
+                    {profitFactorResult.display !== 'Insufficient data' && profitFactorResult.display !== '>5.0' && (
                       <Badge variant="outline" className="text-xs">
-                        {getProfitFactorBadge(profitFactor)}
+                        {getProfitFactorBadge(profitFactorResult.value)}
                       </Badge>
                     )}
                   </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Gross profits ÷ gross losses
+                  </p>
                 </CardContent>
               </Card>
 

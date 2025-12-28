@@ -305,7 +305,7 @@ export const useRealTraderData = (): UseRealTraderDataReturn => {
         return newMap;
       });
 
-      return existing || null;
+      return null;
     }
   }, [calculateSmartScore, calculateSharpeRatio, calculateCopySuitability]);
 
