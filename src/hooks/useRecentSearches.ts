@@ -9,6 +9,9 @@ export interface RecentSearch {
   smartScore: number;
   sharpeRatio: number;
   copySuitability: 'Low' | 'Medium' | 'High';
+  totalPnl: number;
+  winRate: number;
+  volume: number;
 }
 
 export const useRecentSearches = () => {
@@ -19,7 +22,15 @@ export const useRecentSearches = () => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        setRecentSearches(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+        // Handle backwards compatibility - add default values for new fields
+        const migrated = parsed.map((search: any) => ({
+          ...search,
+          totalPnl: search.totalPnl ?? 0,
+          winRate: search.winRate ?? 0,
+          volume: search.volume ?? 0,
+        }));
+        setRecentSearches(migrated);
       }
     } catch (e) {
       console.error('Failed to load recent searches:', e);
@@ -67,16 +78,19 @@ export const saveRecentSearch = (search: Omit<RecentSearch, 'timestamp'>) => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     const current: RecentSearch[] = stored ? JSON.parse(stored) : [];
-    
+
     // Remove existing entry for same address
     const filtered = current.filter(s => s.address.toLowerCase() !== search.address.toLowerCase());
-    
+
     // Add new entry at front
     const newEntry: RecentSearch = {
       ...search,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      totalPnl: search.totalPnl ?? 0,
+      winRate: search.winRate ?? 0,
+      volume: search.volume ?? 0,
     };
-    
+
     const updated = [newEntry, ...filtered].slice(0, MAX_ENTRIES);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   } catch (e) {

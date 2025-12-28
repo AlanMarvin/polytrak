@@ -1274,7 +1274,10 @@ export default function AnalyzeTrader() {
         address: trader.address,
         smartScore,
         sharpeRatio,
-        copySuitability: adjustedCopySuitability.rating
+        copySuitability: adjustedCopySuitability.rating,
+        totalPnl: trader.pnl,
+        winRate: trader.winRate,
+        volume: trader.volume
       });
       
       // Save to public DB (global recent analyses)

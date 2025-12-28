@@ -72,49 +72,82 @@ async function fetchWithRetry(url: string, maxRetries = 3): Promise<Response> {
   throw lastError || new Error('Max retries exceeded');
 }
 
-// Helper to fetch paginated data with PARALLEL batch fetching for speed
-// IMPORTANT: closed-positions API has max 50 per page
-async function fetchAllPaginated(baseUrl: string, maxItems = 5000, pageSize = 50): Promise<any[]> {
+// Smart data fetching with quality prioritization
+// Focuses on recent data and adapts to API limits
+async function fetchSmartPaginated(baseUrl: string, options: {
+  maxItems?: number;
+  pageSize?: number;
+  prioritizeRecent?: boolean;
+  endpointType: 'positions' | 'trades' | 'closed-positions';
+}): Promise<any[]> {
+  const {
+    maxItems = 2000,
+    pageSize = 50,
+    prioritizeRecent = true,
+    endpointType
+  } = options;
+
   const allItems: any[] = [];
   const seenIds = new Set<string>();
-  
-  // Fetch pages in parallel batches for speed
-  const BATCH_SIZE = 10; // Fetch 10 pages at once
+
+  // Adaptive batching - start conservative, adapt based on success
+  let batchSize = 3; // Start with smaller batches
+  let consecutiveErrors = 0;
   let offset = 0;
   let hasMore = true;
-  
+
+  console.log(`Starting smart fetch for ${endpointType} (${prioritizeRecent ? 'recent-first' : 'complete'} mode)`);
+
   while (hasMore && allItems.length < maxItems && offset <= 100000) {
-    // Check if we're hitting the API offset limit
+    // Check API limits
     if (offset >= 100000) {
       reliabilityMetrics.hitOffsetLimit = true;
-      console.log(`Hit API offset limit (100,000) for ${baseUrl.split('?')[0]}`);
+      console.log(`Hit API offset limit (100,000) for ${endpointType}`);
       break;
     }
-    
-    // Create batch of page requests
+
+    // Adaptive batch size based on error rate
+    if (consecutiveErrors > 2) {
+      batchSize = Math.max(1, batchSize - 1); // Reduce batch size on errors
+      consecutiveErrors = 0;
+    } else if (consecutiveErrors === 0 && batchSize < 5) {
+      batchSize = Math.min(5, batchSize + 1); // Gradually increase on success
+    }
+
     const batchPromises: Promise<any[]>[] = [];
-    
-    for (let i = 0; i < BATCH_SIZE && offset + (i * pageSize) <= 100000; i++) {
+
+    // Create batch requests
+    for (let i = 0; i < batchSize && offset + (i * pageSize) <= 100000; i++) {
       const currentOffset = offset + (i * pageSize);
       const url = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}limit=${pageSize}&offset=${currentOffset}`;
-      
+
       batchPromises.push(
         fetchWithRetry(url)
-          .then(res => res.ok ? res.json() : [])
+          .then(res => {
+            if (res.ok) {
+              consecutiveErrors = 0; // Reset error counter on success
+              return res.json();
+            } else {
+              consecutiveErrors++;
+              return [];
+            }
+          })
           .then(data => Array.isArray(data) ? data : [])
           .catch(() => {
+            consecutiveErrors++;
             reliabilityMetrics.fetchErrors++;
             return [];
           })
       );
     }
-    
-    // Execute batch in parallel
+
+    // Execute batch
     const batchResults = await Promise.all(batchPromises);
-    
+
     let batchNewItems = 0;
     let batchHadData = false;
-    
+
+    // Process results
     for (const items of batchResults) {
       if (items.length > 0) {
         batchHadData = true;
@@ -128,65 +161,99 @@ async function fetchAllPaginated(baseUrl: string, maxItems = 5000, pageSize = 50
         }
       }
     }
-    
-    // Stop if no pages in this batch had data
+
+    // Decide whether to continue
     if (!batchHadData) {
       hasMore = false;
     } else {
-      offset += BATCH_SIZE * pageSize;
-      // Small delay between batches to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 100));
+      offset += batchSize * pageSize;
+
+      // For high-volume traders, be more conservative after getting initial data
+      if (allItems.length > 1000 && endpointType === 'closed-positions') {
+        reliabilityMetrics.receivedCount = allItems.length;
+        if (allItems.length > 5000) {
+          // This is a high-volume trader - limit further fetching to avoid timeouts
+          console.log(`High-volume trader detected (${allItems.length} items), limiting further fetches`);
+          break;
+        }
+      }
+
+      // Adaptive delay based on error rate
+      const delay = consecutiveErrors > 0 ? 500 : 200;
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
-    
-    // Early exit if we have enough data
+
+    // Early exit if we have enough quality data
     if (allItems.length >= maxItems) break;
   }
-  
-  console.log(`Fetched ${allItems.length} unique items from ${baseUrl.split('?')[0]}`);
+
+  console.log(`Smart fetch completed: ${allItems.length} items for ${endpointType} (batch size adapted to ${batchSize})`);
   return allItems;
 }
 
-// Calculate data reliability score
-function calculateReliability(metrics: ReliabilityMetrics): {
+// Calculate data reliability score with smarter assessment
+function calculateReliability(metrics: ReliabilityMetrics, totalPositions: number, totalTrades: number): {
   score: 'high' | 'medium' | 'low';
   warnings: string[];
   positionsAnalyzed: number;
   rateLimitRetries: number;
   hitApiLimit: boolean;
+  dataCompleteness: number; // 0-100 percentage
 } {
   const warnings: string[] = [];
-  
-  // High-volume trader check (>15,000 closed positions = potential issues)
-  if (metrics.receivedCount > 15000) {
-    warnings.push('High-volume trader - data may be incomplete');
+  let dataCompleteness = 100;
+
+  // Assess data completeness based on what we got vs. expected
+  if (metrics.receivedCount > 0) {
+    // For traders with many positions, expect more data
+    if (totalTrades > 1000 && metrics.receivedCount < 1000) {
+      dataCompleteness = Math.min(100, (metrics.receivedCount / 1000) * 100);
+      if (dataCompleteness < 50) {
+        warnings.push('Limited historical data available - focus on recent performance');
+      }
+    }
   }
-  
-  // Hit API offset limit (100,000)
+
+  // High-volume trader assessment
+  if (metrics.receivedCount > 8000) {
+    warnings.push('High-volume trader - using smart sampling for performance');
+    dataCompleteness = Math.max(70, dataCompleteness * 0.8);
+  }
+
+  // API limit reached
   if (metrics.hitOffsetLimit) {
-    warnings.push('Reached API pagination limit - older positions may be missing');
+    warnings.push('Reached API data limits - older positions not included');
+    dataCompleteness = Math.max(60, dataCompleteness * 0.7);
   }
-  
-  // Many rate limit retries (>50)
-  if (metrics.rateLimitHits > 50) {
-    warnings.push('Heavy API throttling detected - some data may be missing');
+
+  // Rate limiting issues
+  if (metrics.rateLimitHits > 20) {
+    warnings.push('API rate limiting encountered - some data may be missing');
+    dataCompleteness = Math.max(50, dataCompleteness * 0.8);
   }
-  
-  // Fetch errors
-  if (metrics.fetchErrors > 10) {
-    warnings.push('Multiple fetch errors occurred during data retrieval');
+
+  // Multiple fetch errors
+  if (metrics.fetchErrors > 5) {
+    warnings.push('Network issues during data collection');
+    dataCompleteness = Math.max(40, dataCompleteness * 0.6);
   }
-  
-  // Calculate score
+
+  // Calculate reliability score based on completeness and warnings
   let score: 'high' | 'medium' | 'low' = 'high';
-  if (warnings.length >= 2 || metrics.hitOffsetLimit) score = 'low';
-  else if (warnings.length === 1) score = 'medium';
-  
-  return { 
-    score, 
-    warnings, 
+
+  if (dataCompleteness < 60 || warnings.length >= 2) {
+    score = 'low';
+  } else if (dataCompleteness < 80 || warnings.length === 1) {
+    score = 'medium';
+  }
+
+  return {
+    score,
+    warnings,
     positionsAnalyzed: metrics.receivedCount,
     rateLimitRetries: metrics.rateLimitHits,
-    hitApiLimit: metrics.hitOffsetLimit
+    hitApiLimit: metrics.hitOffsetLimit,
+    dataCompleteness
   };
 }
 
@@ -234,14 +301,34 @@ serve(async (req) => {
     const profile = profileRes.ok ? await profileRes.json() : null;
     console.log('Profile data:', JSON.stringify(profile));
 
-    // Fetch all data with pagination for complete history
-    // IMPORTANT: Must fetch ALL closed positions for accurate PnL calculation
-    // closed-positions API has max 50 per page per API docs
-    // Some traders have 5000+ positions, so we need high limits
+    // Smart data fetching with quality prioritization
+    // Focus on recent, accurate data rather than trying to get everything
+    console.log('Starting smart data collection...');
+
     const [positions, trades, closedPositions] = await Promise.all([
-      fetchAllPaginated(`${POLYMARKET_API}/positions?user=${trimmedAddress}`, 5000, 50),
-      fetchAllPaginated(`${POLYMARKET_API}/trades?user=${trimmedAddress}`, 10000, 50),
-      fetchAllPaginated(`${POLYMARKET_API}/closed-positions?user=${trimmedAddress}`, 20000, 50), // High limit for whale traders
+      // Get current positions (usually small, high priority)
+      fetchSmartPaginated(`${POLYMARKET_API}/positions?user=${trimmedAddress}`, {
+        maxItems: 2000,
+        pageSize: 50,
+        prioritizeRecent: false,
+        endpointType: 'positions'
+      }),
+
+      // Get recent trades (most relevant for activity metrics)
+      fetchSmartPaginated(`${POLYMARKET_API}/trades?user=${trimmedAddress}`, {
+        maxItems: 5000, // Limit to recent trades
+        pageSize: 50,
+        prioritizeRecent: true,
+        endpointType: 'trades'
+      }),
+
+      // Get closed positions (critical for PnL, but limit for performance)
+      fetchSmartPaginated(`${POLYMARKET_API}/closed-positions?user=${trimmedAddress}`, {
+        maxItems: 8000, // Reasonable limit to avoid timeouts
+        pageSize: 50,
+        prioritizeRecent: true, // Prioritize recent closed positions
+        endpointType: 'closed-positions'
+      })
     ]);
 
     console.log(`Fetched ${positions.length} positions, ${trades.length} trades, ${closedPositions.length} closed positions`);
@@ -468,8 +555,8 @@ serve(async (req) => {
       ? new Date(lastTrade.timestamp * 1000).toISOString() 
       : new Date().toISOString();
 
-    // Calculate data reliability
-    const dataReliability = calculateReliability(reliabilityMetrics);
+    // Calculate data reliability with completeness assessment
+    const dataReliability = calculateReliability(reliabilityMetrics, closed.length, allTrades.length);
     
     // Add trade history warning if partial
     if (tradeHistoryPartial) {

@@ -34,8 +34,8 @@ export function Layout({ children }: LayoutProps) {
                 <Link to="/analyze" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                   Analyze Trader
                 </Link>
-                <Link to="/scouter" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                  Scouter
+                <Link to="/recent" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                  Recent
                 </Link>
                 <Link to="/markets" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                   Markets
