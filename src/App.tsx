@@ -16,6 +16,7 @@ import Blog from "./pages/Blog";
 import Contact from "./pages/Contact";
 import Disclaimer from "./pages/Disclaimer";
 import HowItWorks from "./pages/HowItWorks";
+import Scouter from "./pages/Scouter";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
               <Route path="/analyze" element={<AnalyzeTrader />} />
               <Route path="/trader/:address" element={<TraderProfile />} />
               <Route path="/markets" element={<Markets />} />
+              <Route path="/scouter" element={<Scouter />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/blog" element={<Blog />} />
