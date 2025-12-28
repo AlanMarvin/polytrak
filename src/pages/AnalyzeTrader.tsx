@@ -2744,15 +2744,16 @@ export default function AnalyzeTrader() {
             </Card>
 
             {/* Tabs for Positions and Trade History */}
-            <Tabs defaultValue="positions">
-              <TabsList className="mb-4">
-                <TabsTrigger value="positions">Open Positions ({trader.openPositions.length})</TabsTrigger>
-                <TabsTrigger value="history">Trade History ({trader.recentTrades.length})</TabsTrigger>
+            <div className="mt-4">
+              <Tabs defaultValue="positions">
+              <TabsList className="mb-2">
+                <TabsTrigger value="positions" className="text-xs px-3 py-1.5">Open Positions ({trader.openPositions.length})</TabsTrigger>
+                <TabsTrigger value="history" className="text-xs px-3 py-1.5">Trade History ({trader.recentTrades.length})</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="positions">
+              <TabsContent value="positions" className="mt-2">
                 <Card className="glass-card">
-                  <CardContent className="p-0">
+                  <CardContent className="p-2">
                     {trader.openPositions.length > 0 ? (
                       <Table>
                         <TableHeader>
@@ -2767,7 +2768,7 @@ export default function AnalyzeTrader() {
                         </TableHeader>
                         <TableBody>
                           {trader.openPositions.map((position) => (
-                            <TableRow key={position.id}>
+                            <TableRow key={position.id} className="h-8">
                               <TableCell className="max-w-[200px]">
                                 <p className="truncate font-medium">{position.marketTitle}</p>
                               </TableCell>
@@ -2801,9 +2802,9 @@ export default function AnalyzeTrader() {
                 </Card>
               </TabsContent>
 
-              <TabsContent value="history">
+              <TabsContent value="history" className="mt-2">
                 <Card className="glass-card">
-                  <CardContent className="p-0">
+                  <CardContent className="p-2">
                     {trader.recentTrades.length > 0 ? (
                       <Table>
                         <TableHeader>
@@ -2818,7 +2819,7 @@ export default function AnalyzeTrader() {
                         </TableHeader>
                         <TableBody>
                           {trader.recentTrades.map((trade) => (
-                            <TableRow key={trade.id}>
+                            <TableRow key={trade.id} className="h-8">
                               <TableCell className="text-muted-foreground">
                                 <div className="flex items-center gap-1">
                                   <Clock className="h-3 w-3" />
@@ -2851,6 +2852,7 @@ export default function AnalyzeTrader() {
                 </Card>
               </TabsContent>
             </Tabs>
+            </div>
           </>
         )}
 
