@@ -4,11 +4,21 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useRecentSearches } from '@/hooks/useRecentSearches';
-import { useRealTraderData } from '@/hooks/useRealTraderData';
-import { TraderData } from '@/types/trader';
+import { useRealTraderData, RealTraderDataWithMeta } from '@/hooks/useRealTraderData';
+
+// Local trader display interface
+interface TraderDisplay {
+  address: string;
+  username: string;
+  totalPnl: number;
+  winRate: number;
+  smartScore: number;
+  sharpeRatio: number;
+  copySuitability: number | string;
+}
 
 // Static sample trader data as fallback
-const sampleTraders: TraderData[] = [
+const sampleTraders: TraderDisplay[] = [
   {
     address: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
     username: 'CryptoKing',
@@ -47,14 +57,14 @@ const sampleTraders: TraderData[] = [
   }
 ];
 
-export default function Recent() {
+export default function Scouter() {
   // State for error handling
   const [hasHookError, setHasHookError] = useState(false);
-  const [realTraders, setRealTraders] = useState<TraderData[]>([]);
+  const [realTraders, setRealTraders] = useState<TraderDisplay[]>([]);
 
   // Initialize hooks with error handling
-  let recentSearches: any[] = [];
-  let traderData: Map<string, TraderData> = new Map();
+  let recentSearches: ReturnType<typeof useRecentSearches>['recentSearches'] = [];
+  let traderData: RealTraderDataWithMeta[] = [];
   let isLoadingAll = false;
 
   try {
@@ -71,11 +81,19 @@ export default function Recent() {
     setHasHookError(true);
   }
 
-  // Convert trader data to array when it changes
+  // Convert trader data to display format when it changes
   useEffect(() => {
     try {
-      const tradersArray = Array.from(traderData.values());
-      setRealTraders(tradersArray);
+      const tradersDisplay: TraderDisplay[] = traderData.map(t => ({
+        address: t.address,
+        username: t.username || 'Anonymous',
+        totalPnl: t.pnl,
+        winRate: t.winRate / 100, // Convert percentage to decimal
+        smartScore: t.smartScore,
+        sharpeRatio: t.sharpeRatio,
+        copySuitability: t.copySuitability === 'High' ? 90 : t.copySuitability === 'Medium' ? 70 : 50
+      }));
+      setRealTraders(tradersDisplay);
     } catch (error) {
       console.error('❌ Error converting trader data:', error);
       setRealTraders([]);
@@ -85,6 +103,7 @@ export default function Recent() {
   // Determine which data to show
   const displayTraders = realTraders.length > 0 ? realTraders : sampleTraders;
   const isShowingSampleData = realTraders.length === 0 && !hasHookError;
+  
   // Format currency
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -154,7 +173,7 @@ export default function Recent() {
 
         {/* Traders Grid - Desktop */}
         <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {sampleTraders.map((trader) => (
+          {displayTraders.map((trader) => (
             <Card key={trader.address} className="hover:shadow-lg transition-shadow">
               <CardContent className="p-6">
                 <div className="flex items-center gap-3 mb-4">
@@ -196,8 +215,8 @@ export default function Recent() {
 
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Copy Suitability</span>
-                    <Badge variant={getScoreVariant(trader.copySuitability)}>
-                      {trader.copySuitability.toFixed(1)}
+                    <Badge variant={getScoreVariant(typeof trader.copySuitability === 'number' ? trader.copySuitability : 50)}>
+                      {typeof trader.copySuitability === 'number' ? trader.copySuitability.toFixed(1) : trader.copySuitability}
                     </Badge>
                   </div>
                 </div>
@@ -212,7 +231,7 @@ export default function Recent() {
 
         {/* Traders Cards - Mobile */}
         <div className="md:hidden space-y-4">
-          {sampleTraders.map((trader) => (
+          {displayTraders.map((trader) => (
             <Card key={trader.address}>
               <CardContent className="p-4">
                 <div className="flex items-center gap-3 mb-3">
@@ -249,8 +268,8 @@ export default function Recent() {
                   </div>
                   <div>
                     <p className="text-muted-foreground">Copy Suitability</p>
-                    <Badge variant={getScoreVariant(trader.copySuitability)} className="text-xs">
-                      {trader.copySuitability.toFixed(1)}
+                    <Badge variant={getScoreVariant(typeof trader.copySuitability === 'number' ? trader.copySuitability : 50)} className="text-xs">
+                      {typeof trader.copySuitability === 'number' ? trader.copySuitability.toFixed(1) : trader.copySuitability}
                     </Badge>
                   </div>
                   <div className="flex items-center">

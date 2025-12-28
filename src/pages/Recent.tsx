@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Search, ArrowUpDown, RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { useRecentSearches } from '@/hooks/useRecentSearches';
+import { useRecentSearches, RecentSearch } from '@/hooks/useRecentSearches';
 
 export default function Recent() {
   const navigate = useNavigate();
@@ -31,7 +31,7 @@ export default function Recent() {
 
     // Sort traders
     filtered.sort((a, b) => {
-      let aValue: any, bValue: any;
+      let aValue: number, bValue: number;
 
       switch (sortBy) {
         case 'timestamp':
@@ -113,7 +113,7 @@ export default function Recent() {
     }
   };
 
-  const handleTraderClick = (trader: RealTraderDataWithMeta) => {
+  const handleTraderClick = (trader: RecentSearch) => {
     navigate(`/analyze?address=${trader.address}`);
   };
 
@@ -157,7 +157,7 @@ export default function Recent() {
           <div className="relative max-w-sm">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
-              placeholder="Search by wallet or name..."
+              placeholder="Search by wallet..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -288,11 +288,11 @@ export default function Recent() {
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <div className="h-8 w-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                          {(trader.username || trader.address.slice(0, 2)).toUpperCase()}
+                          {trader.address.slice(0, 2).toUpperCase()}
                         </div>
                         <div>
                           <p className="font-medium">
-                            {trader.username || 'Anonymous Trader'}
+                            {formatAddress(trader.address)}
                           </p>
                           <p className="text-xs text-muted-foreground font-mono">
                             {formatAddress(trader.address)}
@@ -362,10 +362,10 @@ export default function Recent() {
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
                     <div className="h-10 w-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
-                      {(trader.username || trader.address.slice(0, 2)).toUpperCase()}
+                      {trader.address.slice(0, 2).toUpperCase()}
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium">{trader.username || 'Anonymous Trader'}</p>
+                      <p className="font-medium">{formatAddress(trader.address)}</p>
                       <p className="text-xs text-muted-foreground font-mono">
                         {formatAddress(trader.address)}
                       </p>
