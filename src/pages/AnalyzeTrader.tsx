@@ -236,31 +236,43 @@ const calculateSmartScore = (trader: TraderData) => {
   }
 
   // Profit Factor calculation (trade-level)
-  const pnlHistory = trader.pnlHistory || [];
-  let grossProfits = 0;
-  let grossLosses = 0;
-
-  pnlHistory.forEach(pnl => {
-    if (pnl.pnl > 0) {
-      grossProfits += pnl.pnl;
-    } else if (pnl.pnl < 0) {
-      grossLosses += Math.abs(pnl.pnl);
-    }
-  });
-
-  // Handle edge cases
   let profitFactor: number;
   let profitFactorDisplay: string;
 
-  if (pnlHistory.length < 20) {
+  try {
+    const pnlHistory = trader.pnlHistory || [];
+
+
+    if (pnlHistory.length < 20) {
+      profitFactor = 0;
+      profitFactorDisplay = 'Insufficient data';
+    } else {
+      // Calculate Profit Factor: Gross Profits ÷ Gross Losses
+      let grossProfits = 0;
+      let grossLosses = 0;
+
+      pnlHistory.forEach((pnl) => {
+        if (pnl && typeof pnl.pnl === 'number') {
+          if (pnl.pnl > 0) {
+            grossProfits += pnl.pnl;
+          } else if (pnl.pnl < 0) {
+            grossLosses += Math.abs(pnl.pnl);
+          }
+        }
+      });
+
+      if (grossLosses === 0) {
+        profitFactor = 10; // Cap for no losses
+        profitFactorDisplay = '10+';
+      } else {
+        profitFactor = grossProfits / grossLosses;
+        profitFactorDisplay = profitFactor.toFixed(2);
+      }
+    }
+  } catch (error) {
+    console.error('Error calculating Profit Factor:', error);
     profitFactor = 0;
-    profitFactorDisplay = 'Insufficient data';
-  } else if (grossLosses === 0) {
-    profitFactor = 10; // Cap for no losses
-    profitFactorDisplay = '10+';
-  } else {
-    profitFactor = grossProfits / grossLosses;
-    profitFactorDisplay = profitFactor.toFixed(2);
+    profitFactorDisplay = 'Error';
   }
 
   // Profit Factor interpretation bands
@@ -1960,7 +1972,7 @@ export default function AnalyzeTrader() {
                     <p className={`text-2xl font-bold font-mono ${profitFactorDisplay === 'Insufficient data' ? 'text-muted-foreground' : getProfitFactorColor(profitFactor)}`}>
                       {profitFactorDisplay}
                     </p>
-                    {profitFactorDisplay !== 'Insufficient data' && profitFactorDisplay !== '10+' && (
+                    {profitFactorDisplay !== 'Insufficient data' && profitFactorDisplay !== '10+' && profitFactorDisplay !== 'Error' && (
                       <Badge variant="outline" className="text-xs">
                         {getProfitFactorBadge(profitFactor)}
                       </Badge>
