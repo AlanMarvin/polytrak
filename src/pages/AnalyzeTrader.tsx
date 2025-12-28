@@ -234,6 +234,51 @@ const calculateSmartScore = (trader: TraderData) => {
   } else {
     winRateScore = Math.min(25, 20 + (winRate - 65) * 0.5); // 20-25 pts
   }
+
+  // Profit Factor calculation (trade-level)
+  const pnlHistory = trader.pnlHistory || [];
+  let grossProfits = 0;
+  let grossLosses = 0;
+
+  pnlHistory.forEach(pnl => {
+    if (pnl.pnl > 0) {
+      grossProfits += pnl.pnl;
+    } else if (pnl.pnl < 0) {
+      grossLosses += Math.abs(pnl.pnl);
+    }
+  });
+
+  // Handle edge cases
+  let profitFactor: number;
+  let profitFactorDisplay: string;
+
+  if (pnlHistory.length < 20) {
+    profitFactor = 0;
+    profitFactorDisplay = 'Insufficient data';
+  } else if (grossLosses === 0) {
+    profitFactor = 10; // Cap for no losses
+    profitFactorDisplay = '10+';
+  } else {
+    profitFactor = grossProfits / grossLosses;
+    profitFactorDisplay = profitFactor.toFixed(2);
+  }
+
+  // Profit Factor interpretation bands
+  const getProfitFactorColor = (pf: number) => {
+    if (pf < 1.0) return 'text-red-600';
+    if (pf < 1.3) return 'text-yellow-600';
+    if (pf < 1.7) return 'text-blue-600';
+    if (pf < 2.0) return 'text-green-600';
+    return 'text-purple-600';
+  };
+
+  const getProfitFactorBadge = (pf: number) => {
+    if (pf < 1.0) return '❌ Unprofitable';
+    if (pf < 1.3) return '⚠️ Weak edge';
+    if (pf < 1.7) return '🟡 Decent';
+    if (pf < 2.0) return '🟢 Strong';
+    return '🔥 Elite';
+  };
   
   // Consistency component (max 20 pts) - based on Sharpe-like ratio
   // Uses PnL history to assess volatility of returns
@@ -1876,6 +1921,51 @@ export default function AnalyzeTrader() {
                     </HoverCard>
                   </div>
                   <p className="text-2xl font-bold font-mono">{trader.winRate.toFixed(1)}%</p>
+                </CardContent>
+              </Card>
+
+              <Card className="glass-card">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                    <Gauge className="h-4 w-4" />
+                    <span className="text-sm">Profit Factor</span>
+                    <HoverCard>
+                      <HoverCardTrigger asChild>
+                        <button className="ml-auto">
+                          <Info className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-help transition-colors" />
+                        </button>
+                      </HoverCardTrigger>
+                      <HoverCardContent className="w-80 z-50" side="top">
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">Profit Factor</p>
+                          <p className="text-sm text-muted-foreground">
+                            Ratio of gross profits to gross losses.
+                            Calculated as total winning trade profits ÷ total losing trade losses.
+                            Values above 1.0 indicate profitability.
+                            Higher values suggest stronger downside efficiency.
+                          </p>
+                          <div className="text-xs space-y-1">
+                            <p><strong>Interpretation:</strong></p>
+                            <p>❌ &lt; 1.0: Unprofitable</p>
+                            <p>⚠️ 1.0–1.3: Weak edge</p>
+                            <p>🟡 1.3–1.7: Decent</p>
+                            <p>🟢 1.7–2.0: Strong</p>
+                            <p>🔥 &gt; 2.0: Elite</p>
+                          </div>
+                        </div>
+                      </HoverCardContent>
+                    </HoverCard>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <p className={`text-2xl font-bold font-mono ${profitFactorDisplay === 'Insufficient data' ? 'text-muted-foreground' : getProfitFactorColor(profitFactor)}`}>
+                      {profitFactorDisplay}
+                    </p>
+                    {profitFactorDisplay !== 'Insufficient data' && profitFactorDisplay !== '10+' && (
+                      <Badge variant="outline" className="text-xs">
+                        {getProfitFactorBadge(profitFactor)}
+                      </Badge>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
 
