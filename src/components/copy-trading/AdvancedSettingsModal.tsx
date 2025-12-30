@@ -15,7 +15,8 @@ interface AdvancedSettings {
   minLiquidityPerMarket: number;
   marketPriceRangeMin: number;
   marketPriceRangeMax: number;
-  maxSlippagePerMarket: number;
+  entrySlippagePct: number;
+  exitSlippagePct: number;
   maxTimeUntilResolution: number | "any";
 }
 
@@ -151,43 +152,58 @@ export function AdvancedSettingsModal({
             />
           </div>
 
-          {/* Market Price Range / Max Slippage - Two Column */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Market price range</p>
-              <div className="flex gap-2">
-                <div 
-                  className="flex items-center justify-between px-3 py-3.5 rounded-xl flex-1"
-                  style={inputBoxStyle}
-                >
-                  <span className="text-muted-foreground text-sm">Min</span>
-                  <div className="flex items-center gap-1">
-                    <span className="text-white font-medium tabular-nums">{settings.marketPriceRangeMin}</span>
-                    <span style={{ color: accentColor }} className="font-medium">¢</span>
-                  </div>
+          {/* Market Price Range */}
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">Market price range</p>
+            <div className="flex gap-2">
+              <div 
+                className="flex items-center justify-between px-3 py-3.5 rounded-xl flex-1"
+                style={inputBoxStyle}
+              >
+                <span className="text-muted-foreground text-sm">Min</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-white font-medium tabular-nums">{settings.marketPriceRangeMin}</span>
+                  <span style={{ color: accentColor }} className="font-medium">¢</span>
                 </div>
-                <div 
-                  className="flex items-center justify-between px-3 py-3.5 rounded-xl flex-1"
-                  style={inputBoxStyle}
-                >
-                  <span className="text-muted-foreground text-sm">Max</span>
-                  <div className="flex items-center gap-1">
-                    <span className="text-white font-medium tabular-nums">{settings.marketPriceRangeMax}</span>
-                    <span style={{ color: accentColor }} className="font-medium">¢</span>
-                  </div>
+              </div>
+              <div 
+                className="flex items-center justify-between px-3 py-3.5 rounded-xl flex-1"
+                style={inputBoxStyle}
+              >
+                <span className="text-muted-foreground text-sm">Max</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-white font-medium tabular-nums">{settings.marketPriceRangeMax}</span>
+                  <span style={{ color: accentColor }} className="font-medium">¢</span>
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Entry / Exit Slippage - Two Column */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Max slippage per market</p>
+              <p className="text-sm text-muted-foreground">Entry slippage</p>
               <div 
                 className="flex items-center justify-between px-4 py-3.5 rounded-xl"
                 style={inputBoxStyle}
               >
-                <span className="text-muted-foreground text-sm">Max Slippage</span>
+                <span className="text-muted-foreground text-sm">Max slippage</span>
                 <div className="flex items-center gap-1">
-                  <span className="text-white font-medium tabular-nums">{settings.maxSlippagePerMarket}</span>
-                  <span style={{ color: accentColor }} className="font-medium">¢</span>
+                  <span className="text-white font-medium tabular-nums">{settings.entrySlippagePct}</span>
+                  <span style={{ color: accentColor }} className="font-medium">%</span>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Exit slippage</p>
+              <div 
+                className="flex items-center justify-between px-4 py-3.5 rounded-xl"
+                style={inputBoxStyle}
+              >
+                <span className="text-muted-foreground text-sm">Max slippage</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-white font-medium tabular-nums">{settings.exitSlippagePct}</span>
+                  <span style={{ color: accentColor }} className="font-medium">%</span>
                 </div>
               </div>
             </div>
