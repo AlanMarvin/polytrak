@@ -14,6 +14,75 @@ export type Database = {
   }
   public: {
     Tables: {
+      copy_settings: {
+        Row: {
+          allocated_funds: number
+          copy_percentage: number
+          created_at: string
+          entry_slippage_pct: number
+          exit_mode: string
+          exit_slippage_pct: number
+          id: string
+          is_auto_optimized: boolean
+          market_price_range_max: number
+          market_price_range_min: number
+          max_amount_per_market: number
+          max_copy_amount_per_trade: number
+          max_time_until_resolution: string
+          min_amount_per_market: number
+          min_liquidity_per_market: number
+          min_volume_per_market: number
+          trade_size_percent: number
+          trader_address: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          allocated_funds?: number
+          copy_percentage?: number
+          created_at?: string
+          entry_slippage_pct?: number
+          exit_mode?: string
+          exit_slippage_pct?: number
+          id?: string
+          is_auto_optimized?: boolean
+          market_price_range_max?: number
+          market_price_range_min?: number
+          max_amount_per_market?: number
+          max_copy_amount_per_trade?: number
+          max_time_until_resolution?: string
+          min_amount_per_market?: number
+          min_liquidity_per_market?: number
+          min_volume_per_market?: number
+          trade_size_percent?: number
+          trader_address: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          allocated_funds?: number
+          copy_percentage?: number
+          created_at?: string
+          entry_slippage_pct?: number
+          exit_mode?: string
+          exit_slippage_pct?: number
+          id?: string
+          is_auto_optimized?: boolean
+          market_price_range_max?: number
+          market_price_range_min?: number
+          max_amount_per_market?: number
+          max_copy_amount_per_trade?: number
+          max_time_until_resolution?: string
+          min_amount_per_market?: number
+          min_liquidity_per_market?: number
+          min_volume_per_market?: number
+          trade_size_percent?: number
+          trader_address?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

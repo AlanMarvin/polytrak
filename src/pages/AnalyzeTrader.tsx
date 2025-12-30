@@ -3022,7 +3022,7 @@ export default function AnalyzeTrader() {
               allocatedFunds,
               tradeSizePercent: copyStrategy.tradeSize,
               copyPercentage: copyStrategy.copyPercentage,
-              followExits: copyStrategy.followExits,
+              exitMode: 'proportional',
               availableBalance: allocatedFunds * 0.26, // Placeholder - shows ~26% available
               spentOnTrader: allocatedFunds * 0.74, // Placeholder - shows ~74% spent
             }}
@@ -3057,7 +3057,8 @@ export default function AnalyzeTrader() {
               minLiquidityPerMarket: advancedSettings.minLiquidityPerMarket,
               marketPriceRangeMin: advancedSettings.marketPriceRangeMin,
               marketPriceRangeMax: advancedSettings.marketPriceRangeMax,
-              maxSlippagePerMarket: advancedSettings.maxSlippagePerMarket,
+              entrySlippagePct: Math.round(advancedSettings.maxSlippagePerMarket * 0.5),
+              exitSlippagePct: advancedSettings.maxSlippagePerMarket,
               maxTimeUntilResolution: advancedSettings.maxTimeUntilResolution,
             }}
             onSettingsChange={() => {
