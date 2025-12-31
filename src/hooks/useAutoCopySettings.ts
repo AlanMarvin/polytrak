@@ -47,11 +47,12 @@ export interface AutoCopyRecommendation {
 }
 
 /**
- * Default copy settings with updated values:
- * - minLiquidityPerMarket: 5000 (increased from previous)
- * - entrySlippagePct: 2
- * - exitSlippagePct: 4
+ * Default copy settings with risk-adjusted values:
+ * - marketPriceRangeMin: 25, marketPriceRangeMax: 75 (risk-adjusted, avoids extreme outcomes)
+ * - minLiquidityPerMarket: 5000 (prevents slippage issues)
+ * - entrySlippagePct: 2, exitSlippagePct: 4 (split slippage)
  * - maxCopyAmountPerTrade: 50 (adaptive rule: 75 only if liquidity >= 20000)
+ * - maxTimeUntilResolution: 14 (days, better for event-focused copy)
  */
 export const DEFAULT_COPY_SETTINGS: CopySettings = {
   allocatedFunds: 100,
@@ -62,12 +63,12 @@ export const DEFAULT_COPY_SETTINGS: CopySettings = {
   minAmountPerMarket: 5,
   maxCopyAmountPerTrade: 50,
   minVolumePerMarket: 10000,
-  minLiquidityPerMarket: 5000, // Updated default
-  marketPriceRangeMin: 5,
-  marketPriceRangeMax: 95,
-  entrySlippagePct: 2, // New split slippage
-  exitSlippagePct: 4, // New split slippage
-  maxTimeUntilResolution: 'any',
+  minLiquidityPerMarket: 5000,
+  marketPriceRangeMin: 25, // Risk-adjusted default
+  marketPriceRangeMax: 75, // Risk-adjusted default
+  entrySlippagePct: 2,
+  exitSlippagePct: 4,
+  maxTimeUntilResolution: 14, // 14 days default for event-focused copy
   isAutoOptimized: true,
 };
 
@@ -97,21 +98,58 @@ export function useAutoCopySettings(
     // Adjust allocation based on user budget
     settings.allocatedFunds = userBudget;
     
-    // === Exit Mode Selection ===
-    // If trader uses partial exits frequently, proportional is best
-    if (traderStats.usesPartialExits) {
+    // === HIGH-FREQUENCY TRADER DETECTION & OVERRIDE ===
+    // This is the critical rule that fixes the 2k liquidity + 60 days bug
+    const isHighFrequency = (traderStats.tradeFrequency ?? 0) >= 20; // ~3+ trades/day
+    
+    if (isHighFrequency) {
+      // Force strict settings for high-frequency traders
+      settings.maxTimeUntilResolution = 14;
+      settings.minLiquidityPerMarket = Math.max(settings.minLiquidityPerMarket, 5000);
+      settings.marketPriceRangeMin = 25;
+      settings.marketPriceRangeMax = 75;
       settings.exitMode = 'proportional';
+      settings.entrySlippagePct = 1;
+      settings.exitSlippagePct = 2;
+      
+      reasons.push({
+        field: 'maxTimeUntilResolution',
+        reason: 'High-frequency trader (~3+/day) - capped to 14 days to keep capital rotating',
+      });
+      reasons.push({
+        field: 'minLiquidityPerMarket',
+        reason: 'High-frequency trading compounds slippage - enforcing ≥$5k liquidity floor',
+      });
+      reasons.push({
+        field: 'marketPriceRangeMin',
+        reason: 'High-frequency trader - using risk-adjusted price range (25-75%)',
+      });
       reasons.push({
         field: 'exitMode',
-        reason: 'Trader uses partial exits - proportional mode recommended for aligned risk',
+        reason: 'High-frequency + likely partial exits - proportional mode for tracking & risk control',
       });
-    } else if (traderStats.avgHoldTime && traderStats.avgHoldTime < 24) {
-      // Short-term traders: mirror mode to capture quick exits
-      settings.exitMode = 'mirror';
       reasons.push({
-        field: 'exitMode',
-        reason: 'Short-term trader (< 24h hold) - mirror mode for quick exit capture',
+        field: 'entrySlippagePct',
+        reason: 'High-frequency trader - tighter slippage (1% entry, 2% exit) to preserve margins',
       });
+    }
+    
+    // === Exit Mode Selection (if not already set by high-frequency rule) ===
+    if (!isHighFrequency) {
+      if (traderStats.usesPartialExits) {
+        settings.exitMode = 'proportional';
+        reasons.push({
+          field: 'exitMode',
+          reason: 'Trader uses partial exits - proportional mode recommended for aligned risk',
+        });
+      } else if (traderStats.avgHoldTime && traderStats.avgHoldTime < 24) {
+        // Short-term traders: mirror mode to capture quick exits
+        settings.exitMode = 'mirror';
+        reasons.push({
+          field: 'exitMode',
+          reason: 'Short-term trader (< 24h hold) - mirror mode for quick exit capture',
+        });
+      }
     }
 
     // === Trade Size Adjustment ===
@@ -153,7 +191,7 @@ export function useAutoCopySettings(
     // Allow 75 only if liquidity >= 20000
     if (traderStats.avgLiquidity && traderStats.avgLiquidity >= 20000) {
       settings.maxCopyAmountPerTrade = 75;
-      settings.minLiquidityPerMarket = 10000;
+      settings.minLiquidityPerMarket = Math.max(settings.minLiquidityPerMarket, 10000);
       reasons.push({
         field: 'maxCopyAmountPerTrade',
         reason: 'High liquidity trader (≥$20k avg) - increased max copy amount to $75',
@@ -166,20 +204,18 @@ export function useAutoCopySettings(
       });
     }
 
-    // === Slippage Adjustment ===
-    // Higher frequency traders need tighter slippage
-    if (traderStats.tradeFrequency && traderStats.tradeFrequency > 20) {
+    // === Slippage Adjustment (if not already set by high-frequency rule) ===
+    if (!isHighFrequency && traderStats.tradeFrequency && traderStats.tradeFrequency > 10) {
       settings.entrySlippagePct = 1;
-      settings.exitSlippagePct = 2;
+      settings.exitSlippagePct = 3;
       reasons.push({
         field: 'entrySlippagePct',
-        reason: 'High-frequency trader - tighter slippage to preserve margins',
+        reason: 'Moderate-frequency trader - tighter slippage to preserve margins',
       });
     }
 
-    // === Time Until Resolution ===
-    // Match trader's typical hold time
-    if (traderStats.avgHoldTime) {
+    // === Time Until Resolution (if not already set by high-frequency rule) ===
+    if (!isHighFrequency && traderStats.avgHoldTime) {
       if (traderStats.avgHoldTime < 48) {
         settings.maxTimeUntilResolution = 7;
         reasons.push({
