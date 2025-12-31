@@ -39,6 +39,7 @@ import tradefoxLogo from '@/assets/tradefox-logo.png';
 import { LoadingProgress } from '@/components/analyze/LoadingProgress';
 import { SEOHead } from '@/components/seo/SEOHead';
 import { EditCopyTradingModal, AdvancedSettingsModal } from '@/components/copy-trading';
+import { useAutoCopySettings, TraderStyleSignals, CopySettings, DEFAULT_COPY_SETTINGS } from '@/hooks/useAutoCopySettings';
 
 type ChartTimeFilter = '1D' | '1W' | '1M' | 'ALL';
 
@@ -1297,20 +1298,74 @@ export default function AnalyzeTrader() {
   const profitFactorResult = useMemo(() => trader ? calculateProfitFactor(trader) : { value: 0, display: 'N/A', grossProfits: 0, grossLosses: 0 }, [trader]);
   const smartScoreInfo = getSmartScoreInfo(smartScore);
   const copySuitability = useMemo(() => trader ? calculateCopySuitability(trader) : null, [trader]);
+  
+  // Build TraderStyleSignals from trader data for useAutoCopySettings hook
+  const traderStyleSignals = useMemo<TraderStyleSignals | null>(() => {
+    if (!trader || !copySuitability) return null;
+    
+    // Calculate trades per week from tradesPerDay
+    const tradeFrequency = copySuitability.tradesPerDay * 7;
+    
+    // Detect if trader uses partial exits by looking at trades per position
+    const usesPartialExits = copySuitability.tradesPerPosition > 2;
+    
+    // Estimate average hold time (in hours) based on trade frequency
+    // Higher frequency = shorter hold time
+    const avgHoldTime = tradeFrequency > 30 ? 12 : tradeFrequency > 15 ? 48 : tradeFrequency > 5 ? 168 : 336;
+    
+    return {
+      avgHoldTime,
+      usesPartialExits,
+      avgLiquidity: copySuitability.avgTradeSizeUsd * 10, // Rough estimate
+      winRate: trader.winRate,
+      profitFactor: profitFactorResult.value,
+      sharpeRatio: sharpeRatio,
+      avgTradeSize: copySuitability.avgTradeSizeUsd,
+      tradeFrequency,
+    };
+  }, [trader, copySuitability, profitFactorResult, sharpeRatio]);
+  
+  // Use the unified auto copy settings hook - THIS IS THE SINGLE SOURCE OF TRUTH
+  const autoCopySettings = useAutoCopySettings(traderStyleSignals, allocatedFunds);
+  const autoSettings = autoCopySettings.settings;
+  const settingsReasons = autoCopySettings.reasons;
+  
+  // Legacy copyStrategy for backwards compatibility with UI (expected return, drawdown, etc.)
   const copyStrategy = useMemo(() => 
     trader ? calculateOptimalStrategy(trader, allocatedFunds, copySuitability || undefined) : null,
     [trader, allocatedFunds, copySuitability]
   );
   
-  // TradeFox Advanced Settings - deterministic calculation based on trader classification
-  const advancedSettings = useMemo(() => {
-    if (!copySuitability) return null;
-    const classification = classifyTrader(copySuitability.avgTradeSizeUsd, copySuitability.tradesPerDay);
-    return calculateAdvancedSettings(allocatedFunds, classification, trader, copySuitability);
-  }, [copySuitability, allocatedFunds, trader]);
-  
   const riskRegime = useMemo(() => trader ? calculateRiskRegime(trader) : null, [trader]);
   const marketFocus = useMemo(() => trader ? calculateMarketFocus(trader) : null, [trader]);
+  
+  // Derive advancedSettings from autoSettings for backward compatibility with UI
+  const advancedSettings = useMemo(() => {
+    if (!autoSettings) return null;
+    const isHighFrequency = traderStyleSignals?.tradeFrequency ? traderStyleSignals.tradeFrequency >= 20 : false;
+    return {
+      maxMarket: autoSettings.maxAmountPerMarket,
+      maxMarketReason: 'Auto-configured based on trader analysis',
+      minMarket: autoSettings.minAmountPerMarket,
+      minMarketReason: 'Auto-configured based on trader analysis',
+      maxCopyPerTrade: autoSettings.maxCopyAmountPerTrade,
+      maxCopyPerTradeReason: settingsReasons.find(r => r.field === 'maxCopyAmountPerTrade')?.reason || 'Default setting',
+      minVolumePerMarket: autoSettings.minVolumePerMarket,
+      minVolumePerMarketReason: 'Auto-configured based on trader analysis',
+      minLiquidityPerMarket: autoSettings.minLiquidityPerMarket,
+      minLiquidityPerMarketReason: settingsReasons.find(r => r.field === 'minLiquidityPerMarket')?.reason || 'Minimum $5k liquidity for safe execution',
+      marketPriceRangeMin: autoSettings.marketPriceRangeMin,
+      marketPriceRangeMax: autoSettings.marketPriceRangeMax,
+      marketPriceRangeReason: settingsReasons.find(r => r.field === 'marketPriceRangeMin')?.reason || 'Risk-adjusted price range (25-75%)',
+      maxSlippagePerMarket: autoSettings.exitSlippagePct, // Legacy field
+      maxSlippagePerMarketReason: 'Entry ' + autoSettings.entrySlippagePct + '% / Exit ' + autoSettings.exitSlippagePct + '%',
+      maxTimeUntilResolution: typeof autoSettings.maxTimeUntilResolution === 'number' ? autoSettings.maxTimeUntilResolution : 90,
+      maxTimeUntilResolutionReason: settingsReasons.find(r => r.field === 'maxTimeUntilResolution')?.reason || 'Default resolution window',
+      traderClassification: (copyStrategy?.riskLevel || 'Moderate') as 'Conservative' | 'Moderate' | 'Aggressive',
+      isHighFrequency,
+    };
+  }, [autoSettings, settingsReasons, traderStyleSignals, copyStrategy]);
+  
   const feeImpact = useMemo(() => 
     trader && copyStrategy && copySuitability 
       ? calculateFeeImpact(trader, copyStrategy, allocatedFunds, copySuitability) 
@@ -3013,16 +3068,16 @@ export default function AnalyzeTrader() {
       </div>
 
       {/* Copy Trading Modals */}
-      {copyStrategy && advancedSettings && (
+      {copyStrategy && advancedSettings && autoSettings && (
         <>
           <EditCopyTradingModal
             open={editModalOpen}
             onOpenChange={setEditModalOpen}
             settings={{
               allocatedFunds,
-              tradeSizePercent: copyStrategy.tradeSize,
-              copyPercentage: copyStrategy.copyPercentage,
-              exitMode: 'proportional',
+              tradeSizePercent: autoSettings.tradeSizePercent,
+              copyPercentage: autoSettings.copyPercentage,
+              exitMode: autoSettings.exitMode,
               availableBalance: allocatedFunds * 0.26, // Placeholder - shows ~26% available
               spentOnTrader: allocatedFunds * 0.74, // Placeholder - shows ~74% spent
             }}
@@ -3050,16 +3105,16 @@ export default function AnalyzeTrader() {
             open={advancedModalOpen}
             onOpenChange={setAdvancedModalOpen}
             settings={{
-              maxAmountPerMarket: advancedSettings.maxMarket,
-              minAmountPerMarket: advancedSettings.minMarket,
-              maxCopyAmountPerTrade: advancedSettings.maxCopyPerTrade,
-              minVolumePerMarket: advancedSettings.minVolumePerMarket,
-              minLiquidityPerMarket: advancedSettings.minLiquidityPerMarket,
-              marketPriceRangeMin: advancedSettings.marketPriceRangeMin,
-              marketPriceRangeMax: advancedSettings.marketPriceRangeMax,
-              entrySlippagePct: Math.round(advancedSettings.maxSlippagePerMarket * 0.5),
-              exitSlippagePct: advancedSettings.maxSlippagePerMarket,
-              maxTimeUntilResolution: advancedSettings.maxTimeUntilResolution,
+              maxAmountPerMarket: autoSettings.maxAmountPerMarket,
+              minAmountPerMarket: autoSettings.minAmountPerMarket,
+              maxCopyAmountPerTrade: autoSettings.maxCopyAmountPerTrade,
+              minVolumePerMarket: autoSettings.minVolumePerMarket,
+              minLiquidityPerMarket: autoSettings.minLiquidityPerMarket,
+              marketPriceRangeMin: autoSettings.marketPriceRangeMin,
+              marketPriceRangeMax: autoSettings.marketPriceRangeMax,
+              entrySlippagePct: autoSettings.entrySlippagePct,
+              exitSlippagePct: autoSettings.exitSlippagePct,
+              maxTimeUntilResolution: typeof autoSettings.maxTimeUntilResolution === 'number' ? autoSettings.maxTimeUntilResolution : 90,
             }}
             onSettingsChange={() => {
               // Settings are read-only in PolyTrak
