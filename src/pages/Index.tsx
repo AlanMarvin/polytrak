@@ -286,7 +286,7 @@ const Index = () => {
       {/* Demo Video Section */}
       <section className="container py-16 border-b border-border/50">
         <div className="text-center mb-10">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Turn wallet data into copy settings</h2>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">See how PolyTrak converts real Polymarket trading history into actionable copy trading configurations.</h2>
         </div>
         
         <div className="max-w-4xl mx-auto">
@@ -435,7 +435,7 @@ const Index = () => {
           <div className="absolute inset-0 bg-black/70" />
           <div className="relative text-center space-y-4 max-w-2xl mx-auto">
             <h3 className="text-2xl md:text-3xl font-bold">
-              Ready to copy the best traders?
+              Ready to copy traders with data, not guesswork?
             </h3>
             <p className="text-muted-foreground">
               Analyze any Polymarket wallet and get AI-optimized settings for TheTradeFox copy trading.
