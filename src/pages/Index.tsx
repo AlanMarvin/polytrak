@@ -223,7 +223,7 @@ const Index = () => {
               <span>Let AI find</span>
               <span className="inline-flex items-center justify-center text-primary">
                 <RotatingWord 
-                  words={["recommended", "safer", "starting", "suggested", "practical"]} 
+                  words={["recommended", "risk-adjusted", "starting", "suggested", "optimized"]}
                   interval={2500}
                   reducedMotionFallbackIndex={3}
                 />
