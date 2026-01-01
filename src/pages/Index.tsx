@@ -40,9 +40,9 @@ const Index = () => {
   }, [carouselApi]);
 
   const features = [
-    { label: 'AI-Powered Analysis', description: 'Smart algorithms analyze trader performance', icon: Brain, useLogo: false },
-    { label: 'Optimized Settings', description: 'Auto-calculate ideal copy trading config for TheTradeFox', icon: null, useLogo: true },
-    { label: 'Personalized Strategy', description: 'Tailored to your risk & budget', icon: Sparkles, useLogo: false },
+    { label: 'AI-Powered Analysis', description: 'AI analyzes real Polymarket trading history, profitability, and risk behavior.', icon: Brain, useLogo: false },
+    { label: 'Optimized Settings', description: 'Automatically calculates optimal copy-trading settings tailored for TheTradeFox execution.', icon: null, useLogo: true },
+    { label: 'Personalized Strategy', description: 'Adapts position sizing, exits, and exposure based on your risk tolerance and budget.', icon: Sparkles, useLogo: false },
   ];
 
   const previewSlides = [
@@ -232,7 +232,7 @@ const Index = () => {
             </h1>
             
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-              Analyze any Polymarket wallet, get AI-optimized copy trading configuration, and start mirroring profitable traders on <span className="text-primary font-semibold">TheTradeFox</span>.
+              Analyze any Polymarket wallet, let AI calculate the best copy-trading settings, and mirror traders with risk-adjusted performance on <span className="text-primary font-semibold">TheTradeFox</span>.
             </p>
 
             {/* Search Bar */}
