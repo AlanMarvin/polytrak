@@ -1507,8 +1507,8 @@ export default function AnalyzeTrader() {
   return (
     <Layout>
       <SEOHead
-        title="Analyze Polymarket Trader - AI Performance Analysis | PolyTrak"
-        description="Analyze any Polymarket trader's wallet. Get Smart Score, Sharpe ratio, PnL history, and AI-optimized copy trading settings for TheTradeFox."
+        title="Analyze Polymarket Traders | Wallet Performance & Copy Trading Settings – PolyTrak"
+        description="Paste any Polymarket wallet address to analyze performance, risk metrics, and AI-generated copy trading settings optimized for TradeFox."
         canonicalUrl="/analyze"
       />
       <div className="container py-8">
