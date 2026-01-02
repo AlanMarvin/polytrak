@@ -227,6 +227,52 @@ interface ProfitFactorResult {
   grossLosses: number;
 }
 
+// ROV (Return on Volume) utility functions
+// Measures profit efficiency per dollar traded - critical for copy trading suitability
+interface ROVResult {
+  value: number;
+  display: string;
+  label: 'High Efficiency' | 'Moderate Efficiency' | 'Low Efficiency' | 'Insufficient Data';
+  color: string;
+}
+
+const calculateROV = (trader: TraderData): ROVResult => {
+  const totalPnL = trader.pnl;
+  const totalVolume = trader.volume;
+  
+  if (!totalVolume || totalVolume === 0) {
+    return {
+      value: 0,
+      display: '—',
+      label: 'Insufficient Data',
+      color: 'text-muted-foreground'
+    };
+  }
+  
+  const rov = (totalPnL / totalVolume) * 100; // As percentage
+  
+  let label: ROVResult['label'];
+  let color: string;
+  
+  if (rov >= 0.30) {
+    label = 'High Efficiency';
+    color = 'text-green-500';
+  } else if (rov >= 0.15) {
+    label = 'Moderate Efficiency';
+    color = 'text-yellow-500';
+  } else {
+    label = 'Low Efficiency';
+    color = 'text-orange-500';
+  }
+  
+  return {
+    value: rov,
+    display: rov.toFixed(3) + '%',
+    label,
+    color
+  };
+};
+
 // Calculate Profit Factor: Total Gross Profits ÷ Total Gross Losses
 // Uses realized PnL from closed positions (pnlHistory entries)
 const calculateProfitFactor = (trader: TraderData): ProfitFactorResult => {
@@ -2145,6 +2191,57 @@ export default function AnalyzeTrader() {
                         : trader.totalInvested.toFixed(0)
                     }
                   </p>
+                </CardContent>
+              </Card>
+
+              <Card className="glass-card">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                    <TrendingUp className="h-4 w-4" />
+                    <span className="text-sm">ROV</span>
+                    <HoverCard>
+                      <HoverCardTrigger asChild>
+                        <button className="ml-auto">
+                          <Info className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-help transition-colors" />
+                        </button>
+                      </HoverCardTrigger>
+                      <HoverCardContent className="w-80 z-50" side="top">
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">Return on Volume (ROV)</p>
+                          <p className="text-sm text-muted-foreground">
+                            Measures how much profit a trader generates per dollar traded. 
+                            High ROV indicates efficient strategies that better survive slippage and execution.
+                          </p>
+                          <div className="text-xs space-y-1">
+                            <p><strong>Interpretation:</strong></p>
+                            <p>🟢 ≥ 0.30%: High Efficiency</p>
+                            <p>🟡 0.15–0.30%: Moderate Efficiency</p>
+                            <p>🟠 &lt; 0.15%: Low Efficiency</p>
+                          </div>
+                        </div>
+                      </HoverCardContent>
+                    </HoverCard>
+                  </div>
+                  {(() => {
+                    const rovResult = calculateROV(trader);
+                    return (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <p className={`text-2xl font-bold font-mono ${rovResult.color}`}>
+                            {rovResult.display}
+                          </p>
+                          {rovResult.label !== 'Insufficient Data' && (
+                            <Badge variant="outline" className="text-xs">
+                              {rovResult.label}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Profit per $ traded
+                        </p>
+                      </>
+                    );
+                  })()}
                 </CardContent>
               </Card>
             </div>
