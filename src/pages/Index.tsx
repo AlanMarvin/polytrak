@@ -200,8 +200,8 @@ const Index = () => {
   return (
     <Layout>
       <SEOHead
-        title="PolyTrak - AI-Powered Polymarket Trader Analysis | Copy Trading Optimizer"
-        description="Analyze any Polymarket trader's performance with AI. Get optimized copy trading settings for TheTradeFox based on Smart Score, Sharpe ratio, and risk analysis."
+        title="PolyTrak | Polymarket Trader Analytics & TradeFox Copy Settings"
+        description="Analyze any Polymarket wallet with ROV, exits, and liquidity signals. Get risk-adjusted copy settings for TradeFox to mirror traders with fewer surprises."
         canonicalUrl="/"
       />
       {/* Hero Section */}
