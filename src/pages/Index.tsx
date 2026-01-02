@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from '@/components/ui/carousel';
 import { RotatingWord } from '@/components/ui/rotating-word';
-import { Search, Brain, Sparkles, Target, ArrowRight, Zap, TrendingUp, Shield, Settings, BarChart3, Wallet, Copy, DollarSign, AlertTriangle, ChevronUp } from 'lucide-react';
+import { Search, Brain, Sparkles, Target, ArrowRight, Zap, TrendingUp, Shield, Settings, BarChart3, Wallet, Copy, Activity, Droplets, CheckCircle } from 'lucide-react';
 import tradeFoxLogo from '@/assets/tradefox-logo.png';
 import { RecentSearches } from '@/components/home/RecentSearches';
 import { PublicRecentAnalyses } from '@/components/analyze/PublicRecentAnalyses';
@@ -24,13 +24,13 @@ const Index = () => {
     }
   };
 
-  // Auto-play carousel
+  // Auto-play carousel every 5 seconds
   useEffect(() => {
     if (!carouselApi) return;
 
     const interval = setInterval(() => {
       carouselApi.scrollNext();
-    }, 4000);
+    }, 5000);
 
     carouselApi.on('select', () => {
       setCurrentSlide(carouselApi.selectedScrollSnap());
@@ -48,99 +48,122 @@ const Index = () => {
   const previewSlides = [
     {
       title: 'Smart Score Rating',
-      description: 'AI-calculated quality score based on profitability, consistency, and risk management',
+      description: 'PolyTrak assigns each Polymarket trader a Smart Score based on profitability, consistency, and risk management — not just raw profit.',
       icon: Brain,
+      bullets: [
+        'Combines multiple performance metrics into a single score',
+        'Penalizes excessive drawdowns and unstable strategies',
+        'Designed to reflect copy-trading suitability, not hype',
+      ],
       preview: (
         <div className="flex flex-col items-center gap-3">
-          <div className="relative w-32 h-32">
-            <svg className="w-32 h-32 -rotate-90" viewBox="0 0 120 120">
+          <div className="relative w-28 h-28">
+            <svg className="w-28 h-28 -rotate-90" viewBox="0 0 120 120">
               <circle cx="60" cy="60" r="50" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" />
               <circle cx="60" cy="60" r="50" fill="none" stroke="hsl(var(--primary))" strokeWidth="8" strokeDasharray="251.2" strokeDashoffset="37.68" strokeLinecap="round" />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-3xl font-bold text-primary">85</span>
+              <span className="text-2xl font-bold text-primary">85</span>
             </div>
           </div>
-          <span className="text-sm text-muted-foreground">out of 100</span>
+          <span className="text-xs text-muted-foreground">Risk-adjusted performance score</span>
         </div>
       ),
     },
     {
-      title: 'PnL Performance Chart',
-      description: 'Visualize historical profit and loss across the trader\'s entire career',
+      title: 'Trader Efficiency (ROV)',
+      description: 'Understand how efficiently traders make money using Return on Volume (ROV) — profit per dollar traded — instead of misleading total PnL.',
       icon: TrendingUp,
+      bullets: [
+        'Filters out high-volume churn strategies',
+        'Highlights traders with real edge and execution discipline',
+        'Essential for identifying copy-worthy traders',
+      ],
       preview: (
-        <div className="w-full h-32 flex items-end gap-1 px-4">
-          {[20, 35, 25, 45, 40, 55, 50, 70, 65, 85, 75, 95].map((height, i) => (
-            <div 
-              key={i} 
-              className="flex-1 bg-gradient-to-t from-primary/50 to-primary rounded-t transition-all"
-              style={{ height: `${height}%` }}
-            />
-          ))}
-        </div>
-      ),
-    },
-    {
-      title: 'AI-Optimized Copy Settings',
-      description: 'Personalized configuration calculated for your specific budget and risk tolerance',
-      icon: Settings,
-      preview: (
-        <div className="space-y-3 w-full max-w-xs">
-          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border/50">
-            <span className="text-sm text-muted-foreground">% Size per trade</span>
-            <span className="font-mono font-semibold text-primary">15%</span>
-          </div>
-          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border/50">
-            <span className="text-sm text-muted-foreground">% of trade to copy</span>
-            <span className="font-mono font-semibold text-primary">35%</span>
-          </div>
-          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border/50">
-            <span className="text-sm text-muted-foreground">Follow exits</span>
-            <span className="font-mono font-semibold text-green-500">Enabled</span>
-          </div>
-        </div>
-      ),
-    },
-    {
-      title: 'Risk Analysis',
-      description: 'Understand risk-adjusted returns with Sharpe ratio and max drawdown estimates',
-      icon: Shield,
-      preview: (
-        <div className="space-y-3 w-full max-w-xs">
-          <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/30">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-sm text-muted-foreground">Sharpe Ratio</span>
-              <span className="text-xs px-2 py-0.5 rounded bg-green-500/20 text-green-500">Excellent</span>
-            </div>
-            <span className="text-2xl font-bold text-green-500">1.85</span>
-          </div>
-          <div className="p-3 rounded-lg bg-muted/50 border border-border/50">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-sm text-muted-foreground">Est. Max Drawdown</span>
-              <AlertTriangle className="h-4 w-4 text-yellow-500" />
-            </div>
-            <span className="text-2xl font-bold">-12.5%</span>
-          </div>
-        </div>
-      ),
-    },
-    {
-      title: 'Fee Impact Analysis',
-      description: 'See how TradeFox fees affect your expected returns before you start copying',
-      icon: DollarSign,
-      preview: (
-        <div className="space-y-3 w-full max-w-xs">
-          <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/30">
-            <div className="flex items-center gap-2 mb-2">
-              <DollarSign className="h-5 w-5 text-green-500" />
-              <span className="font-semibold text-green-500">Low Fee Impact</span>
-            </div>
-            <p className="text-xs text-muted-foreground">Fees represent less than 5% of expected returns</p>
+        <div className="space-y-2 w-full max-w-[200px]">
+          <div className="p-3 rounded-lg bg-primary/10 border border-primary/30">
+            <div className="text-xs text-muted-foreground mb-1">Return on Volume</div>
+            <span className="text-xl font-bold text-primary">8.2%</span>
           </div>
           <div className="flex items-center gap-2 p-2 rounded bg-muted/30">
-            <ChevronUp className="h-4 w-4 text-primary" />
-            <span className="text-xs text-muted-foreground">Higher tiers unlock better cashback</span>
+            <Activity className="h-4 w-4 text-primary" />
+            <span className="text-xs text-muted-foreground">Profit per $ traded</span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: 'Exit Behavior',
+      description: 'See whether profits come from holding to resolution or from smart partial exits — a critical factor for successful copy trading.',
+      icon: Activity,
+      bullets: [
+        'Identifies partial exit vs full-hold strategies',
+        'Explains why many profitable traders copy poorly',
+        'Directly informs proportional vs mirror exit logic',
+      ],
+      preview: (
+        <div className="space-y-2 w-full max-w-[200px]">
+          <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50 border border-border/50">
+            <span className="text-xs text-muted-foreground">Partial Exits</span>
+            <span className="font-mono text-sm font-semibold text-primary">68%</span>
+          </div>
+          <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50 border border-border/50">
+            <span className="text-xs text-muted-foreground">Hold to Resolution</span>
+            <span className="font-mono text-sm font-semibold">32%</span>
+          </div>
+          <div className="flex items-center gap-2 p-2 rounded bg-yellow-500/10 border border-yellow-500/30">
+            <span className="text-xs text-yellow-500">Use proportional exit mode</span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: 'Liquidity & Execution',
+      description: 'Identify traders whose strategies survive real-world liquidity constraints, slippage, and execution delays.',
+      icon: Droplets,
+      bullets: [
+        'Analyzes market liquidity sensitivity',
+        'Flags strategies that break when copied',
+        'Helps avoid slippage-driven losses',
+      ],
+      preview: (
+        <div className="space-y-2 w-full max-w-[200px]">
+          <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-muted-foreground">Liquidity Score</span>
+              <span className="text-xs px-1.5 py-0.5 rounded bg-green-500/20 text-green-500">Good</span>
+            </div>
+            <span className="text-xl font-bold text-green-500">High</span>
+          </div>
+          <div className="flex items-center gap-2 p-2 rounded bg-muted/30">
+            <Droplets className="h-4 w-4 text-primary" />
+            <span className="text-xs text-muted-foreground">Low slippage risk</span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: 'Copy Readiness',
+      description: 'Get AI-optimized copy trading settings designed specifically for TheTradeFox and real execution conditions.',
+      icon: Settings,
+      bullets: [
+        'Auto-configured position sizing',
+        'Exit mode selection (proportional / mirror / optimized)',
+        'Risk-adjusted settings based on trader behavior and your budget',
+      ],
+      preview: (
+        <div className="space-y-2 w-full max-w-[200px]">
+          <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50 border border-border/50">
+            <span className="text-xs text-muted-foreground">Trade Size</span>
+            <span className="font-mono text-sm font-semibold text-primary">15%</span>
+          </div>
+          <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50 border border-border/50">
+            <span className="text-xs text-muted-foreground">Exit Mode</span>
+            <span className="font-mono text-sm font-semibold text-primary">Proportional</span>
+          </div>
+          <div className="flex items-center gap-2 p-2 rounded bg-green-500/10 border border-green-500/30">
+            <CheckCircle className="h-4 w-4 text-green-500" />
+            <span className="text-xs text-green-500">Ready for TradeFox</span>
           </div>
         </div>
       ),
@@ -308,33 +331,45 @@ const Index = () => {
       {/* What You'll Discover Carousel Section */}
       <section className="container py-16 border-b border-border/50">
         <div className="text-center mb-10">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">What You'll Discover</h2>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">Why PolyTrak Is Different</h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Comprehensive analysis for smarter copy trading decisions
+            Real Polymarket trader analysis with ROV, liquidity signals, and risk-adjusted copy trading metrics
           </p>
         </div>
 
-        <div className="max-w-4xl mx-auto px-8 md:px-12">
+        <div className="max-w-5xl mx-auto px-8 md:px-12">
           <Carousel
             setApi={setCarouselApi}
             opts={{ align: 'center', loop: true }}
             className="w-full"
           >
             <CarouselContent>
-              {previewSlides.map((slide, index) => (
+              {previewSlides.map((slide) => (
                 <CarouselItem key={slide.title} className="md:basis-full">
-                  <Card className="p-6 md:p-8 bg-card/80 border-border/50 hover:border-primary/30 transition-all min-h-[360px] flex flex-col">
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="p-2.5 rounded-lg bg-primary/10">
-                        <slide.icon className="h-6 w-6 text-primary" />
+                  <Card className="p-6 md:p-8 bg-card/80 border-border/50 hover:border-primary/30 transition-all min-h-[380px]">
+                    <div className="grid md:grid-cols-2 gap-6 h-full">
+                      {/* Left: Text content */}
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="p-2.5 rounded-lg bg-primary/10">
+                            <slide.icon className="h-6 w-6 text-primary" />
+                          </div>
+                          <h3 className="font-semibold text-xl">{slide.title}</h3>
+                        </div>
+                        <p className="text-muted-foreground mb-4">{slide.description}</p>
+                        <ul className="space-y-2 mt-auto">
+                          {slide.bullets.map((bullet, i) => (
+                            <li key={i} className="flex items-start gap-2 text-sm">
+                              <CheckCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                              <span>{bullet}</span>
+                            </li>
+                          ))}
+                        </ul>
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-xl">{slide.title}</h3>
-                        <p className="text-sm text-muted-foreground">{slide.description}</p>
+                      {/* Right: Visual preview */}
+                      <div className="flex items-center justify-center">
+                        {slide.preview}
                       </div>
-                    </div>
-                    <div className="flex-1 flex items-center justify-center">
-                      {slide.preview}
                     </div>
                   </Card>
                 </CarouselItem>
