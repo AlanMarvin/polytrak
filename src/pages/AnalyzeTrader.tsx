@@ -228,48 +228,70 @@ interface ProfitFactorResult {
 }
 
 // ROV (Return on Volume) utility functions
-// Measures profit efficiency per dollar traded - critical for copy trading suitability
+// Now uses backend-computed ROV from true trade volume
 interface ROVResult {
-  value: number;
+  value: number | null;
   display: string;
   label: 'High Efficiency' | 'Moderate Efficiency' | 'Low Efficiency' | 'Insufficient Data';
   color: string;
+  volumeDisplay: string;
+  warning: string | null;
 }
 
 const calculateROV = (trader: TraderData): ROVResult => {
-  const totalPnL = trader.pnl;
-  const totalVolume = trader.volume;
+  // Use backend-computed ROV if available
+  const rovPercent = (trader as any).rovPercent;
+  const trueVolumeUsd = (trader as any).trueVolumeUsd;
+  const rovWarning = (trader as any).rovWarning;
   
-  if (!totalVolume || totalVolume === 0) {
+  // Format volume for display
+  const formatVolume = (vol: number | undefined): string => {
+    if (!vol || vol === 0) return '—';
+    if (vol >= 1000000) return '$' + (vol / 1000000).toFixed(2) + 'M';
+    if (vol >= 1000) return '$' + (vol / 1000).toFixed(1) + 'K';
+    return '$' + vol.toFixed(0);
+  };
+  
+  const volumeDisplay = formatVolume(trueVolumeUsd);
+  
+  // If backend returned null ROV (sanity check failed or insufficient data)
+  if (rovPercent === null || rovPercent === undefined) {
     return {
-      value: 0,
+      value: null,
       display: '—',
       label: 'Insufficient Data',
-      color: 'text-muted-foreground'
+      color: 'text-muted-foreground',
+      volumeDisplay,
+      warning: rovWarning || 'Insufficient volume data for reliable ROV calculation'
     };
   }
   
-  const rov = (totalPnL / totalVolume) * 100; // As percentage
-  
+  // Determine efficiency label based on ROV thresholds
   let label: ROVResult['label'];
   let color: string;
   
-  if (rov >= 0.30) {
+  if (rovPercent >= 0.30) {
     label = 'High Efficiency';
     color = 'text-green-500';
-  } else if (rov >= 0.15) {
+  } else if (rovPercent >= 0.15) {
     label = 'Moderate Efficiency';
     color = 'text-yellow-500';
-  } else {
+  } else if (rovPercent >= 0) {
     label = 'Low Efficiency';
     color = 'text-orange-500';
+  } else {
+    // Negative ROV
+    label = 'Low Efficiency';
+    color = 'text-red-500';
   }
   
   return {
-    value: rov,
-    display: rov.toFixed(3) + '%',
+    value: rovPercent,
+    display: rovPercent.toFixed(3) + '%',
     label,
-    color
+    color,
+    volumeDisplay,
+    warning: rovWarning
   };
 };
 
@@ -2209,7 +2231,7 @@ export default function AnalyzeTrader() {
                         <div className="space-y-2">
                           <p className="text-sm font-medium">Return on Volume (ROV)</p>
                           <p className="text-sm text-muted-foreground">
-                            Measures how much profit a trader generates per dollar traded. 
+                            ROV = profit per $ traded (buys + sells). Computed from trade fills.
                             High ROV indicates efficient strategies that better survive slippage and execution.
                           </p>
                           <div className="text-xs space-y-1">
@@ -2236,9 +2258,21 @@ export default function AnalyzeTrader() {
                             </Badge>
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Profit per $ traded
-                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <p className="text-xs text-muted-foreground">
+                            Volume: {rovResult.volumeDisplay}
+                          </p>
+                          {rovResult.warning && (
+                            <HoverCard>
+                              <HoverCardTrigger asChild>
+                                <Info className="h-3 w-3 text-yellow-500 cursor-help" />
+                              </HoverCardTrigger>
+                              <HoverCardContent className="w-64 z-50" side="top">
+                                <p className="text-xs text-muted-foreground">{rovResult.warning}</p>
+                              </HoverCardContent>
+                            </HoverCard>
+                          )}
+                        </div>
                       </>
                     );
                   })()}

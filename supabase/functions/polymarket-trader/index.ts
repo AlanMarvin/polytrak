@@ -453,11 +453,62 @@ serve(async (req) => {
 
     console.log(`PnL: realized=${realizedPnl.toFixed(2)}, unrealized=${unrealizedPnl.toFixed(2)}, total=${totalPnl.toFixed(2)}, winRate=${winRate.toFixed(1)}%`);
 
-    // Calculate volume from trades
-    let totalVolume = 0;
+    // ============= TRUE VOLUME CALCULATION FOR ROV =============
+    // Sum absolute notional value of ALL trade fills (buys + sells)
+    // This gives us the true "churn" for accurate ROV calculation
+    let trueVolumeUsd = 0;
+    let buyVolumeUsd = 0;
+    let sellVolumeUsd = 0;
+    
     allTrades.forEach((trade: any) => {
-      totalVolume += (trade.size || 0) * (trade.price || 0);
+      const size = Math.abs(trade.size || 0);
+      const price = trade.price || 0;
+      const notional = size * price;
+      
+      trueVolumeUsd += notional;
+      
+      if (trade.side?.toLowerCase() === 'buy') {
+        buyVolumeUsd += notional;
+      } else {
+        sellVolumeUsd += notional;
+      }
     });
+    
+    // Also use the old volume calculation for backward compatibility
+    let totalVolume = trueVolumeUsd;
+    
+    // ============= ROV CALCULATION WITH SANITY CHECKS =============
+    let rovPercent: number | null = null;
+    let rovPnlSource: 'realized' | 'total' = 'realized';
+    let rovWarning: string | null = null;
+    
+    // Use realized PnL for ROV (more accurate for completed trades)
+    const rovPnl = realizedPnl;
+    
+    // Calculate ROV if we have sufficient volume data
+    if (trueVolumeUsd >= 1000) {
+      rovPercent = (rovPnl / trueVolumeUsd) * 100;
+      
+      // Sanity check: ROV > 10% with significant volume is suspicious
+      // This could indicate undercounted volume from API pagination limits
+      if (rovPercent > 10 && trueVolumeUsd > 50000) {
+        console.log(`ROV WARNING: Suspiciously high ROV=${rovPercent.toFixed(3)}% with volume=$${trueVolumeUsd.toFixed(2)}`);
+        rovWarning = 'Volume may be undercounted - ROV unreliable';
+        rovPercent = null; // Don't show misleading metric
+      }
+      
+      // Also flag if PnL is very high but volume seems too low
+      if (Math.abs(rovPnl) > 10000 && trueVolumeUsd < 50000) {
+        console.log(`ROV WARNING: High PnL=$${rovPnl.toFixed(2)} but low volume=$${trueVolumeUsd.toFixed(2)}`);
+        rovWarning = 'Insufficient volume data for reliable ROV';
+        rovPercent = null;
+      }
+    } else {
+      rovWarning = 'Insufficient trade volume data';
+    }
+    
+    // ROV Debug logging
+    console.log(`ROV Debug: pnl=$${rovPnl.toFixed(2)}, trueVolume=$${trueVolumeUsd.toFixed(2)}, buyVol=$${buyVolumeUsd.toFixed(2)}, sellVol=$${sellVolumeUsd.toFixed(2)}, rovPercent=${rovPercent?.toFixed(3) ?? 'null'}%, trades=${allTrades.length}`);
 
     // Get time-based PnL
     const now = Date.now();
@@ -582,6 +633,12 @@ serve(async (req) => {
       trades30d, // Trades (fills) in last 30 days
       positions30d, // Unique markets entered in last 30 days
       volume: totalVolume,
+      // New ROV fields - computed from trade fills
+      trueVolumeUsd,
+      rovPercent,
+      rovPnlSource,
+      rovWarning,
+      volumeSource: 'fills' as const,
       totalInvested,
       totalCurrentValue,
       positions: trulyOpenPositions.length,
