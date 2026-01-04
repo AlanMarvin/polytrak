@@ -477,24 +477,34 @@ serve(async (req) => {
       }
     });
     
-    // Method 2: Estimate minimum volume from closed positions
-    // Each closed position required at least: entry (buy) + exit (sell)
-    // Using initialValue as proxy for entry cost, exit would be similar
-    // This helps catch volume when trade history is incomplete
+    // Method 2: Estimate volume from closed positions using CORRECT fields
+    // CRITICAL: closed positions use 'totalBought' not 'initialValue'
+    // Each closed position required: entry (totalBought) + exit (totalBought + realizedPnl)
     let closedPositionVolume = 0;
     finalPositions.forEach((pos: any) => {
-      const initialValue = Math.abs(pos.initialValue || 0);
-      // Entry + exit = approximately 2x initial value for round-trip
-      // But we use 1.5x as conservative estimate (some might not be full exits)
-      closedPositionVolume += initialValue * 1.5;
+      // Use totalBought (available on closed positions) - NOT initialValue!
+      const entryValue = Math.abs(pos.totalBought || pos.initialValue || 0);
+      // Exit value = what they got back = entry + profit (or - loss)
+      const exitValue = Math.abs(entryValue + (pos.realizedPnl || 0));
+      // Round-trip volume = entry + exit
+      closedPositionVolume += entryValue + exitValue;
     });
     
-    // If closed position volume estimate is significantly higher than trade volume,
-    // it indicates we're missing trade history - use the higher estimate
-    if (closedPositionVolume > trueVolumeUsd * 1.5 && closedPositionVolume > 10000) {
-      console.log(`Volume adjustment: trade fills show $${trueVolumeUsd.toFixed(2)} but closed positions suggest ~$${closedPositionVolume.toFixed(2)}`);
-      // Use a blend: trade volume + gap estimate (to avoid over-inflation)
-      trueVolumeUsd = Math.max(trueVolumeUsd, closedPositionVolume * 0.8);
+    // Estimate missing sell volume from resolution exits
+    // If sellVolumeUsd is much lower than expected from closed positions, add the gap
+    // Positions settled via resolution don't have explicit sell trades
+    const expectedExitVolume = closedPositionVolume / 2; // Half of round-trip is exits
+    const missingSellVolume = Math.max(0, expectedExitVolume - sellVolumeUsd);
+    
+    if (missingSellVolume > 1000) {
+      console.log(`Adding estimated resolution exits: $${missingSellVolume.toFixed(2)} (sellVol=$${sellVolumeUsd.toFixed(2)}, expected=$${expectedExitVolume.toFixed(2)})`);
+      trueVolumeUsd += missingSellVolume;
+    }
+    
+    // Use closedPositionVolume as minimum floor if higher than trade-based volume
+    if (closedPositionVolume > trueVolumeUsd) {
+      console.log(`Volume floor adjustment: trades=$${trueVolumeUsd.toFixed(2)}, positions suggest=$${closedPositionVolume.toFixed(2)}`);
+      trueVolumeUsd = closedPositionVolume;
     }
     
     // Also use the old volume calculation for backward compatibility
@@ -503,7 +513,7 @@ serve(async (req) => {
     // ============= ROV CALCULATION WITH SANITY CHECKS =============
     // ROV = Net Profit / Total Traded Volume
     // Typical real-world values: 0.05% to 2% for most traders
-    // > 5-10% is exceptional, > 20% is suspicious, > 50% is almost certainly wrong data
+    // > 5-10% is exceptional, > 10% is very rare
     let rovPercent: number | null = null;
     let rovPnlSource: 'realized' | 'total' = 'realized';
     let rovWarning: string | null = null;
@@ -516,29 +526,24 @@ serve(async (req) => {
       rovPercent = (rovPnl / trueVolumeUsd) * 100;
       
       // Sanity check thresholds (based on real Polymarket data):
-      // - ROV > 20% is highly suspicious (rare even for best traders)
-      // - ROV > 50% is almost certainly wrong data
-      if (rovPercent !== null && Math.abs(rovPercent) > 50) {
-        console.log(`ROV WARNING: Impossible ROV=${rovPercent.toFixed(3)}% - data is wrong`);
-        rovWarning = 'Volume data incomplete - ROV unreliable';
-        rovPercent = null; // Don't show obviously wrong metric
-      } else if (rovPercent !== null && Math.abs(rovPercent) > 20 && trueVolumeUsd > 10000) {
-        console.log(`ROV WARNING: Suspiciously high ROV=${rovPercent.toFixed(3)}% with volume=$${trueVolumeUsd.toFixed(2)}`);
+      // - ROV > 10% is exceptional (very selective/skilled trader)
+      // - ROV > 20% is suspicious, likely missing volume
+      if (rovPercent !== null && Math.abs(rovPercent) > 20) {
+        console.log(`ROV WARNING: Very high ROV=${rovPercent.toFixed(3)}% - likely missing volume data`);
+        rovWarning = 'Volume data may be incomplete - ROV could be lower';
+      } else if (rovPercent !== null && Math.abs(rovPercent) > 10 && trueVolumeUsd > 20000) {
+        console.log(`ROV CHECK: High ROV=${rovPercent.toFixed(3)}% - reviewing volume sources`);
+        console.log(`  - Trade fills: buy=$${buyVolumeUsd.toFixed(2)}, sell=$${sellVolumeUsd.toFixed(2)}`);
+        console.log(`  - Position estimate: $${closedPositionVolume.toFixed(2)}`);
+        console.log(`  - Final volume used: $${trueVolumeUsd.toFixed(2)}`);
         rovWarning = 'Unusually high ROV - verify with external source';
-        // Still show but with warning (could be a very selective trader)
-      }
-      
-      // Flag if PnL is very high but volume seems disproportionately low
-      if (rovPercent !== null && Math.abs(rovPnl) > 50000 && trueVolumeUsd < 100000) {
-        console.log(`ROV WARNING: High PnL=$${rovPnl.toFixed(2)} but low volume=$${trueVolumeUsd.toFixed(2)} - ratio suspicious`);
-        rovWarning = 'Volume may be undercounted - verify ROV';
       }
     } else {
       rovWarning = 'Insufficient trade volume data';
     }
     
-    // ROV Debug logging (with closed position volume estimate for comparison)
-    console.log(`ROV Debug: pnl=$${rovPnl.toFixed(2)}, trueVolume=$${trueVolumeUsd.toFixed(2)}, buyVol=$${buyVolumeUsd.toFixed(2)}, sellVol=$${sellVolumeUsd.toFixed(2)}, closedPosVolEst=$${closedPositionVolume.toFixed(2)}, rovPercent=${rovPercent?.toFixed(3) ?? 'null'}%, trades=${allTrades.length}`);
+    // ROV Debug logging
+    console.log(`ROV Debug: pnl=$${rovPnl.toFixed(2)}, trueVolume=$${trueVolumeUsd.toFixed(2)}, buyVol=$${buyVolumeUsd.toFixed(2)}, sellVol=$${sellVolumeUsd.toFixed(2)}, closedPosVol=$${closedPositionVolume.toFixed(2)}, rovPercent=${rovPercent?.toFixed(3) ?? 'null'}%, trades=${allTrades.length}`);
 
 
     // Get time-based PnL
