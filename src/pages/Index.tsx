@@ -309,7 +309,7 @@ const Index = () => {
       {/* Demo Video Section */}
       <section className="container py-16 border-b border-border/50">
         <div className="text-center mb-10">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">See how PolyTrak converts real Polymarket trading history into actionable copy trading configurations.</h2>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">How these settings are generated</h2>
         </div>
         
         <div className="max-w-4xl mx-auto">
