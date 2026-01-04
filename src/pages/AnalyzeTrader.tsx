@@ -2221,6 +2221,9 @@ export default function AnalyzeTrader() {
                   <div className="flex items-center gap-2 text-muted-foreground mb-1">
                     <TrendingUp className="h-4 w-4" />
                     <span className="text-sm">ROV</span>
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-primary/10 text-primary border-primary/30">
+                      Beta
+                    </Badge>
                     <HoverCard>
                       <HoverCardTrigger asChild>
                         <button className="ml-auto">
