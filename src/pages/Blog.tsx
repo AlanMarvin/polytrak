@@ -165,6 +165,36 @@ const Blog = () => {
           url: 'https://polytrak.io/blog',
         }}
       />
+      {/* Blog Posts Navigation */}
+      <div className="container py-8 max-w-4xl">
+        <h2 className="text-lg font-semibold mb-4">Latest Articles</h2>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card className="glass-card hover:border-primary/30 transition-colors">
+            <CardContent className="p-4">
+              <Badge variant="outline" className="mb-2">Guide</Badge>
+              <h3 className="font-semibold mb-1">Polymarket Tools - The Complete No-BS Guide for 2025</h3>
+              <p className="text-sm text-muted-foreground mb-3">Tested every tool in the Polymarket ecosystem. Here's what matters.</p>
+              <span className="text-sm text-primary">You're reading this →</span>
+            </CardContent>
+          </Card>
+          <Link to="/blog/features">
+            <Card className="glass-card hover:border-primary/30 transition-colors h-full">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge variant="outline">Features</Badge>
+                  <Badge className="bg-accent text-accent-foreground text-xs">New</Badge>
+                </div>
+                <h3 className="font-semibold mb-1">PolyTrak Features: Complete Guide to Our Trading Analytics</h3>
+                <p className="text-sm text-muted-foreground mb-3">Discover Smart Score, ROV, Sharpe Ratio, and auto-generated copy settings.</p>
+                <span className="text-sm text-primary flex items-center gap-1">Read article <ArrowRight className="h-3 w-3" /></span>
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
+      </div>
+
+      <Separator className="container max-w-4xl" />
+
       {/* Hero Section */}
       <article className="container py-12 max-w-4xl">
         {/* Article Header */}
