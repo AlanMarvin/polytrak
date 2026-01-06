@@ -465,7 +465,10 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
   const effectiveVolume = typeof trueVolumeUsd === 'number' && trueVolumeUsd > 0
     ? trueVolumeUsd
     : (Number.isFinite(trader.volume) ? trader.volume : 0);
-  const avgTradeSize = Number.isFinite(effectiveVolume / totalTrades) ? (effectiveVolume / totalTrades) : 0;
+  const avgTradeSizeBase = Number.isFinite(effectiveVolume / totalTrades) ? (effectiveVolume / totalTrades) : 0;
+  const avgTradeSize = trader.trades30d > 0 && trader.totalInvested > 0
+    ? Math.max(avgTradeSizeBase, trader.totalInvested / trader.trades30d)
+    : avgTradeSizeBase;
   const profitability = trader.pnl > 0;
   const experience = trader.closedPositions;
   const sharpeRatio = calculateSharpeRatio(trader);
@@ -661,7 +664,11 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
   const firstValidTimestamp = validHistory.length > 0
     ? validHistory[0].timestamp
     : Date.now() - (30 * 24 * 60 * 60 * 1000);
-  const tradesPerMonth = Math.min(totalTrades / Math.max(1, (Date.now() - firstValidTimestamp) / (30 * 24 * 60 * 60 * 1000)), 30);
+  const monthsActive = Math.max(1, (Date.now() - firstValidTimestamp) / (30 * 24 * 60 * 60 * 1000));
+  const rawTradesPerMonth = trader.trades30d > 0
+    ? trader.trades30d
+    : totalTrades / monthsActive;
+  const tradesPerMonth = Math.min(Math.max(1, rawTradesPerMonth), 120);
   let expectedMonthlyReturn = expectedTradeReturn * (copyPercentage / 100) * (tradeSize / 100) * tradesPerMonth * 100;
 
   // Debug logging - temporarily disabled due to page crash
@@ -702,19 +709,19 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
 
     // Check for high-frequency trading (likely bot behavior)
     if (botFlags.some(flag => flag.includes('High trade frequency') || flag.includes('Small trade sizes with high frequency'))) {
-      botReductionMultiplier *= 0.3; // Reduce by 70% for high-frequency patterns
+      botReductionMultiplier *= 0.6; // Reduce by 40% for high-frequency patterns
       reasoning.push('⚠️ High-frequency trading detected - return estimate significantly reduced');
     }
 
     // Check for execution-dependent strategies (difficult to replicate)
     if (botFlags.some(flag => flag.includes('Low profit margin on high volume'))) {
-      botReductionMultiplier *= 0.5; // Reduce by 50% for execution-dependent strategies
+      botReductionMultiplier *= 0.75; // Reduce by 25% for execution-dependent strategies
       reasoning.push('⚠️ Execution-dependent strategy - return estimate reduced for realism');
     }
 
     // Check for high position churn (frequent adjustments)
     if (botFlags.some(flag => flag.includes('High position churn'))) {
-      botReductionMultiplier *= 0.7; // Reduce by 30% for high churn
+      botReductionMultiplier *= 0.85; // Reduce by 15% for high churn
       reasoning.push('⚠️ High position adjustment frequency - return estimate moderated');
     }
 
