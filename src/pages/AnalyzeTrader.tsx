@@ -19,7 +19,7 @@ import { useWatchlist } from '@/hooks/useWatchlist';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { saveRecentSearch } from '@/hooks/useRecentSearches';
-import { savePublicAnalysis, usePublicRecentAnalyses } from '@/hooks/usePublicRecentAnalyses';
+import { savePublicAnalysis } from '@/hooks/usePublicRecentAnalyses';
 import { useTraderAnalysis } from '@/hooks/useTraderAnalysis';
 import { ThreeColorRing } from '@/components/ui/three-color-ring';
 import { PublicRecentAnalyses } from '@/components/analyze/PublicRecentAnalyses';
@@ -1393,7 +1393,6 @@ export default function AnalyzeTrader() {
   const { user } = useAuth();
   const { isWatching, addToWatchlist, removeFromWatchlist } = useWatchlist();
   const { toast } = useToast();
-  const { analyses: recentAnalyses } = usePublicRecentAnalyses();
   const handleCopyReferralLink = () => {
     navigator.clipboard.writeText('https://thetradefox.com?ref=POLYTRAK');
     toast({ title: 'Link copied to clipboard!' });
@@ -1417,13 +1416,6 @@ export default function AnalyzeTrader() {
   const profitFactorResult = useMemo(() => trader ? calculateProfitFactor(trader) : { value: 0, display: 'N/A', grossProfits: 0, grossLosses: 0 }, [trader]);
   const smartScoreInfo = getSmartScoreInfo(smartScore);
   const copySuitability = useMemo(() => trader ? calculateCopySuitability(trader) : null, [trader]);
-  const smartScorePercentile = useMemo(() => {
-    if (!finalMetricsReady || !recentAnalyses || recentAnalyses.length < 10) return null;
-    const scores = recentAnalyses.map(a => a.smartScore);
-    scores.push(smartScore);
-    const belowCount = scores.filter(score => score < smartScore).length;
-    return Math.min(99, Math.max(1, Math.round((belowCount / scores.length) * 100)));
-  }, [finalMetricsReady, recentAnalyses, smartScore]);
   
   // Build TraderStyleSignals from trader data for useAutoCopySettings hook
   const traderStyleSignals = useMemo<TraderStyleSignals | null>(() => {
@@ -1792,11 +1784,6 @@ export default function AnalyzeTrader() {
                           </AvatarFallback>
                         </Avatar>
                       </div>
-                      {finalMetricsReady && smartScorePercentile !== null && (
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Better than {smartScorePercentile}% of recent analyses
-                        </p>
-                      )}
                     </div>
                     <h2 className="text-2xl font-bold">
                       {trader.username || formatAddress(trader.address)}
