@@ -358,6 +358,20 @@ const calculateSmartScore = (trader: TraderData) => {
       ? trader.trueVolumeUsd
       : trader.volume;
   const roi = effectiveVolume > 0 ? (trader.pnl / effectiveVolume) * 100 : 0; // as percentage
+
+  // Debug logging for HashDive comparison
+  if (trader.address === '0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d') {
+    console.log('🔍 Smart Score Debug for trader 0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d:', {
+      pnl: trader.pnl,
+      trueVolumeUsd: trader.trueVolumeUsd,
+      volume: trader.volume,
+      effectiveVolume,
+      roi,
+      winRate: trader.winRate,
+      closedPositions: trader.closedPositions,
+      pnlHistoryLength: trader.pnlHistory?.length || 0
+    });
+  }
   
   // ROI component (max 35 pts) - the primary performance indicator
   let roiScore: number;
@@ -405,6 +419,18 @@ const calculateSmartScore = (trader: TraderData) => {
       profitFactorScore = Math.min(15, 12 + (pf - 2.5) * 3);
     }
   }
+
+  // Debug logging for HashDive comparison
+  if (trader.address === '0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d') {
+    console.log('🔍 Profit Factor Details for trader 0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d:', {
+      profitFactorValue: profitFactorResult.value,
+      profitFactorScore,
+      totalWins: profitFactorResult.totalWins,
+      totalLosses: profitFactorResult.totalLosses,
+      avgWin: profitFactorResult.avgWin,
+      avgLoss: profitFactorResult.avgLoss
+    });
+  }
   
   // Consistency component (max 20 pts) - based on Sharpe-like ratio
   // Uses PnL history to assess volatility of returns
@@ -415,12 +441,23 @@ const calculateSmartScore = (trader: TraderData) => {
     const meanReturn = returns.reduce((a, b) => a + b, 0) / returns.length;
     const variance = returns.reduce((sum, r) => sum + Math.pow(r - meanReturn, 2), 0) / returns.length;
     const stdDev = Math.sqrt(variance);
-    
+
     if (stdDev > 0 && meanReturn > 0) {
       const sharpeProxy = meanReturn / stdDev;
       consistencyScore = Math.min(20, Math.max(0, sharpeProxy * 10));
     } else if (meanReturn <= 0) {
       consistencyScore = Math.max(-10, meanReturn / 100); // Penalty for losing average
+    }
+
+    // Debug logging for HashDive comparison
+    if (trader.address === '0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d') {
+      console.log('🔍 Consistency Details for trader 0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d:', {
+        pnlHistoryLength: history.length,
+        meanReturn,
+        stdDev,
+        sharpeProxy: stdDev > 0 ? meanReturn / stdDev : 0,
+        consistencyScore
+      });
     }
   }
   
@@ -447,9 +484,23 @@ const calculateSmartScore = (trader: TraderData) => {
     else if (trader.pnl > 100000) profitBonus = 3;
     else if (trader.pnl > 10000) profitBonus = 1;
   }
-  
+
   const total = roiScore + winRateScore + consistencyScore + experienceScore + profitBonus;
-  
+
+  // Debug logging for HashDive comparison
+  if (trader.address === '0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d') {
+    console.log('🔍 Smart Score Components for trader 0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d:', {
+      roiScore,
+      winRateScore,
+      profitFactorScore,
+      consistencyScore,
+      experienceScore,
+      profitBonus,
+      total,
+      finalScore: Math.round(Math.max(0, Math.min(100, total)))
+    });
+  }
+
   // Scale to 0-100 and round
   // Realistic distribution: most traders should be 30-60, excellent 70+, elite 85+
   return Math.round(Math.max(0, Math.min(100, total)));
