@@ -1914,10 +1914,10 @@ export default function AnalyzeTrader() {
                 <div className="flex items-center justify-between gap-3 mb-3">
                   <div className="flex items-center gap-2">
                     <Loader2 className={`h-4 w-4 ${analysis.isFetchingAny ? 'animate-spin' : ''}`} />
-                    <p className="text-sm font-medium">Caricamento dati</p>
+                    <p className="text-sm font-medium">Loading data</p>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {analysis.stages.full.isSuccess ? 'Completato' : 'In corso…'}
+                    {analysis.stages.full.isSuccess ? 'Completed' : 'In progress…'}
                   </p>
                 </div>
 
@@ -1948,7 +1948,7 @@ export default function AnalyzeTrader() {
 
                 {!analysis.stages.full.isSuccess && (
                   <p className="text-xs text-muted-foreground mt-3">
-                    Alcune metriche (Smart Score, Sharpe, Copy Suitability) vengono mostrate solo dopo <strong>Full history</strong> per evitare valori provvisori.
+                    Some metrics (Smart Score, Sharpe, Copy Suitability) are shown only after <strong>Full history</strong> to avoid provisional values.
                   </p>
                 )}
               </div>
