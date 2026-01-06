@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -49,6 +49,7 @@ async function invokeFull<T>(address: string) {
 
 export function useTraderAnalysis(address: string) {
   const enabled = Boolean(address);
+  const lastAutoFullAddressRef = useRef<string | null>(null);
 
   const profile = useQuery({
     queryKey: ["trader-analysis", address, "profile"],
@@ -91,7 +92,7 @@ export function useTraderAnalysis(address: string) {
     queryFn: () => invokeFull<any>(address),
   });
 
-  // Auto-fetch full history after fast stages succeed.
+  // Auto-fetch full history after fast stages succeed (once per address).
   useEffect(() => {
     if (!enabled) return;
     if (full.isFetching || full.isSuccess) return;
@@ -102,11 +103,14 @@ export function useTraderAnalysis(address: string) {
       recentTrades.isSuccess &&
       closedPositionsSummary.isSuccess;
 
-    if (fastDone) {
-      full.refetch();
-    }
+    if (!fastDone) return;
+
+    if (lastAutoFullAddressRef.current === address) return;
+    lastAutoFullAddressRef.current = address;
+    full.refetch();
   }, [
     enabled,
+    address,
     profile.isSuccess,
     openPositions.isSuccess,
     recentTrades.isSuccess,

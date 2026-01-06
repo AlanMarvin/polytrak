@@ -64,6 +64,9 @@ interface TraderData {
   trades30d: number; // Trades (fills) in last 30 days
   positions30d: number; // Unique markets entered in last 30 days
   volume: number;
+  trueVolumeUsd?: number;
+  rovPercent?: number | null;
+  rovWarning?: string | null;
   totalInvested: number;
   totalCurrentValue: number;
   positions: number;
@@ -348,8 +351,10 @@ const calculateProfitFactor = (trader: TraderData): ProfitFactorResult => {
 // Calculate Smart Score - stricter algorithm based on real trading performance
 const calculateSmartScore = (trader: TraderData) => {
   // ROI is the most important metric - profit relative to volume traded
-  const trueVolumeUsd = (trader as any).trueVolumeUsd as number | undefined;
-  const effectiveVolume = typeof trueVolumeUsd === 'number' && trueVolumeUsd > 0 ? trueVolumeUsd : trader.volume;
+  const effectiveVolume =
+    typeof trader.trueVolumeUsd === 'number' && trader.trueVolumeUsd > 0
+      ? trader.trueVolumeUsd
+      : trader.volume;
   const roi = effectiveVolume > 0 ? (trader.pnl / effectiveVolume) * 100 : 0; // as percentage
   
   // ROI component (max 35 pts) - the primary performance indicator
@@ -503,10 +508,12 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
   const winRateRaw = trader.winRate / 100; // Convert to decimal
   // Clamp for numerical stability (prevents log(0) and divide-by-zero in some formulas)
   const winRate = Math.min(0.99, Math.max(0.01, Number.isFinite(winRateRaw) ? winRateRaw : 0.5));
-  const totalTrades = Math.max(trader.totalTrades, 1);
+  const totalTrades = Math.max(Number.isFinite(trader.totalTrades) ? trader.totalTrades : 0, 1);
   const trueVolumeUsd = (trader as any).trueVolumeUsd as number | undefined;
-  const effectiveVolume = typeof trueVolumeUsd === 'number' && trueVolumeUsd > 0 ? trueVolumeUsd : trader.volume;
-  const avgTradeSize = effectiveVolume / totalTrades;
+  const effectiveVolume = typeof trueVolumeUsd === 'number' && trueVolumeUsd > 0
+    ? trueVolumeUsd
+    : (Number.isFinite(trader.volume) ? trader.volume : 0);
+  const avgTradeSize = Number.isFinite(effectiveVolume / totalTrades) ? (effectiveVolume / totalTrades) : 0;
   const profitability = trader.pnl > 0;
   const experience = trader.closedPositions;
   const sharpeRatio = calculateSharpeRatio(trader);
@@ -720,6 +727,12 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
     }
 
     expectedMonthlyReturn *= botReductionMultiplier;
+
+    // Re-check finiteness after adjustments
+    if (!Number.isFinite(expectedMonthlyReturn)) {
+      expectedMonthlyReturn = 0;
+      reasoning.push('Return estimate stabilized after adjustments (insufficient data)');
+    }
   }
   
   // Max drawdown estimation (simplified)
@@ -1324,6 +1337,12 @@ export default function AnalyzeTrader() {
   const showErrorState = Boolean(error) && !analysis.hasAnyData;
   const openPositionsReady = analysis.stages.openPositions.isSuccess || analysis.stages.full.isSuccess;
   const recentTradesReady = analysis.stages.recentTrades.isSuccess || analysis.stages.full.isSuccess;
+  const fastStagesDone =
+    analysis.stages.profile.isSuccess &&
+    analysis.stages.openPositions.isSuccess &&
+    analysis.stages.recentTrades.isSuccess &&
+    analysis.stages.closedPositionsSummary.isSuccess;
+  const isFinalizingFull = fastStagesDone && analysis.stages.full.isFetching && !analysis.stages.full.isSuccess;
   const fastStagesComplete =
     analysis.stages.profile.isSuccess &&
     analysis.stages.openPositions.isSuccess &&
@@ -1687,6 +1706,24 @@ export default function AnalyzeTrader() {
         {/* Results Section */}
         {trader && (
           <>
+            {isFinalizingFull && (
+              <div className="mb-6 p-3 rounded-lg bg-primary/10 border border-primary/25 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">
+                    Finalizing full history… some metrics (Smart Score, returns) may update.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => analysis.stages.full.refetch()}
+                >
+                  Retry
+                </Button>
+              </div>
+            )}
             {/* High-Frequency Trader Warning Banner */}
             {(advancedSettings?.isHighFrequency || feeImpact?.level === 'High' || (feeImpact && feeImpact.netReturnLow < 0)) && (
               <div className="mb-6 p-4 rounded-lg bg-orange-500/10 border border-orange-500/30 flex items-start gap-3">
