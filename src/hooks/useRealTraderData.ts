@@ -151,7 +151,7 @@ export const useRealTraderData = (): UseRealTraderDataReturn => {
     }
   }, []);
 
-  // Calculate Sharpe ratio (simplified version)
+  // Calculate Sharpe ratio (annualized, simplified version)
   const calculateSharpeRatio = useCallback((data: RealTraderData): number => {
     if (data.pnlHistory.length < 10) return 0;
 
@@ -161,7 +161,11 @@ export const useRealTraderData = (): UseRealTraderDataReturn => {
     const stdDev = Math.sqrt(variance);
 
     // Assume risk-free rate of 0 for simplicity
-    return stdDev > 0 ? avgReturn / stdDev : 0;
+    if (stdDev <= 0) return 0;
+
+    const sharpe = avgReturn / stdDev;
+    const annualizationFactor = Math.sqrt(252);
+    return sharpe * annualizationFactor;
   }, []);
 
   // Calculate smart score based on risk-adjusted performance and efficiency
@@ -173,7 +177,7 @@ export const useRealTraderData = (): UseRealTraderDataReturn => {
     };
 
     const winRateScore = normalize(data.winRate, 40, 70);
-    const sharpeScore = normalize(sharpeRatio, 0, 2.5);
+    const sharpeScore = normalize(sharpeRatio, 0, 6);
 
     const totalTradesLog = Math.log10(data.totalTrades + 1);
     const activityScore = normalize(totalTradesLog, Math.log10(10 + 1), Math.log10(300 + 1));
@@ -189,6 +193,11 @@ export const useRealTraderData = (): UseRealTraderDataReturn => {
     const profitabilityScore = (pnlScore * 0.7) + (pnl30dScore * 0.3);
     const lossPenalty = data.pnl < 0 ? normalize(-data.pnl, 0, 20000) : 0;
 
+    const grossProfit = data.pnlHistory.reduce((sum, p) => sum + (p.pnl > 0 ? p.pnl : 0), 0);
+    const grossLoss = data.pnlHistory.reduce((sum, p) => sum + (p.pnl < 0 ? Math.abs(p.pnl) : 0), 0);
+    const profitFactor = grossLoss > 0 ? grossProfit / grossLoss : (grossProfit > 0 ? 6 : 0);
+    const profitFactorScore = normalize(profitFactor, 1, 4);
+
     const capitalBase = Math.max(1, data.totalInvested, data.volume);
     const roi = data.pnl / capitalBase;
     const roiScore = roi > 0 ? normalize(roi, 0, 0.25) : 0;
@@ -197,15 +206,16 @@ export const useRealTraderData = (): UseRealTraderDataReturn => {
     const reliabilityScore = normalize(data.dataReliability.dataCompleteness, 50, 100);
 
     let score = (
-      sharpeScore * 0.3 +
-      profitabilityScore * 0.25 +
-      roiScore * 0.15 +
+      sharpeScore * 0.28 +
+      profitabilityScore * 0.22 +
+      profitFactorScore * 0.12 +
+      roiScore * 0.13 +
       winRateScore * 0.15 +
-      activityBlend * 0.1 +
-      reliabilityScore * 0.05
+      activityBlend * 0.07 +
+      reliabilityScore * 0.03
     ) * 100;
 
-    score -= (lossPenalty * 10 + roiPenalty * 10);
+    score -= (lossPenalty * 8 + roiPenalty * 8);
 
     const sampleFactor = normalize(data.totalTrades, 10, 60);
     score *= 0.6 + (sampleFactor * 0.4);
@@ -213,7 +223,8 @@ export const useRealTraderData = (): UseRealTraderDataReturn => {
     if (data.dataReliability.score === 'low') score *= 0.85;
     else if (data.dataReliability.score === 'medium') score *= 0.93;
 
-    return Math.round(clamp(score, 0, 100));
+    const curved = Math.pow(clamp(score, 0, 100) / 100, 0.9) * 100;
+    return Math.round(clamp(curved, 0, 100));
   }, []);
 
   // Determine copy suitability
