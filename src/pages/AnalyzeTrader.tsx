@@ -15,12 +15,12 @@ import {
   Tooltip, ResponsiveContainer 
 } from 'recharts';
 
-import { supabase } from '@/integrations/supabase/client';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { saveRecentSearch } from '@/hooks/useRecentSearches';
 import { savePublicAnalysis } from '@/hooks/usePublicRecentAnalyses';
+import { useTraderAnalysis } from '@/hooks/useTraderAnalysis';
 import { ThreeColorRing } from '@/components/ui/three-color-ring';
 import { PublicRecentAnalyses } from '@/components/analyze/PublicRecentAnalyses';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -1291,12 +1291,25 @@ export default function AnalyzeTrader() {
   const [inputAddress, setInputAddress] = useState(urlAddress);
   const [analyzedAddress, setAnalyzedAddress] = useState(urlAddress);
   const [chartTimeFilter, setChartTimeFilter] = useState<ChartTimeFilter>('ALL');
-  const [trader, setTrader] = useState<TraderData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [allocatedFunds, setAllocatedFunds] = useState(1000);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [advancedModalOpen, setAdvancedModalOpen] = useState(false);
+
+  const analysis = useTraderAnalysis(analyzedAddress);
+  const trader = analysis.trader as TraderData | null;
+  const error = analysis.error ? (analysis.error.message || String(analysis.error)) : null;
+  const isInitialLoading = Boolean(analyzedAddress) && analysis.isLoadingAny && !analysis.hasAnyData;
+  const isAnalyzing = Boolean(analyzedAddress) && analysis.isFetchingAny;
+  const showErrorState = Boolean(error) && !analysis.hasAnyData;
+  const openPositionsReady = analysis.stages.openPositions.isSuccess || analysis.stages.full.isSuccess;
+  const recentTradesReady = analysis.stages.recentTrades.isSuccess || analysis.stages.full.isSuccess;
+
+  const refetchAllStages = () => {
+    analysis.stages.profile.refetch();
+    analysis.stages.openPositions.refetch();
+    analysis.stages.recentTrades.refetch();
+    analysis.stages.closedPositionsSummary.refetch();
+  };
   
   const { user } = useAuth();
   const { isWatching, addToWatchlist, removeFromWatchlist } = useWatchlist();
@@ -1311,50 +1324,8 @@ export default function AnalyzeTrader() {
     if (urlAddress && urlAddress !== analyzedAddress) {
       setInputAddress(urlAddress);
       setAnalyzedAddress(urlAddress);
-      setTrader(null);
-      setError(null);
     }
   }, [urlAddress]);
-
-  // Fetch trader data when address changes
-  useEffect(() => {
-    if (!analyzedAddress) {
-      setTrader(null);
-      return;
-    }
-
-    const fetchTraderData = async () => {
-      setLoading(true);
-      setError(null);
-      
-      try {
-        console.log('Fetching trader data for:', analyzedAddress);
-        
-        const { data, error: fnError } = await supabase.functions.invoke('polymarket-trader', {
-          body: { address: analyzedAddress }
-        });
-
-        if (fnError) {
-          throw new Error(fnError.message);
-        }
-
-        if (data?.error) {
-          throw new Error(data.error);
-        }
-
-        console.log('Received trader data:', data);
-        setTrader(data);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to fetch trader data';
-        console.error('Error fetching trader:', message);
-        setError(message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTraderData();
-  }, [analyzedAddress]);
 
   const chartData = useMemo(() => 
     trader ? generatePnlChartData(trader, chartTimeFilter) : [],
@@ -1478,10 +1449,16 @@ export default function AnalyzeTrader() {
   // Save to recent searches (localStorage) and public analyses (DB) when analysis completes
   const savedAddressRef = useRef<string | null>(null);
   useEffect(() => {
+    const analysisComplete =
+      analysis.stages.profile.isSuccess &&
+      analysis.stages.openPositions.isSuccess &&
+      analysis.stages.recentTrades.isSuccess &&
+      analysis.stages.closedPositionsSummary.isSuccess;
+
     if (
       trader && 
       adjustedCopySuitability && 
-      !loading && 
+      analysisComplete &&
       savedAddressRef.current !== trader.address
     ) {
       savedAddressRef.current = trader.address;
@@ -1507,7 +1484,16 @@ export default function AnalyzeTrader() {
         copySuitability: adjustedCopySuitability.rating
       });
     }
-  }, [trader, smartScore, sharpeRatio, adjustedCopySuitability, loading]);
+  }, [
+    trader,
+    smartScore,
+    sharpeRatio,
+    adjustedCopySuitability,
+    analysis.stages.profile.isSuccess,
+    analysis.stages.openPositions.isSuccess,
+    analysis.stages.recentTrades.isSuccess,
+    analysis.stages.closedPositionsSummary.isSuccess,
+  ]);
 
   const watching = trader ? isWatching(trader.address) : false;
 
@@ -1602,10 +1588,31 @@ export default function AnalyzeTrader() {
                   className="pl-10 h-12 bg-background/50 border-border/50 font-mono"
                 />
               </div>
-              <Button type="submit" size="lg" className="h-12 px-6" disabled={loading}>
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Analyze <ArrowRight className="ml-2 h-4 w-4" /></>}
+              <Button type="submit" size="lg" className="h-12 px-6" disabled={isAnalyzing}>
+                {isAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Analyze <ArrowRight className="ml-2 h-4 w-4" /></>}
               </Button>
             </form>
+
+            {trader && !analysis.stages.full.isSuccess && (
+              <div className="mt-3 flex justify-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => analysis.stages.full.refetch()}
+                  disabled={analysis.stages.full.isFetching}
+                >
+                  {analysis.stages.full.isFetching ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Loading full history…
+                    </>
+                  ) : (
+                    <>Load full history (slower, more accurate)</>
+                  )}
+                </Button>
+              </div>
+            )}
             
             {/* Public Recent Analyses - below analyze button */}
             <PublicRecentAnalyses className="mt-6" />
@@ -1613,24 +1620,36 @@ export default function AnalyzeTrader() {
         </div>
 
         {/* Loading State */}
-        {loading && <LoadingProgress />}
+        {isInitialLoading && (
+          <LoadingProgress
+            stages={{
+              profile: analysis.stages.profile.status,
+              openPositions: analysis.stages.openPositions.status,
+              closedPositionsSummary: analysis.stages.closedPositionsSummary.status,
+              recentTrades: analysis.stages.recentTrades.status,
+              ...(analysis.stages.full.isFetching || analysis.stages.full.isSuccess
+                ? { full: analysis.stages.full.isSuccess ? "success" : "pending" }
+                : {}),
+            }}
+          />
+        )}
 
         {/* Error State */}
-        {error && !loading && (
+        {showErrorState && (
           <div className="text-center py-16">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-destructive/20 mb-4">
               <TrendingDown className="h-8 w-8 text-destructive" />
             </div>
             <h3 className="text-xl font-semibold mb-2">Failed to load trader data</h3>
             <p className="text-muted-foreground max-w-md mx-auto mb-4">{error}</p>
-            <Button onClick={() => setAnalyzedAddress(analyzedAddress)}>
+            <Button onClick={refetchAllStages}>
               Try Again
             </Button>
           </div>
         )}
 
         {/* Results Section */}
-        {trader && !loading && (
+        {trader && (
           <>
             {/* High-Frequency Trader Warning Banner */}
             {(advancedSettings?.isHighFrequency || feeImpact?.level === 'High' || (feeImpact && feeImpact.netReturnLow < 0)) && (
@@ -3085,7 +3104,8 @@ export default function AnalyzeTrader() {
               <TabsContent value="positions" className="mt-2">
                 <Card className="glass-card">
                   <CardContent className="p-2">
-                    {trader.openPositions.length > 0 ? (
+                    {openPositionsReady ? (
+                      trader.openPositions.length > 0 ? (
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -3124,9 +3144,14 @@ export default function AnalyzeTrader() {
                           ))}
                         </TableBody>
                       </Table>
-                    ) : (
+                      ) : (
                       <div className="p-8 text-center text-muted-foreground">
                         No open positions
+                      </div>
+                      )
+                    ) : (
+                      <div className="p-8 text-center text-muted-foreground">
+                        Loading open positions…
                       </div>
                     )}
                   </CardContent>
@@ -3136,7 +3161,8 @@ export default function AnalyzeTrader() {
               <TabsContent value="history" className="mt-2">
                 <Card className="glass-card">
                   <CardContent className="p-2">
-                    {trader.recentTrades.length > 0 ? (
+                    {recentTradesReady ? (
+                      trader.recentTrades.length > 0 ? (
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -3174,9 +3200,14 @@ export default function AnalyzeTrader() {
                           ))}
                         </TableBody>
                       </Table>
-                    ) : (
+                      ) : (
                       <div className="p-8 text-center text-muted-foreground">
                         No trade history
+                      </div>
+                      )
+                    ) : (
+                      <div className="p-8 text-center text-muted-foreground">
+                        Loading recent trades…
                       </div>
                     )}
                   </CardContent>
@@ -3188,7 +3219,7 @@ export default function AnalyzeTrader() {
         )}
 
         {/* Empty State */}
-        {!trader && !loading && !error && (
+        {!trader && !isAnalyzing && !showErrorState && (
           <div className="text-center py-16">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted mb-4">
               <Search className="h-8 w-8 text-muted-foreground" />

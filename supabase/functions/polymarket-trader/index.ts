@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.87.2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -41,6 +42,69 @@ let reliabilityMetrics: ReliabilityMetrics = {
   requestedMax: 0,
   receivedCount: 0,
 };
+
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+let supabaseAdmin:
+  | ReturnType<typeof createClient>
+  | null = null;
+
+function getSupabaseAdminClient() {
+  if (supabaseAdmin) return supabaseAdmin;
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceRoleKey =
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ||
+    Deno.env.get("SUPABASE_SERVICE_ROLE") ||
+    Deno.env.get("SERVICE_ROLE_KEY") ||
+    "";
+
+  if (!supabaseUrl || !serviceRoleKey) return null;
+
+  supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+  return supabaseAdmin;
+}
+
+async function getCachedStage<T>(address: string, stage: string): Promise<T | null> {
+  const supabase = getSupabaseAdminClient();
+  if (!supabase) return null;
+
+  try {
+    const { data, error } = await supabase
+      .from("trader_analysis_cache")
+      .select("data, updated_at")
+      .eq("address", address)
+      .eq("stage", stage)
+      .maybeSingle();
+
+    if (error || !data?.data || !data?.updated_at) return null;
+    const ageMs = Date.now() - new Date(data.updated_at).getTime();
+    if (ageMs > CACHE_TTL_MS) return null;
+
+    return data.data as T;
+  } catch {
+    return null;
+  }
+}
+
+async function setCachedStage(address: string, stage: string, value: unknown) {
+  const supabase = getSupabaseAdminClient();
+  if (!supabase) return;
+
+  try {
+    await supabase
+      .from("trader_analysis_cache")
+      .upsert(
+        {
+          address,
+          stage,
+          data: value,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "address,stage" },
+      );
+  } catch {
+    // Ignore cache write failures to avoid impacting user-facing requests
+  }
+}
 
 // Helper to fetch with retry and exponential backoff
 async function fetchWithRetry(url: string, maxRetries = 3): Promise<Response> {
@@ -273,7 +337,13 @@ serve(async (req) => {
       receivedCount: 0,
     };
     
-    const { address } = await req.json();
+    const { address, stage } = await req.json();
+    const normalizedStage = (typeof stage === 'string' ? stage : 'full') as
+      | 'profile'
+      | 'openPositions'
+      | 'recentTrades'
+      | 'closedPositionsSummary'
+      | 'full';
 
     if (!address || typeof address !== 'string') {
       console.error('No address provided');
@@ -296,6 +366,293 @@ serve(async (req) => {
 
     console.log(`Fetching data for address: ${trimmedAddress}`);
 
+    // ---------------------------------------------
+    // Staged mode: return partial results quickly
+    // ---------------------------------------------
+    if (normalizedStage === 'profile') {
+      const t0 = performance.now();
+      reliabilityMetrics.requestedMax = 1;
+
+      const cached = await getCachedStage<{
+        address: string;
+        username: string | null;
+        profileImage: string | null;
+      }>(trimmedAddress, "profile");
+      if (cached) {
+        console.log(`[stage=profile] cache hit in ${Math.round(performance.now() - t0)}ms`);
+        return new Response(
+          JSON.stringify({ stage: 'profile', data: cached, cached: true }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const profileRes = await fetchWithRetry(`${POLYMARKET_API}/profiles/${trimmedAddress}`);
+      const profile = profileRes.ok ? await profileRes.json() : null;
+
+      const data = {
+        address: trimmedAddress,
+        username: profile?.name || profile?.username || profile?.pseudonym || null,
+        profileImage: profile?.profileImage || profile?.profileImageOptimized || profile?.image || profile?.avatar || null,
+      };
+
+      await setCachedStage(trimmedAddress, "profile", data);
+      console.log(`[stage=profile] computed in ${Math.round(performance.now() - t0)}ms`);
+      return new Response(
+        JSON.stringify({ stage: 'profile', data, cached: false }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (normalizedStage === 'openPositions') {
+      const t0 = performance.now();
+      reliabilityMetrics.requestedMax = 2000;
+
+      const cached = await getCachedStage<any>(trimmedAddress, "openPositions");
+      if (cached) {
+        console.log(`[stage=openPositions] cache hit in ${Math.round(performance.now() - t0)}ms`);
+        return new Response(
+          JSON.stringify({ stage: 'openPositions', data: cached, cached: true }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const positions = await fetchSmartPaginated(`${POLYMARKET_API}/positions?user=${trimmedAddress}`, {
+        maxItems: 2000,
+        pageSize: 50,
+        prioritizeRecent: false,
+        endpointType: 'positions'
+      });
+
+      const allPositions = Array.isArray(positions) ? positions : [];
+      const trulyOpenPositions: any[] = [];
+      const resolvedPositions: any[] = [];
+
+      allPositions.forEach((pos: any) => {
+        const curPrice = pos.curPrice ?? pos.currentPrice ?? 0.5;
+        if (curPrice <= 0.001 || curPrice >= 0.999) resolvedPositions.push(pos);
+        else trulyOpenPositions.push(pos);
+      });
+
+      let unrealizedPnl = 0;
+      let totalInvested = 0;
+      let totalCurrentValue = 0;
+
+      trulyOpenPositions.forEach((pos: any) => {
+        unrealizedPnl += pos.cashPnl || 0;
+        totalInvested += pos.initialValue || 0;
+        totalCurrentValue += pos.currentValue || 0;
+      });
+
+      const data = {
+        address: trimmedAddress,
+        positions: trulyOpenPositions.length,
+        resolvedPositions: resolvedPositions.length,
+        unrealizedPnl,
+        totalInvested,
+        totalCurrentValue,
+        openPositions: trulyOpenPositions.map((pos: any) => ({
+          id: pos.conditionId,
+          marketTitle: pos.title || 'Unknown Market',
+          outcome: pos.outcome || 'Yes',
+          size: pos.size || 0,
+          avgPrice: pos.avgPrice || 0,
+          currentPrice: pos.curPrice || 0,
+          pnl: pos.cashPnl || 0,
+          pnlPercent: pos.percentPnl || 0,
+          initialValue: pos.initialValue || 0,
+          currentValue: pos.currentValue || 0,
+          slug: pos.slug,
+          icon: pos.icon,
+        })),
+      };
+
+      await setCachedStage(trimmedAddress, "openPositions", data);
+      console.log(`[stage=openPositions] computed in ${Math.round(performance.now() - t0)}ms (open=${data.positions})`);
+      return new Response(
+        JSON.stringify({ stage: 'openPositions', data, cached: false }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (normalizedStage === 'recentTrades') {
+      const t0 = performance.now();
+      reliabilityMetrics.requestedMax = 500;
+
+      const cached = await getCachedStage<any>(trimmedAddress, "recentTrades");
+      if (cached) {
+        console.log(`[stage=recentTrades] cache hit in ${Math.round(performance.now() - t0)}ms`);
+        return new Response(
+          JSON.stringify({ stage: 'recentTrades', data: cached, cached: true }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const trades = await fetchSmartPaginated(`${POLYMARKET_API}/trades?user=${trimmedAddress}`, {
+        maxItems: 500, // fast-first: enough to derive activity + recent list
+        pageSize: 50,
+        prioritizeRecent: true,
+        endpointType: 'trades'
+      });
+
+      const allTrades = Array.isArray(trades) ? trades : [];
+      const now = Date.now();
+      const day = 86400 * 1000;
+      const thirtyDaysAgo = now - (30 * day);
+
+      const trades30d = allTrades.filter((trade: any) => {
+        const timestamp = trade.timestamp
+          ? (trade.timestamp < 10000000000 ? trade.timestamp * 1000 : trade.timestamp)
+          : 0;
+        return timestamp >= thirtyDaysAgo;
+      }).length;
+
+      const marketsIn30d = new Set<string>();
+      allTrades.forEach((trade: any) => {
+        const timestamp = trade.timestamp
+          ? (trade.timestamp < 10000000000 ? trade.timestamp * 1000 : trade.timestamp)
+          : 0;
+        if (timestamp >= thirtyDaysAgo && trade.side?.toLowerCase() === 'buy') {
+          const marketId = trade.conditionId || trade.marketId || trade.title;
+          if (marketId) marketsIn30d.add(marketId);
+        }
+      });
+      const positions30d = marketsIn30d.size;
+
+      const lastTrade = allTrades[0];
+      const lastActive = lastTrade?.timestamp
+        ? new Date(lastTrade.timestamp * 1000).toISOString()
+        : new Date().toISOString();
+
+      const data = {
+        address: trimmedAddress,
+        lastActive,
+        totalTrades: allTrades.length,
+        trades30d,
+        positions30d,
+        recentTrades: allTrades.slice(0, 50).map((trade: any) => ({
+          id: trade.transactionHash || `${trade.timestamp}-${trade.conditionId}`,
+          timestamp: trade.timestamp ? new Date(trade.timestamp * 1000).toISOString() : new Date().toISOString(),
+          marketTitle: trade.title || 'Unknown Market',
+          outcome: trade.outcome || 'Yes',
+          side: trade.side?.toLowerCase() || 'buy',
+          size: trade.size || 0,
+          price: trade.price || 0,
+          slug: trade.slug,
+        })),
+        tradeHistoryPartial: allTrades.length >= 490, // heuristic: indicates truncation vs full activity
+      };
+
+      await setCachedStage(trimmedAddress, "recentTrades", data);
+      console.log(`[stage=recentTrades] computed in ${Math.round(performance.now() - t0)}ms (trades=${data.totalTrades})`);
+      return new Response(
+        JSON.stringify({ stage: 'recentTrades', data, cached: false }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (normalizedStage === 'closedPositionsSummary') {
+      const t0 = performance.now();
+      reliabilityMetrics.requestedMax = 1500;
+
+      const cached = await getCachedStage<any>(trimmedAddress, "closedPositionsSummary");
+      if (cached) {
+        console.log(`[stage=closedPositionsSummary] cache hit in ${Math.round(performance.now() - t0)}ms`);
+        return new Response(
+          JSON.stringify({ stage: 'closedPositionsSummary', data: cached, cached: true }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const closedPositions = await fetchSmartPaginated(`${POLYMARKET_API}/closed-positions?user=${trimmedAddress}`, {
+        maxItems: 1500, // summary stage: cap for speed
+        pageSize: 50,
+        prioritizeRecent: true,
+        endpointType: 'closed-positions'
+      });
+
+      const closed = Array.isArray(closedPositions) ? closedPositions : [];
+      reliabilityMetrics.receivedCount = closed.length;
+
+      // Deduplicate closed positions (partial closes) by conditionId+outcome, keep latest endDate
+      const finalPositions = new Map<string, any>();
+      closed.forEach((pos: any) => {
+        const key = `${pos.conditionId}-${pos.outcome}`;
+        const existing = finalPositions.get(key);
+        if (!existing) {
+          finalPositions.set(key, pos);
+          return;
+        }
+        const existingEndDate = existing.endDate ? new Date(existing.endDate).getTime() : 0;
+        const newEndDate = pos.endDate ? new Date(pos.endDate).getTime() : 0;
+        if (newEndDate > existingEndDate) finalPositions.set(key, pos);
+      });
+
+      let realizedPnl = 0;
+      let wins = 0;
+      let totalClosed = 0;
+
+      const now = Date.now();
+      const day = 86400 * 1000;
+      const allClosedForHistory: Array<{ timestamp: number; pnl: number }> = [];
+
+      finalPositions.forEach((pos: any) => {
+        const pnl = pos.realizedPnl || 0;
+        let timestamp: number;
+        if (pos.endDate) timestamp = new Date(pos.endDate).getTime();
+        else if (pos.timestamp) timestamp = pos.timestamp < 10000000000 ? pos.timestamp * 1000 : pos.timestamp;
+        else timestamp = now;
+
+        totalClosed += 1;
+        realizedPnl += pnl;
+        if (pnl > 0) wins += 1;
+        if (pnl !== 0) allClosedForHistory.push({ timestamp, pnl });
+      });
+
+      allClosedForHistory.sort((a, b) => a.timestamp - b.timestamp);
+      const pnlHistory: Array<{ timestamp: number; pnl: number; cumulative: number }> = [];
+      let cumulativePnl = 0;
+      let pnl24h = 0;
+      let pnl7d = 0;
+      let pnl30d = 0;
+
+      allClosedForHistory.forEach(({ timestamp, pnl }) => {
+        cumulativePnl += pnl;
+        pnlHistory.push({ timestamp, pnl, cumulative: cumulativePnl });
+        const age = now - timestamp;
+        if (age <= day) pnl24h += pnl;
+        if (age <= day * 7) pnl7d += pnl;
+        if (age <= day * 30) pnl30d += pnl;
+      });
+
+      const winRate = totalClosed > 0 ? (wins / totalClosed) * 100 : 0;
+      const dataReliability = calculateReliability(reliabilityMetrics, finalPositions.size, 0);
+      if (closed.length >= 1490) {
+        dataReliability.warnings.push('Partial history (summary) — full results still loading');
+        if (dataReliability.score === 'high') dataReliability.score = 'medium';
+      }
+
+      const data = {
+        address: trimmedAddress,
+        realizedPnl,
+        pnl24h,
+        pnl7d,
+        pnl30d,
+        pnl: realizedPnl, // summary: realized-only until full stage arrives
+        winRate,
+        closedPositions: finalPositions.size,
+        pnlHistory: samplePnlHistory(pnlHistory, 150),
+        dataReliability,
+        summaryOnly: true,
+      };
+
+      await setCachedStage(trimmedAddress, "closedPositionsSummary", data);
+      console.log(`[stage=closedPositionsSummary] computed in ${Math.round(performance.now() - t0)}ms (uniqueClosed=${data.closedPositions})`);
+      return new Response(
+        JSON.stringify({ stage: 'closedPositionsSummary', data, cached: false }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Fetch profile first (quick)
     const profileRes = await fetch(`${POLYMARKET_API}/profiles/${trimmedAddress}`);
     const profile = profileRes.ok ? await profileRes.json() : null;
@@ -304,6 +661,7 @@ serve(async (req) => {
     // Smart data fetching with quality prioritization
     // Focus on recent, accurate data rather than trying to get everything
     console.log('Starting smart data collection...');
+    const tAll = performance.now();
 
     const [positions, trades, closedPositions] = await Promise.all([
       // Get current positions (usually small, high priority)
@@ -710,6 +1068,7 @@ serve(async (req) => {
     };
 
     console.log(`Returning: PnL=${totalPnl}, Realized=${realizedPnl}, Unrealized=${unrealizedPnl}, Open=${trulyOpenPositions.length}, Resolved=${resolvedPositions.length}, Closed=${closed.length}, Trades30d=${trades30d}, Positions30d=${positions30d}`);
+    console.log(`[stage=full] computed in ${Math.round(performance.now() - tAll)}ms`);
 
     return new Response(
       JSON.stringify(traderData),

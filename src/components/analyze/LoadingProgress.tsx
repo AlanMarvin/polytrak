@@ -1,22 +1,30 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent } from '@/components/ui/card';
 import { 
   Database, Brain, TrendingUp, BarChart3, 
-  Wallet, Activity, Calculator, Zap,
+  Wallet, Activity,
   Settings, Star, LineChart, AlertTriangle, Info
 } from 'lucide-react';
 
+type StageStatus = 'idle' | 'pending' | 'success' | 'error';
+
+export type LoadingStages = {
+  profile?: StageStatus;
+  openPositions?: StageStatus;
+  closedPositionsSummary?: StageStatus;
+  recentTrades?: StageStatus;
+  full?: StageStatus;
+};
+
 const loadingSteps = [
-  { icon: Database, message: "Connecting to Polymarket...", minProgress: 0 },
-  { icon: Wallet, message: "Fetching wallet data...", minProgress: 10 },
-  { icon: Activity, message: "Loading open positions...", minProgress: 25 },
-  { icon: BarChart3, message: "Retrieving trade history...", minProgress: 40 },
-  { icon: TrendingUp, message: "Calculating PnL metrics...", minProgress: 55 },
-  { icon: Calculator, message: "Computing win rate...", minProgress: 70 },
-  { icon: Brain, message: "AI analyzing trading patterns...", minProgress: 80 },
-  { icon: Zap, message: "Calculating Sharpe ratio...", minProgress: 90 },
-];
+  { key: "profile", icon: Database, message: "Connecting to Polymarket...", minProgress: 0 },
+  { key: "profile", icon: Wallet, message: "Fetching wallet profile...", minProgress: 10 },
+  { key: "openPositions", icon: Activity, message: "Loading open positions...", minProgress: 35 },
+  { key: "closedPositionsSummary", icon: TrendingUp, message: "Calculating PnL metrics...", minProgress: 55 },
+  { key: "recentTrades", icon: BarChart3, message: "Retrieving recent trades...", minProgress: 75 },
+  { key: "full", icon: Brain, message: "Loading full history (optional)...", minProgress: 90 },
+] as const;
 
 const educationalTooltips = [
   "High win rate doesn't always mean low risk — trade size matters.",
@@ -58,14 +66,56 @@ const previewCards = [
   },
 ];
 
-export function LoadingProgress() {
+export function LoadingProgress({ stages }: { stages?: LoadingStages }) {
   const [progress, setProgress] = useState(0);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [tooltipIndex, setTooltipIndex] = useState(0);
   const [tooltipVisible, setTooltipVisible] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
 
+  const computed = useMemo(() => {
+    if (!stages) return null;
+
+    const requiredKeys: Array<keyof LoadingStages> = [
+      "profile",
+      "openPositions",
+      "closedPositionsSummary",
+      "recentTrades",
+    ];
+
+    const requiredDone = requiredKeys.filter((k) => stages[k] === "success").length;
+    const requiredTotal = requiredKeys.length;
+    const requiredPct = Math.round((requiredDone / requiredTotal) * 100);
+
+    // Show the first non-success stage as current; fall back to last step.
+    const currentKey =
+      requiredKeys.find((k) => stages[k] !== "success") ||
+      (stages.full ? "full" : "recentTrades");
+
+    const stepIndex = loadingSteps.findIndex((s) => s.key === currentKey);
+    return {
+      requiredPct,
+      stepIndex: stepIndex === -1 ? 0 : stepIndex,
+      currentKey,
+      includeFull: Boolean(stages.full),
+    };
+  }, [stages]);
+
   useEffect(() => {
+    // If we have real stage signals, derive progress from them.
+    if (computed) {
+      setCurrentStepIndex(computed.stepIndex);
+
+      // Cap progress at 95% until the required stages are done.
+      const target = computed.requiredPct >= 100 ? 95 : Math.min(95, computed.requiredPct);
+      setProgress((prev) => {
+        if (prev >= target) return prev;
+        return Math.min(target, prev + 2);
+      });
+      return;
+    }
+
+    // Fallback: simulated progress (legacy behavior)
     const interval = setInterval(() => {
       setProgress(prev => {
         const increment = Math.random() * 2 + 0.5;
@@ -85,7 +135,7 @@ export function LoadingProgress() {
     }, 600 + Math.random() * 400);
 
     return () => clearInterval(interval);
-  }, [currentStepIndex]);
+  }, [currentStepIndex, computed]);
 
   // Rotating tooltips
   useEffect(() => {
