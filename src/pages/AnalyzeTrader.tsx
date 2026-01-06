@@ -1382,7 +1382,7 @@ export default function AnalyzeTrader() {
     analysis.stages.recentTrades.isSuccess &&
     analysis.stages.closedPositionsSummary.isSuccess;
   const isFinalizingFull = fastStagesDone && analysis.stages.full.isFetching && !analysis.stages.full.isSuccess;
-  const finalMetricsReady = analysis.stages.full.isSuccess;
+  const metricsReady = analysis.stages.closedPositionsSummary.isSuccess || analysis.stages.full.isSuccess;
   const fastStagesComplete =
     analysis.stages.profile.isSuccess &&
     analysis.stages.openPositions.isSuccess &&
@@ -1532,10 +1532,10 @@ export default function AnalyzeTrader() {
     return copySuitability;
   }, [copySuitability, feeImpact]);
 
-  // Save to recent searches (localStorage) and public analyses (DB) when FINAL (full history) completes
+  // Save to recent searches (localStorage) and public analyses (DB) when summary metrics are ready
   const savedAddressRef = useRef<string | null>(null);
   useEffect(() => {
-    const analysisComplete = analysis.stages.full.isSuccess;
+    const analysisComplete = analysis.stages.closedPositionsSummary.isSuccess || analysis.stages.full.isSuccess;
 
     if (
       trader && 
@@ -1571,6 +1571,7 @@ export default function AnalyzeTrader() {
     smartScore,
     sharpeRatio,
     adjustedCopySuitability,
+    analysis.stages.closedPositionsSummary.isSuccess,
     analysis.stages.full.isSuccess,
   ]);
 
@@ -1676,7 +1677,7 @@ export default function AnalyzeTrader() {
               <div className="mt-3 flex justify-center">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-muted/30 border border-border/50 text-xs text-muted-foreground">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Finalizing full history… Smart Score and returns may update.
+                  Full history in progress… metrics may refine.
                 </div>
               </div>
             )}
@@ -1744,7 +1745,7 @@ export default function AnalyzeTrader() {
                 <div className="flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin text-primary" />
                   <p className="text-sm text-muted-foreground">
-                    Finalizing full history… some metrics (Smart Score, returns) may update.
+                    Full history in progress… metrics may refine.
                   </p>
                 </div>
                 <Button
@@ -1946,7 +1947,7 @@ export default function AnalyzeTrader() {
             )}
 
             {/* Progressive loading stage visibility */}
-            {(analysis.isFetchingAny || !analysis.stages.full.isSuccess) && (
+            {(analysis.isFetchingAny || !analysis.hasAnyData) && (
               <div className="mb-6 p-4 rounded-lg bg-muted/30 border border-border/50">
                 <div className="flex items-center justify-between gap-3 mb-3">
                   <div className="flex items-center gap-2">
@@ -1954,7 +1955,7 @@ export default function AnalyzeTrader() {
                     <p className="text-sm font-medium">Loading data</p>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {analysis.stages.full.isSuccess ? 'Completed' : 'In progress…'}
+                    {analysis.isFetchingAny ? 'In progress…' : 'Awaiting optional full history'}
                   </p>
                 </div>
 
@@ -1964,7 +1965,7 @@ export default function AnalyzeTrader() {
                     { label: 'Open positions', status: analysis.stages.openPositions.status },
                     { label: 'Closed summary', status: analysis.stages.closedPositionsSummary.status },
                     { label: 'Recent trades', status: analysis.stages.recentTrades.status },
-                    { label: 'Full history', status: analysis.stages.full.status },
+                    { label: 'Full history', status: analysis.stages.full.isSuccess ? 'success' : 'pending' },
                   ].map((s) => (
                     <div key={s.label} className="flex items-center justify-between px-3 py-2 rounded-md bg-background/40 border border-border/40">
                       <span className="text-muted-foreground">{s.label}</span>
@@ -1985,7 +1986,7 @@ export default function AnalyzeTrader() {
 
                 {!analysis.stages.full.isSuccess && (
                   <p className="text-xs text-muted-foreground mt-3">
-                    Some metrics (Smart Score, Sharpe, Copy Suitability) are shown only after <strong>Full history</strong> to avoid provisional values.
+                    Full history is optional and may take longer. We show Smart Score, Sharpe, and Copy Suitability once summary data is available.
                   </p>
                 )}
               </div>
@@ -2028,7 +2029,7 @@ export default function AnalyzeTrader() {
                         </HoverCard>
                       </div>
                       <div className="flex items-baseline gap-3">
-                        {finalMetricsReady ? (
+                        {metricsReady ? (
                           <>
                             <span className={`text-4xl font-bold font-mono ${smartScoreInfo.color}`}>
                               {smartScore}
@@ -2047,9 +2048,9 @@ export default function AnalyzeTrader() {
                         )}
                       </div>
                     </div>
-                    <div className={`h-16 w-16 rounded-full ${finalMetricsReady ? smartScoreInfo.bg : 'bg-muted'} flex items-center justify-center`}>
-                      <span className={`text-xl font-bold ${finalMetricsReady ? smartScoreInfo.color : 'text-muted-foreground'}`}>
-                        {finalMetricsReady ? smartScore : '—'}
+                    <div className={`h-16 w-16 rounded-full ${metricsReady ? smartScoreInfo.bg : 'bg-muted'} flex items-center justify-center`}>
+                      <span className={`text-xl font-bold ${metricsReady ? smartScoreInfo.color : 'text-muted-foreground'}`}>
+                        {metricsReady ? smartScore : '—'}
                       </span>
                     </div>
                   </div>
@@ -2090,7 +2091,7 @@ export default function AnalyzeTrader() {
                         </HoverCard>
                       </div>
                       <div className="flex items-baseline gap-3">
-                        {finalMetricsReady ? (
+                        {metricsReady ? (
                           <>
                             <span className={`text-4xl font-bold font-mono ${sharpeRatio >= 1 ? 'text-green-500' : sharpeRatio >= 0 ? 'text-yellow-500' : 'text-red-500'}`}>
                               {sharpeRatio.toFixed(2)}
@@ -2148,7 +2149,7 @@ export default function AnalyzeTrader() {
                         </HoverCard>
                       </div>
                       <div className="flex items-baseline gap-3">
-                        {finalMetricsReady ? (
+                        {metricsReady ? (
                           <>
                             <span className={`text-4xl font-bold font-mono ${
                               adjustedCopySuitability?.rating === 'High' ? 'text-green-500' : 
@@ -2174,12 +2175,12 @@ export default function AnalyzeTrader() {
                       </div>
                     </div>
                     <div className={`h-16 w-16 rounded-full ${
-                      finalMetricsReady
+                      metricsReady
                         ? (adjustedCopySuitability?.rating === 'High' ? 'bg-green-500/20' : 
                           adjustedCopySuitability?.rating === 'Medium' ? 'bg-yellow-500/20' : 'bg-red-500/20')
                         : 'bg-muted'
                     } flex items-center justify-center`}>
-                      {finalMetricsReady ? (
+                      {metricsReady ? (
                         adjustedCopySuitability?.rating === 'High' ? (
                           <TrendingUp className="h-7 w-7 text-green-500" />
                         ) : adjustedCopySuitability?.rating === 'Medium' ? (
