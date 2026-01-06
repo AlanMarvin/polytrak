@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -90,6 +90,31 @@ export function useTraderAnalysis(address: string) {
     staleTime: 5 * 60 * 1000,
     queryFn: () => invokeFull<any>(address),
   });
+
+  // Auto-fetch full history after fast stages succeed.
+  useEffect(() => {
+    if (!enabled) return;
+    if (full.isFetching || full.isSuccess) return;
+
+    const fastDone =
+      profile.isSuccess &&
+      openPositions.isSuccess &&
+      recentTrades.isSuccess &&
+      closedPositionsSummary.isSuccess;
+
+    if (fastDone) {
+      full.refetch();
+    }
+  }, [
+    enabled,
+    profile.isSuccess,
+    openPositions.isSuccess,
+    recentTrades.isSuccess,
+    closedPositionsSummary.isSuccess,
+    full.isFetching,
+    full.isSuccess,
+    full.refetch,
+  ]);
 
   const mergedTrader = useMemo(() => {
     if (!enabled) return null;

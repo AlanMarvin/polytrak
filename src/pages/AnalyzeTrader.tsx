@@ -348,7 +348,9 @@ const calculateProfitFactor = (trader: TraderData): ProfitFactorResult => {
 // Calculate Smart Score - stricter algorithm based on real trading performance
 const calculateSmartScore = (trader: TraderData) => {
   // ROI is the most important metric - profit relative to volume traded
-  const roi = trader.volume > 0 ? (trader.pnl / trader.volume) * 100 : 0; // as percentage
+  const trueVolumeUsd = (trader as any).trueVolumeUsd as number | undefined;
+  const effectiveVolume = typeof trueVolumeUsd === 'number' && trueVolumeUsd > 0 ? trueVolumeUsd : trader.volume;
+  const roi = effectiveVolume > 0 ? (trader.pnl / effectiveVolume) * 100 : 0; // as percentage
   
   // ROI component (max 35 pts) - the primary performance indicator
   let roiScore: number;
@@ -453,8 +455,10 @@ const calculateSharpeRatio = (trader: TraderData) => {
   
   if (history.length < 2) {
     // Fallback: simple return/risk approximation
-    if (trader.volume === 0) return 0;
-    const returnRate = trader.pnl / trader.volume;
+    const trueVolumeUsd = (trader as any).trueVolumeUsd as number | undefined;
+    const effectiveVolume = typeof trueVolumeUsd === 'number' && trueVolumeUsd > 0 ? trueVolumeUsd : trader.volume;
+    if (effectiveVolume === 0) return 0;
+    const returnRate = trader.pnl / effectiveVolume;
     // Scale by win rate as a volatility proxy
     const volatilityProxy = 1 - (trader.winRate / 100) + 0.1;
     return parseFloat((returnRate / volatilityProxy * 10).toFixed(2));
@@ -496,9 +500,13 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
   const reasoning: string[] = [];
   
   // Core trader metrics
-  const winRate = trader.winRate / 100; // Convert to decimal
+  const winRateRaw = trader.winRate / 100; // Convert to decimal
+  // Clamp for numerical stability (prevents log(0) and divide-by-zero in some formulas)
+  const winRate = Math.min(0.99, Math.max(0.01, Number.isFinite(winRateRaw) ? winRateRaw : 0.5));
   const totalTrades = Math.max(trader.totalTrades, 1);
-  const avgTradeSize = trader.volume / totalTrades;
+  const trueVolumeUsd = (trader as any).trueVolumeUsd as number | undefined;
+  const effectiveVolume = typeof trueVolumeUsd === 'number' && trueVolumeUsd > 0 ? trueVolumeUsd : trader.volume;
+  const avgTradeSize = effectiveVolume / totalTrades;
   const profitability = trader.pnl > 0;
   const experience = trader.closedPositions;
   const sharpeRatio = calculateSharpeRatio(trader);
@@ -662,7 +670,12 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
   // Calculate expected outcomes
   const expectedWinPct = winRate * avgWin;
   const expectedLossPct = (1 - winRate) * avgLoss;
-  const expectedTradeReturn = (expectedWinPct - expectedLossPct) / avgTradeSize;
+  let expectedTradeReturn = 0;
+  if (avgTradeSize > 0) {
+    expectedTradeReturn = (expectedWinPct - expectedLossPct) / avgTradeSize;
+  } else {
+    reasoning.push('Insufficient volume data - return estimate unavailable until full history loads');
+  }
   
   // Reuse validHistory from earlier or filter for timestamp calculation
   const firstValidTimestamp = validHistory.length > 0 
@@ -670,6 +683,11 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
     : Date.now() - (30 * 24 * 60 * 60 * 1000);
   const tradesPerMonth = Math.min(totalTrades / Math.max(1, (Date.now() - firstValidTimestamp) / (30 * 24 * 60 * 60 * 1000)), 30);
   let expectedMonthlyReturn = expectedTradeReturn * (copyPercentage / 100) * (tradeSize / 100) * tradesPerMonth * 100;
+
+  if (!Number.isFinite(expectedMonthlyReturn)) {
+    expectedMonthlyReturn = 0;
+    reasoning.push('Return estimate stabilized (insufficient data during progressive load)');
+  }
 
   // Apply bot detection adjustments to prevent unrealistic returns
   if (copySuitability) {
@@ -706,7 +724,8 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
   
   // Max drawdown estimation (simplified)
   const maxConsecutiveLosses = Math.ceil(Math.log(0.01) / Math.log(1 - winRate)); // 99% confidence
-  const maxDrawdown = Math.min(50, maxConsecutiveLosses * tradeSize * (avgLoss / avgTradeSize));
+  const lossRatio = avgTradeSize > 0 ? (avgLoss / avgTradeSize) : 0;
+  const maxDrawdown = Math.min(50, maxConsecutiveLosses * tradeSize * lossRatio);
   
   return {
     tradeSize: Math.round(Math.max(1, Math.min(20, tradeSize))),
@@ -715,7 +734,9 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
     riskLevel,
     reasoning,
     maxDrawdown: Math.round(maxDrawdown),
-    expectedMonthlyReturn: Math.round(expectedMonthlyReturn * 10) / 10
+    expectedMonthlyReturn: Number.isFinite(expectedMonthlyReturn)
+      ? Math.round(expectedMonthlyReturn * 10) / 10
+      : 0
   };
 };
 
@@ -1303,6 +1324,12 @@ export default function AnalyzeTrader() {
   const showErrorState = Boolean(error) && !analysis.hasAnyData;
   const openPositionsReady = analysis.stages.openPositions.isSuccess || analysis.stages.full.isSuccess;
   const recentTradesReady = analysis.stages.recentTrades.isSuccess || analysis.stages.full.isSuccess;
+  const fastStagesComplete =
+    analysis.stages.profile.isSuccess &&
+    analysis.stages.openPositions.isSuccess &&
+    analysis.stages.recentTrades.isSuccess &&
+    analysis.stages.closedPositionsSummary.isSuccess;
+  const isFinalizingFullHistory = Boolean(analyzedAddress) && fastStagesComplete && analysis.stages.full.isFetching && !analysis.stages.full.isSuccess;
 
   const refetchAllStages = () => {
     analysis.stages.profile.refetch();
@@ -1592,6 +1619,15 @@ export default function AnalyzeTrader() {
                 {isAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Analyze <ArrowRight className="ml-2 h-4 w-4" /></>}
               </Button>
             </form>
+
+            {isFinalizingFullHistory && (
+              <div className="mt-3 flex justify-center">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-muted/30 border border-border/50 text-xs text-muted-foreground">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Finalizing full history… Smart Score and returns may update.
+                </div>
+              </div>
+            )}
 
             {trader && !analysis.stages.full.isSuccess && (
               <div className="mt-3 flex justify-center">
@@ -2753,12 +2789,23 @@ export default function AnalyzeTrader() {
                             </HoverCardContent>
                           </HoverCard>
                         </div>
-                        <p className={`text-2xl font-bold font-mono ${copyStrategy.expectedMonthlyReturn >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                          {copyStrategy.expectedMonthlyReturn >= 0 ? '+' : ''}{copyStrategy.expectedMonthlyReturn}%
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          ≈ ${((allocatedFunds * copyStrategy.expectedMonthlyReturn) / 100).toFixed(0)}/month
-                        </p>
+                        {Number.isFinite(copyStrategy.expectedMonthlyReturn) ? (
+                          <>
+                            <p className={`text-2xl font-bold font-mono ${copyStrategy.expectedMonthlyReturn >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                              {copyStrategy.expectedMonthlyReturn >= 0 ? '+' : ''}{copyStrategy.expectedMonthlyReturn}%
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              ≈ ${((allocatedFunds * copyStrategy.expectedMonthlyReturn) / 100).toFixed(0)}/month
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-2xl font-bold font-mono text-muted-foreground">—</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Finalizing…
+                            </p>
+                          </>
+                        )}
                       </div>
                       
                       <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30">
