@@ -1877,7 +1877,7 @@ export default function AnalyzeTrader() {
                     </Button>
                   )}
                   <a 
-                    href={`https://thetradefox.com?ref=POLYTRAK&copy=${trader.address}`}
+                    href="https://thetradefox.com/?ref=POLYTRAK"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
