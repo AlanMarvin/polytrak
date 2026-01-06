@@ -20,7 +20,7 @@ export function Layout({ children }: LayoutProps) {
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Polytrak.io</h3>
               <p className="text-sm text-muted-foreground">
-                analytics + copy-trading config for thetradefox
+                Polymarket Analytics + copy-trading configuration for thetradefox
               </p>
             </div>
 
