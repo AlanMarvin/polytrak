@@ -2977,20 +2977,20 @@ export default function AnalyzeTrader() {
                             </HoverCardContent>
                           </HoverCard>
                         </div>
-                        {Number.isFinite(copyStrategy.expectedMonthlyReturn) ? (
+                        {metricsReady && Number.isFinite(copyStrategy.expectedMonthlyReturn) ? (
                           <>
                             <p className={`text-2xl font-bold font-mono ${copyStrategy.expectedMonthlyReturn >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                               {copyStrategy.expectedMonthlyReturn >= 0 ? '+' : ''}{copyStrategy.expectedMonthlyReturn}%
                             </p>
                             <p className="text-xs text-muted-foreground mt-1">
-                              ≈ ${((allocatedFunds * copyStrategy.expectedMonthlyReturn) / 100).toFixed(0)}/month
+                              ~ ${((allocatedFunds * copyStrategy.expectedMonthlyReturn) / 100).toFixed(0)}/month
                             </p>
                           </>
                         ) : (
                           <>
-                            <p className="text-2xl font-bold font-mono text-muted-foreground">—</p>
+                            <p className="text-2xl font-bold font-mono text-muted-foreground">--</p>
                             <p className="text-xs text-muted-foreground mt-1">
-                              Finalizing…
+                              Loading...
                             </p>
                           </>
                         )}
@@ -2998,10 +2998,21 @@ export default function AnalyzeTrader() {
                       
                       <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30">
                         <span className="text-sm text-muted-foreground">Est. Max Drawdown</span>
-                        <p className="text-2xl font-bold text-red-400 font-mono">-{copyStrategy.maxDrawdown}%</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          ≈ -${((allocatedFunds * copyStrategy.maxDrawdown) / 100).toFixed(0)} worst case
-                        </p>
+                        {metricsReady ? (
+                          <>
+                            <p className="text-2xl font-bold text-red-400 font-mono">-{copyStrategy.maxDrawdown}%</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              ~ -${((allocatedFunds * copyStrategy.maxDrawdown) / 100).toFixed(0)} worst case
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-2xl font-bold font-mono text-muted-foreground">--</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Loading...
+                            </p>
+                          </>
+                        )}
                       </div>
                     </div>
 
