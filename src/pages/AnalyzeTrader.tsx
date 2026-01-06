@@ -19,7 +19,7 @@ import { useWatchlist } from '@/hooks/useWatchlist';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { saveRecentSearch } from '@/hooks/useRecentSearches';
-import { savePublicAnalysis } from '@/hooks/usePublicRecentAnalyses';
+import { savePublicAnalysis, usePublicRecentAnalyses } from '@/hooks/usePublicRecentAnalyses';
 import { useTraderAnalysis } from '@/hooks/useTraderAnalysis';
 import { ThreeColorRing } from '@/components/ui/three-color-ring';
 import { PublicRecentAnalyses } from '@/components/analyze/PublicRecentAnalyses';
@@ -350,207 +350,98 @@ const calculateProfitFactor = (trader: TraderData): ProfitFactorResult => {
   };
 };
 
-// Calculate Smart Score - stricter algorithm based on real trading performance
+// Calculate Smart Score - risk-adjusted performance blend
 const calculateSmartScore = (trader: TraderData) => {
-  // ROI is the most important metric - profit relative to volume traded
+  const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+  const normalize = (value: number, min: number, max: number) => {
+    if (max <= min) return 0;
+    return clamp((value - min) / (max - min), 0, 1);
+  };
+
+  const sharpeRatio = calculateSharpeRatio(trader);
+  const sharpeScore = normalize(sharpeRatio, 0, 6);
+  const winRateScore = normalize(trader.winRate, 40, 70);
+
+  const totalTradesLog = Math.log10(trader.totalTrades + 1);
+  const activityScore = normalize(totalTradesLog, Math.log10(10 + 1), Math.log10(300 + 1));
+  const recentActivityScore = normalize(trader.positions30d, 3, 30);
+  const activityBlend = (activityScore * 0.6) + (recentActivityScore * 0.4);
+
+  const pnlScore = trader.pnl > 0
+    ? normalize(Math.log10(trader.pnl + 1), 0, Math.log10(100000 + 1))
+    : 0;
+  const pnl30dScore = trader.pnl30d > 0
+    ? normalize(Math.log10(trader.pnl30d + 1), 0, Math.log10(20000 + 1))
+    : 0;
+  const profitabilityScore = (pnlScore * 0.7) + (pnl30dScore * 0.3);
+  const lossPenalty = trader.pnl < 0 ? normalize(-trader.pnl, 0, 20000) : 0;
+
+  const profitFactorResult = calculateProfitFactor(trader);
+  const profitFactor = profitFactorResult.value > 0 ? profitFactorResult.value : 0;
+  const profitFactorScore = normalize(profitFactor, 1, 4);
+
   const effectiveVolume =
     typeof trader.trueVolumeUsd === 'number' && trader.trueVolumeUsd > 0
       ? trader.trueVolumeUsd
       : trader.volume;
-  const roi = effectiveVolume > 0 ? (trader.pnl / effectiveVolume) * 100 : 0; // as percentage
+  const capitalBase = Math.max(1, trader.totalInvested, effectiveVolume);
+  const roi = trader.pnl / capitalBase;
+  const roiScore = roi > 0 ? normalize(roi, 0, 0.25) : 0;
+  const roiPenalty = roi < 0 ? normalize(-roi, 0, 0.25) : 0;
 
-  // Debug logging for HashDive comparison - temporarily disabled due to page crash
-  /*
-  if (trader.address === '0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d') {
-    console.log('🔍 Smart Score Debug for trader 0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d:', {
-      pnl: trader.pnl,
-      trueVolumeUsd: trader.trueVolumeUsd,
-      volume: trader.volume,
-      effectiveVolume,
-      roi,
-      winRate: trader.winRate,
-      closedPositions: trader.closedPositions,
-      pnlHistoryLength: trader.pnlHistory?.length || 0
-    });
-  }
-  */
-  
-  // ROI component (max 35 pts) - the primary performance indicator
-  let roiScore: number;
-  if (roi <= 0) {
-    roiScore = Math.max(-20, roi * 2);
-  } else if (roi < 5) {
-    roiScore = roi * 2;
-  } else if (roi < 15) {
-    roiScore = 10 + (roi - 5) * 1.5;
-  } else {
-    roiScore = Math.min(35, 25 + (roi - 15) * 0.5);
-  }
-  
-  // Win rate component (max 25 pts)
-  const winRate = trader.winRate;
-  let winRateScore: number;
-  if (winRate < 50) {
-    winRateScore = Math.max(-10, (winRate - 50) * 0.5);
-  } else if (winRate < 55) {
-    winRateScore = (winRate - 50) * 1;
-  } else if (winRate < 65) {
-    winRateScore = 5 + (winRate - 55) * 1.5;
-  } else {
-    winRateScore = Math.min(25, 20 + (winRate - 65) * 0.5);
-  }
+  const reliabilityScore = trader.dataReliability
+    ? trader.dataReliability.score === 'high'
+      ? 1
+      : trader.dataReliability.score === 'medium'
+        ? 0.7
+        : 0.5
+    : 0.8;
 
-  // Profit Factor contribution to Smart Score (max 15 pts)
-  // Has less weight than Sharpe (consistency) but more than raw win rate
-  // This penalizes traders with high win rate but poor risk control
-  const profitFactorResult = calculateProfitFactor(trader);
-  let profitFactorScore = 0;
-  if (profitFactorResult.value > 0) {
-    const pf = profitFactorResult.value;
-    if (pf < 1.2) {
-      // Negative impact for poor profit factor
-      profitFactorScore = Math.max(-10, (pf - 1.2) * 20);
-    } else if (pf < 1.8) {
-      // Neutral: 0-5 pts
-      profitFactorScore = (pf - 1.2) * 8.33;
-    } else if (pf < 2.5) {
-      // Positive: 5-12 pts
-      profitFactorScore = 5 + (pf - 1.8) * 10;
-    } else {
-      // Strong positive (elite): 12-15 pts
-      profitFactorScore = Math.min(15, 12 + (pf - 2.5) * 3);
-    }
-  }
+  let score = (
+    sharpeScore * 0.28 +
+    profitabilityScore * 0.22 +
+    profitFactorScore * 0.12 +
+    roiScore * 0.13 +
+    winRateScore * 0.15 +
+    activityBlend * 0.07 +
+    reliabilityScore * 0.03
+  ) * 100;
 
-  // Debug logging - temporarily disabled due to page crash
-  /*
-  if (trader.address === '0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d') {
-    console.log('🔍 Profit Factor Details for trader 0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d:', {
-      profitFactorValue: profitFactorResult.value,
-      profitFactorScore,
-      totalWins: profitFactorResult.totalWins,
-      totalLosses: profitFactorResult.totalLosses,
-      avgWin: profitFactorResult.avgWin,
-      avgLoss: profitFactorResult.avgLoss
-    });
-  }
-  */
-  
-  // Consistency component (max 20 pts) - based on Sharpe-like ratio
-  // Uses PnL history to assess volatility of returns
-  const history = trader.pnlHistory || [];
-  let consistencyScore = 0;
-  if (history.length >= 5) {
-    const returns = history.map(h => h.pnl);
-    const meanReturn = returns.reduce((a, b) => a + b, 0) / returns.length;
-    const variance = returns.reduce((sum, r) => sum + Math.pow(r - meanReturn, 2), 0) / returns.length;
-    const stdDev = Math.sqrt(variance);
+  score -= (lossPenalty * 8 + roiPenalty * 8);
 
-    if (stdDev > 0 && meanReturn > 0) {
-      const sharpeProxy = meanReturn / stdDev;
-      consistencyScore = Math.min(20, Math.max(0, sharpeProxy * 10));
-    } else if (meanReturn <= 0) {
-      consistencyScore = Math.max(-10, meanReturn / 100); // Penalty for losing average
-    }
+  const sampleFactor = normalize(trader.totalTrades, 10, 60);
+  score *= 0.6 + (sampleFactor * 0.4);
 
-    // Debug logging - temporarily disabled due to page crash
-    /*
-    if (trader.address === '0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d') {
-      console.log('🔍 Consistency Details for trader 0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d:', {
-        pnlHistoryLength: history.length,
-        meanReturn,
-        stdDev,
-        sharpeProxy: stdDev > 0 ? meanReturn / stdDev : 0,
-        consistencyScore
-      });
-    }
-    */
-  }
-  
-  // Experience component (max 15 pts) - only if profitable
-  // Requires profitable + enough trades to matter
-  let experienceScore = 0;
-  if (trader.pnl > 0 && trader.closedPositions >= 10) {
-    if (trader.closedPositions >= 500) {
-      experienceScore = 15;
-    } else if (trader.closedPositions >= 100) {
-      experienceScore = 10 + (trader.closedPositions - 100) / 80; // 10-15 pts
-    } else {
-      experienceScore = trader.closedPositions / 10; // 1-10 pts
-    }
-  } else if (trader.pnl <= 0) {
-    experienceScore = 0; // No experience credit for unprofitable traders
-  }
-  
-  // Profitability bonus (max 5 pts) - small bonus for large absolute profits
-  // Only matters if ROI is already decent
-  let profitBonus = 0;
-  if (roi > 3 && trader.pnl > 0) {
-    if (trader.pnl > 1000000) profitBonus = 5;
-    else if (trader.pnl > 100000) profitBonus = 3;
-    else if (trader.pnl > 10000) profitBonus = 1;
-  }
+  if (trader.dataReliability?.score === 'low') score *= 0.85;
+  else if (trader.dataReliability?.score === 'medium') score *= 0.93;
 
-  const total = roiScore + winRateScore + consistencyScore + experienceScore + profitBonus;
-
-  // Debug logging - temporarily disabled due to page crash
-  /*
-  if (trader.address === '0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d') {
-    console.log('🔍 Smart Score Components for trader 0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d:', {
-      roiScore,
-      winRateScore,
-      profitFactorScore,
-      consistencyScore,
-      experienceScore,
-      profitBonus,
-      total,
-      finalScore: Math.round(Math.max(0, Math.min(100, total)))
-    });
-  }
-  */
-
-  // Scale to 0-100 and round
-  // Realistic distribution: most traders should be 30-60, excellent 70+, elite 85+
-  return Math.round(Math.max(0, Math.min(100, total)));
+  const curved = Math.pow(clamp(score, 0, 100) / 100, 0.9) * 100;
+  return Math.round(clamp(curved, 0, 100));
 };
-
-// Calculate Sharpe Ratio - based on PnL history returns
+// Calculate Sharpe Ratio - annualized, based on PnL history returns
 const calculateSharpeRatio = (trader: TraderData) => {
-  // Use PnL history if available for more accurate calculation
   const history = trader.pnlHistory || [];
-  
-  if (history.length < 2) {
-    // Fallback: simple return/risk approximation
+
+  if (history.length < 10) {
     const trueVolumeUsd = (trader as any).trueVolumeUsd as number | undefined;
     const effectiveVolume = typeof trueVolumeUsd === 'number' && trueVolumeUsd > 0 ? trueVolumeUsd : trader.volume;
     if (effectiveVolume === 0) return 0;
     const returnRate = trader.pnl / effectiveVolume;
-    // Scale by win rate as a volatility proxy
     const volatilityProxy = 1 - (trader.winRate / 100) + 0.1;
-    return parseFloat((returnRate / volatilityProxy * 10).toFixed(2));
+    const sharpeProxy = volatilityProxy > 0 ? returnRate / volatilityProxy : 0;
+    return parseFloat((sharpeProxy * Math.sqrt(252)).toFixed(2));
   }
-  
-  // Calculate individual position returns
+
   const returns = history.map(h => h.pnl);
-  
-  // Mean return
   const meanReturn = returns.reduce((a, b) => a + b, 0) / returns.length;
-  
-  // Standard deviation of returns
   const variance = returns.reduce((sum, r) => sum + Math.pow(r - meanReturn, 2), 0) / returns.length;
   const stdDev = Math.sqrt(variance);
-  
-  if (stdDev === 0) {
-    return trader.pnl > 0 ? 10 : 0;
-  }
-  
-  // Sharpe = Mean Return / Std Dev (annualization factor for daily returns ~sqrt(365))
-  // For position-level returns, we use a simpler scaling
-  const sharpe = (meanReturn / stdDev) * Math.sqrt(history.length);
-  
-  return parseFloat(sharpe.toFixed(2));
-};
 
+  if (stdDev <= 0) return trader.pnl > 0 ? 10 : 0;
+
+  const sharpe = meanReturn / stdDev;
+  return parseFloat((sharpe * Math.sqrt(252)).toFixed(2));
+};
 // Calculate optimal copy trading strategy based on trader analysis
 interface CopyStrategy {
   tradeSize: number; // % of bankroll per trade
@@ -1502,6 +1393,7 @@ export default function AnalyzeTrader() {
   const { user } = useAuth();
   const { isWatching, addToWatchlist, removeFromWatchlist } = useWatchlist();
   const { toast } = useToast();
+  const { analyses: recentAnalyses } = usePublicRecentAnalyses();
   const handleCopyReferralLink = () => {
     navigator.clipboard.writeText('https://thetradefox.com?ref=POLYTRAK');
     toast({ title: 'Link copied to clipboard!' });
@@ -1525,6 +1417,13 @@ export default function AnalyzeTrader() {
   const profitFactorResult = useMemo(() => trader ? calculateProfitFactor(trader) : { value: 0, display: 'N/A', grossProfits: 0, grossLosses: 0 }, [trader]);
   const smartScoreInfo = getSmartScoreInfo(smartScore);
   const copySuitability = useMemo(() => trader ? calculateCopySuitability(trader) : null, [trader]);
+  const smartScorePercentile = useMemo(() => {
+    if (!finalMetricsReady || !recentAnalyses || recentAnalyses.length < 10) return null;
+    const scores = recentAnalyses.map(a => a.smartScore);
+    scores.push(smartScore);
+    const belowCount = scores.filter(score => score < smartScore).length;
+    return Math.min(99, Math.max(1, Math.round((belowCount / scores.length) * 100)));
+  }, [finalMetricsReady, recentAnalyses, smartScore]);
   
   // Build TraderStyleSignals from trader data for useAutoCopySettings hook
   const traderStyleSignals = useMemo<TraderStyleSignals | null>(() => {
@@ -1893,6 +1792,11 @@ export default function AnalyzeTrader() {
                           </AvatarFallback>
                         </Avatar>
                       </div>
+                      {finalMetricsReady && smartScorePercentile !== null && (
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Better than {smartScorePercentile}% of recent analyses
+                        </p>
+                      )}
                     </div>
                     <h2 className="text-2xl font-bold">
                       {trader.username || formatAddress(trader.address)}
@@ -2115,11 +2019,12 @@ export default function AnalyzeTrader() {
                                 A composite score (0-100) evaluating trader quality based on:
                               </p>
                               <ul className="text-xs text-muted-foreground space-y-1 ml-4 list-disc">
-                                <li><strong>ROI</strong> - Profit relative to traded volume</li>
+                                <li><strong>Sharpe</strong> - Risk-adjusted returns (annualized)</li>
+                                <li><strong>Profitability</strong> - Total and recent PnL (log-scaled)</li>
+                                <li><strong>Profit factor</strong> - Gross profits ÷ gross losses</li>
+                                <li><strong>ROI</strong> - Profit relative to capital/volume</li>
                                 <li><strong>Win rate</strong> - % of winning positions</li>
-                                <li><strong>Consistency</strong> - PnL volatility (history-based)</li>
-                                <li><strong>Experience</strong> - Closed-position track record</li>
-                                <li><strong>Profit bonus</strong> - Small bonus for strong absolute profits</li>
+                                <li><strong>Activity</strong> - Recent and overall trading activity</li>
                               </ul>
                               <p className="text-xs text-muted-foreground pt-2 border-t">
                                 Higher scores indicate more reliable, consistent traders.
