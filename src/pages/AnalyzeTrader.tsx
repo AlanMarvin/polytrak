@@ -54,10 +54,12 @@ interface TraderData {
   username: string | null;
   profileImage: string | null;
   pnl: number;
+  pnlIncludingOpenPartial?: number;
   pnl24h: number;
   pnl7d: number;
   pnl30d: number;
   realizedPnl: number;
+  realizedPnlOpenPartial?: number;
   unrealizedPnl: number;
   winRate: number;
   totalTrades: number;
@@ -2384,11 +2386,45 @@ export default function AnalyzeTrader() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                   <div className="text-center p-4 rounded-lg bg-muted/30">
-                    <p className="text-sm text-muted-foreground mb-1">Realized</p>
+                    <div className="flex items-center justify-center gap-1 mb-1">
+                      <p className="text-sm text-muted-foreground">Realized (Closed)</p>
+                      <HoverCard>
+                        <HoverCardTrigger asChild>
+                          <button>
+                            <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground cursor-help transition-colors" />
+                          </button>
+                        </HoverCardTrigger>
+                        <HoverCardContent className="w-72 z-50" side="top">
+                          <p className="text-sm text-muted-foreground">
+                            Realized PnL from closed/settled positions. This is the closest match to Polymarket/Hashdive “Total PnL” style figures.
+                          </p>
+                        </HoverCardContent>
+                      </HoverCard>
+                    </div>
                     <p className={`text-xl font-bold font-mono ${trader.realizedPnl >= 0 ? 'stat-profit' : 'stat-loss'}`}>
                       {formatPnl(trader.realizedPnl)}
+                    </p>
+                  </div>
+                  <div className="text-center p-4 rounded-lg bg-muted/30">
+                    <div className="flex items-center justify-center gap-1 mb-1">
+                      <p className="text-sm text-muted-foreground">Realized (Open partial)</p>
+                      <HoverCard>
+                        <HoverCardTrigger asChild>
+                          <button>
+                            <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground cursor-help transition-colors" />
+                          </button>
+                        </HoverCardTrigger>
+                        <HoverCardContent className="w-72 z-50" side="top">
+                          <p className="text-sm text-muted-foreground">
+                            Profit/loss already realized via partial exits on still-open positions. We show this separately so “Realized (Closed)” stays comparable.
+                          </p>
+                        </HoverCardContent>
+                      </HoverCard>
+                    </div>
+                    <p className={`text-xl font-bold font-mono ${((trader.realizedPnlOpenPartial || 0) >= 0) ? 'stat-profit' : 'stat-loss'}`}>
+                      {formatPnl(trader.realizedPnlOpenPartial || 0)}
                     </p>
                   </div>
                   <div className="text-center p-4 rounded-lg bg-muted/30">

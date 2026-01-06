@@ -73,7 +73,7 @@ async function getCachedStage<T>(address: string, stage: string): Promise<T | nu
       .select("data, updated_at")
       .eq("address", address)
       .eq("stage", stage)
-      .maybeSingle() as { data: { data: unknown; updated_at: string } | null; error: unknown };
+      .maybeSingle();
 
     if (error || !data?.data || !data?.updated_at) return null;
     const ageMs = Date.now() - new Date(data.updated_at).getTime();
@@ -90,8 +90,8 @@ async function setCachedStage(address: string, stage: string, value: unknown) {
   if (!supabase) return;
 
   try {
-    await (supabase
-      .from("trader_analysis_cache") as any)
+    await supabase
+      .from("trader_analysis_cache")
       .upsert(
         {
           address,
@@ -434,11 +434,13 @@ serve(async (req) => {
       });
 
       let unrealizedPnl = 0;
+      let realizedPnlOpenPartial = 0;
       let totalInvested = 0;
       let totalCurrentValue = 0;
 
       trulyOpenPositions.forEach((pos: any) => {
         unrealizedPnl += pos.cashPnl || 0;
+        realizedPnlOpenPartial += pos.realizedPnl || 0;
         totalInvested += pos.initialValue || 0;
         totalCurrentValue += pos.currentValue || 0;
       });
@@ -448,6 +450,7 @@ serve(async (req) => {
         positions: trulyOpenPositions.length,
         resolvedPositions: resolvedPositions.length,
         unrealizedPnl,
+        realizedPnlOpenPartial,
         totalInvested,
         totalCurrentValue,
         openPositions: trulyOpenPositions.map((pos: any) => ({
@@ -767,27 +770,37 @@ serve(async (req) => {
     
     console.log(`DEDUP: ${closed.length} raw closed entries -> ${finalPositions.size} unique final positions`);
     
-    // Step 2: Calculate realized PnL from FINAL position states only
-    let realizedPnl = 0;
+    // Step 2: Calculate realized PnL from FINAL position states only (closed/settled)
+    // NOTE: We keep open-position partial-exit realized PnL separate to match Polymarket/Hashdive style totals.
+    let realizedPnlClosed = 0;
+    let realizedPnlOpenPartial = 0;
     let positivePnl = 0;
     let negativePnl = 0;
     
     finalPositions.forEach((pos) => {
       const pnl = pos.realizedPnl || 0;
-      realizedPnl += pnl;
+      realizedPnlClosed += pnl;
       if (pnl > 0) positivePnl += pnl;
       else negativePnl += pnl;
     });
 
-    // Add realized PnL from partial closes on truly open positions (these are separate - active positions with some profit taken)
+    // Open positions can have partial exits; Polymarket often separates these from "closed PnL".
     trulyOpenPositions.forEach((pos: any) => {
-      realizedPnl += pos.realizedPnl || 0;
+      realizedPnlOpenPartial += pos.realizedPnl || 0;
     });
     
-    console.log(`Realized PnL: total=${realizedPnl.toFixed(2)}, wins=${positivePnl.toFixed(2)}, losses=${negativePnl.toFixed(2)}`);
+    const realizedPnl = realizedPnlClosed;
+    console.log(
+      `Realized PnL (closed)=${realizedPnlClosed.toFixed(2)}, ` +
+      `Realized PnL (open partial)=${realizedPnlOpenPartial.toFixed(2)}, ` +
+      `wins=${positivePnl.toFixed(2)}, losses=${negativePnl.toFixed(2)}`
+    );
     console.log(`Unique closed: ${finalPositions.size}, Open positions: ${trulyOpenPositions.length}`);
 
-    const totalPnl = realizedPnl + unrealizedPnl;
+    // "Total PnL" for display should align with Polymarket/Hashdive (closed realized + unrealized).
+    const totalPnl = realizedPnlClosed + unrealizedPnl;
+    // Optional: include partial-exit realized from open positions (previous behavior).
+    const totalPnlIncludingOpenPartial = realizedPnlClosed + realizedPnlOpenPartial + unrealizedPnl;
 
     // Calculate win rate from DEDUPLICATED closed positions + resolved positions
     // Also deduplicate resolved positions to prevent any overlap
@@ -809,7 +822,14 @@ serve(async (req) => {
     }).length;
     const winRate = allUniquePositions.length > 0 ? (winningSets / allUniquePositions.length) * 100 : 0;
 
-    console.log(`PnL: realized=${realizedPnl.toFixed(2)}, unrealized=${unrealizedPnl.toFixed(2)}, total=${totalPnl.toFixed(2)}, winRate=${winRate.toFixed(1)}%`);
+    console.log(
+      `PnL: realizedClosed=${realizedPnlClosed.toFixed(2)}, ` +
+      `realizedOpenPartial=${realizedPnlOpenPartial.toFixed(2)}, ` +
+      `unrealized=${unrealizedPnl.toFixed(2)}, ` +
+      `total=${totalPnl.toFixed(2)}, ` +
+      `totalInclPartial=${totalPnlIncludingOpenPartial.toFixed(2)}, ` +
+      `winRate=${winRate.toFixed(1)}%`
+    );
 
     // ============= TRUE VOLUME CALCULATION FOR ROV =============
     // ROV = Net Profit / Total Traded Volume
@@ -1017,10 +1037,12 @@ serve(async (req) => {
       username: profile?.name || profile?.username || profile?.pseudonym || null,
       profileImage: profile?.profileImage || profile?.profileImageOptimized || profile?.image || profile?.avatar || null,
       pnl: totalPnl,
+      pnlIncludingOpenPartial: totalPnlIncludingOpenPartial,
       pnl24h,
       pnl7d,
       pnl30d,
       realizedPnl,
+      realizedPnlOpenPartial,
       unrealizedPnl,
       winRate,
       totalTrades: allTrades.length,
