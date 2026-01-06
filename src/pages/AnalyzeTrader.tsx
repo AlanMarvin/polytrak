@@ -916,8 +916,8 @@ interface TradeFoxAdvancedSettings {
   marketPriceRangeMin: number;
   marketPriceRangeMax: number;
   marketPriceRangeReason: string;
-  maxSlippagePerMarket: number;
-  maxSlippagePerMarketReason: string;
+  maxSlippageCents: number;
+  maxSlippageReason: string;
   maxTimeUntilResolution: number;
   maxTimeUntilResolutionReason: string;
   traderClassification: TraderClassification;
@@ -1042,18 +1042,18 @@ const calculateAdvancedSettings = (
       break;
   }
 
-  // Max slippage - based on trade frequency
-  let maxSlippage: number;
+  // Max slippage per market (in cents) - based on trade frequency (TradeFox field)
+  let maxSlippageCents: number;
   let slippageReason: string;
   if (tradesPerDay > 10) {
-    maxSlippage = 1;
-    slippageReason = 'Tight slippage for frequent trading';
+    maxSlippageCents = 1;
+    slippageReason = 'Tight slippage (1¢) for frequent trading';
   } else if (tradesPerDay > 5) {
-    maxSlippage = 2;
-    slippageReason = 'Moderate slippage tolerance';
+    maxSlippageCents = 2;
+    slippageReason = 'Moderate slippage (2¢) tolerance';
   } else {
-    maxSlippage = 3;
-    slippageReason = 'Can accept more slippage for infrequent trades';
+    maxSlippageCents = 3;
+    slippageReason = 'Can accept more slippage (3¢) for infrequent trades';
   }
 
   // Max time until resolution - based on trader's holding patterns
@@ -1080,8 +1080,8 @@ const calculateAdvancedSettings = (
   if (isHighFrequency) {
     maxTimeResolution = 14;
     timeReason = 'Capped to 14 days for high-frequency trader';
-    maxSlippage = 2;
-    slippageReason = 'Tighter slippage control for high-frequency trading';
+    maxSlippageCents = 2;
+    slippageReason = 'Tighter slippage control (2¢) for high-frequency trading';
     minMarket = Math.max(25, minMarket);
   }
 
@@ -1099,8 +1099,8 @@ const calculateAdvancedSettings = (
     marketPriceRangeMin: priceMin,
     marketPriceRangeMax: priceMax,
     marketPriceRangeReason: priceRangeReason,
-    maxSlippagePerMarket: maxSlippage,
-    maxSlippagePerMarketReason: slippageReason,
+    maxSlippageCents,
+    maxSlippageReason: slippageReason,
     maxTimeUntilResolution: maxTimeResolution,
     maxTimeUntilResolutionReason: timeReason,
     traderClassification: classification,
@@ -1444,8 +1444,8 @@ export default function AnalyzeTrader() {
       marketPriceRangeMin: autoSettings.marketPriceRangeMin,
       marketPriceRangeMax: autoSettings.marketPriceRangeMax,
       marketPriceRangeReason: settingsReasons.find(r => r.field === 'marketPriceRangeMin')?.reason || 'Risk-adjusted price range (25-75%)',
-      maxSlippagePerMarket: autoSettings.exitSlippagePct, // Legacy field
-      maxSlippagePerMarketReason: 'Entry ' + autoSettings.entrySlippagePct + '% / Exit ' + autoSettings.exitSlippagePct + '%',
+      maxSlippageCents: autoSettings.maxSlippageCents,
+      maxSlippageReason: settingsReasons.find(r => r.field === 'maxSlippageCents')?.reason || `Max slippage capped at ${autoSettings.maxSlippageCents}¢ per market`,
       maxTimeUntilResolution: typeof autoSettings.maxTimeUntilResolution === 'number' ? autoSettings.maxTimeUntilResolution : 90,
       maxTimeUntilResolutionReason: settingsReasons.find(r => r.field === 'maxTimeUntilResolution')?.reason || 'Default resolution window',
       traderClassification: (copyStrategy?.riskLevel || 'Moderate') as 'Conservative' | 'Moderate' | 'Aggressive',
@@ -2795,10 +2795,10 @@ export default function AnalyzeTrader() {
                         <div className="p-3 rounded-lg bg-background/50 space-y-1">
                           <span className="text-sm text-muted-foreground">Max slippage per market</span>
                           <p className="text-xl font-bold text-amber-400 font-mono">
-                            {advancedSettings.maxSlippagePerMarket}%
+                            {advancedSettings.maxSlippageCents}¢
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {advancedSettings.maxSlippagePerMarketReason}
+                            {advancedSettings.maxSlippageReason}
                           </p>
                         </div>
                         
@@ -3397,8 +3397,7 @@ export default function AnalyzeTrader() {
               minLiquidityPerMarket: autoSettings.minLiquidityPerMarket,
               marketPriceRangeMin: autoSettings.marketPriceRangeMin,
               marketPriceRangeMax: autoSettings.marketPriceRangeMax,
-              entrySlippagePct: autoSettings.entrySlippagePct,
-              exitSlippagePct: autoSettings.exitSlippagePct,
+              maxSlippageCents: autoSettings.maxSlippageCents,
               maxTimeUntilResolution: typeof autoSettings.maxTimeUntilResolution === 'number' ? autoSettings.maxTimeUntilResolution : 90,
             }}
             onSettingsChange={() => {

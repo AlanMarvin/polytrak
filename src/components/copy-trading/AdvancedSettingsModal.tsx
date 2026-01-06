@@ -15,8 +15,7 @@ interface AdvancedSettings {
   minLiquidityPerMarket: number;
   marketPriceRangeMin: number;
   marketPriceRangeMax: number;
-  entrySlippagePct: number;
-  exitSlippagePct: number;
+  maxSlippageCents: number;
   maxTimeUntilResolution: number | "any";
 }
 
@@ -179,35 +178,13 @@ export function AdvancedSettingsModal({
             </div>
           </div>
 
-          {/* Entry / Exit Slippage - Two Column */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Entry slippage</p>
-              <div 
-                className="flex items-center justify-between px-4 py-3.5 rounded-xl"
-                style={inputBoxStyle}
-              >
-                <span className="text-muted-foreground text-sm">Max slippage</span>
-                <div className="flex items-center gap-1">
-                  <span className="text-white font-medium tabular-nums">{settings.entrySlippagePct}</span>
-                  <span style={{ color: accentColor }} className="font-medium">%</span>
-                </div>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Exit slippage</p>
-              <div 
-                className="flex items-center justify-between px-4 py-3.5 rounded-xl"
-                style={inputBoxStyle}
-              >
-                <span className="text-muted-foreground text-sm">Max slippage</span>
-                <div className="flex items-center gap-1">
-                  <span className="text-white font-medium tabular-nums">{settings.exitSlippagePct}</span>
-                  <span style={{ color: accentColor }} className="font-medium">%</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          {/* Max Slippage Per Market (TradeFox field, in cents) */}
+          <SettingsInput
+            label="Max slippage per market"
+            placeholder="Max slippage"
+            value={settings.maxSlippageCents}
+            suffix="¢"
+          />
 
           {/* Max Time Until Resolution */}
           <div className="space-y-3">

@@ -19,8 +19,8 @@ export interface CopySettings {
   minLiquidityPerMarket: number;
   marketPriceRangeMin: number;
   marketPriceRangeMax: number;
-  entrySlippagePct: number;
-  exitSlippagePct: number;
+  // TradeFox uses a single max-slippage setting in cents (¢), not entry/exit %.
+  maxSlippageCents: number;
   maxTimeUntilResolution: number | 'any';
   
   // Auto-optimization
@@ -50,7 +50,7 @@ export interface AutoCopyRecommendation {
  * Default copy settings with risk-adjusted values:
  * - marketPriceRangeMin: 25, marketPriceRangeMax: 75 (risk-adjusted, avoids extreme outcomes)
  * - minLiquidityPerMarket: 5000 (prevents slippage issues)
- * - entrySlippagePct: 2, exitSlippagePct: 4 (split slippage)
+ * - maxSlippageCents: 4¢ (conservative default)
  * - maxCopyAmountPerTrade: 50 (adaptive rule: 75 only if liquidity >= 20000)
  * - maxTimeUntilResolution: 14 (days, better for event-focused copy)
  */
@@ -66,8 +66,7 @@ export const DEFAULT_COPY_SETTINGS: CopySettings = {
   minLiquidityPerMarket: 5000,
   marketPriceRangeMin: 25, // Risk-adjusted default
   marketPriceRangeMax: 75, // Risk-adjusted default
-  entrySlippagePct: 2,
-  exitSlippagePct: 4,
+  maxSlippageCents: 4,
   maxTimeUntilResolution: 14, // 14 days default for event-focused copy
   isAutoOptimized: true,
 };
@@ -109,8 +108,7 @@ export function useAutoCopySettings(
       settings.marketPriceRangeMin = 25;
       settings.marketPriceRangeMax = 75;
       settings.exitMode = 'proportional';
-      settings.entrySlippagePct = 1;
-      settings.exitSlippagePct = 2;
+      settings.maxSlippageCents = 2;
       
       reasons.push({
         field: 'maxTimeUntilResolution',
@@ -129,8 +127,8 @@ export function useAutoCopySettings(
         reason: 'High-frequency + likely partial exits - proportional mode for tracking & risk control',
       });
       reasons.push({
-        field: 'entrySlippagePct',
-        reason: 'High-frequency trader - tighter slippage (1% entry, 2% exit) to preserve margins',
+        field: 'maxSlippageCents',
+        reason: 'High-frequency trader - tighter max slippage (2¢) to preserve margins',
       });
     }
     
@@ -206,11 +204,10 @@ export function useAutoCopySettings(
 
     // === Slippage Adjustment (if not already set by high-frequency rule) ===
     if (!isHighFrequency && traderStats.tradeFrequency && traderStats.tradeFrequency > 10) {
-      settings.entrySlippagePct = 1;
-      settings.exitSlippagePct = 3;
+      settings.maxSlippageCents = 3;
       reasons.push({
-        field: 'entrySlippagePct',
-        reason: 'Moderate-frequency trader - tighter slippage to preserve margins',
+        field: 'maxSlippageCents',
+        reason: 'Moderate-frequency trader - tighter max slippage (3¢) to preserve margins',
       });
     }
 
@@ -229,6 +226,16 @@ export function useAutoCopySettings(
           reason: 'Long-term trader - allowing markets up to 90 days until resolution',
         });
       }
+    }
+
+    // === Default max slippage (if not set by rules above) ===
+    // Use a conservative 4¢ default unless overridden by high/moderate frequency logic.
+    if (!Number.isFinite(settings.maxSlippageCents) || settings.maxSlippageCents <= 0) {
+      settings.maxSlippageCents = 4;
+      reasons.push({
+        field: 'maxSlippageCents',
+        reason: 'Default slippage cap set to 4¢ for safety',
+      });
     }
 
     return { settings, reasons };
