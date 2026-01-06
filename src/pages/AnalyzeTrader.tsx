@@ -736,13 +736,45 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
   } else {
     reasoning.push('Insufficient volume data - return estimate unavailable until full history loads');
   }
+
+  // Debug logging for expected monthly return calculation
+  if (trader.address === '0x7a0da16a1205ee51a56fa862e8baa61e350eff14' ||
+      trader.address === '0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d') {
+    console.log('🔍 Expected Monthly Return Debug for trader:', trader.address, {
+      winRate,
+      avgWin,
+      avgLoss,
+      avgTradeSize,
+      expectedWinPct,
+      expectedLossPct,
+      expectedTradeReturn,
+      totalTrades,
+      validHistoryLength: validHistory.length,
+      firstValidTimestamp,
+      timeSpanDays: (Date.now() - firstValidTimestamp) / (24 * 60 * 60 * 1000),
+      tradesPerMonth
+    });
+  }
   
   // Reuse validHistory from earlier or filter for timestamp calculation
-  const firstValidTimestamp = validHistory.length > 0 
-    ? validHistory[0].timestamp 
+  const firstValidTimestamp = validHistory.length > 0
+    ? validHistory[0].timestamp
     : Date.now() - (30 * 24 * 60 * 60 * 1000);
   const tradesPerMonth = Math.min(totalTrades / Math.max(1, (Date.now() - firstValidTimestamp) / (30 * 24 * 60 * 60 * 1000)), 30);
   let expectedMonthlyReturn = expectedTradeReturn * (copyPercentage / 100) * (tradeSize / 100) * tradesPerMonth * 100;
+
+  // Debug logging for monthly return calculation
+  if (trader.address === '0x7a0da16a1205ee51a56fa862e8baa61e350eff14' ||
+      trader.address === '0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d') {
+    console.log('🔍 Monthly Return Base Calculation for trader:', trader.address, {
+      expectedTradeReturn,
+      copyPercentage,
+      tradeSize,
+      tradesPerMonth,
+      expectedMonthlyReturn: expectedMonthlyReturn,
+      isFinite: Number.isFinite(expectedMonthlyReturn)
+    });
+  }
 
   if (!Number.isFinite(expectedMonthlyReturn)) {
     expectedMonthlyReturn = 0;
@@ -753,6 +785,15 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
   if (copySuitability) {
     const botFlags = copySuitability.flags;
     let botReductionMultiplier = 1.0;
+
+    // Debug logging for bot detection
+    if (trader.address === '0x7a0da16a1205ee51a56fa862e8baa61e350eff14' ||
+        trader.address === '0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d') {
+      console.log('🔍 Bot Detection Flags for trader:', trader.address, {
+        botFlags,
+        initialExpectedMonthlyReturn: expectedMonthlyReturn
+      });
+    }
 
     // Check for high-frequency trading (likely bot behavior)
     if (botFlags.some(flag => flag.includes('High trade frequency') || flag.includes('Small trade sizes with high frequency'))) {
@@ -775,11 +816,22 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
     // Cap maximum expected monthly return to realistic levels
     const maxRealisticReturn = 50; // 50% monthly maximum for realistic trading
     if (expectedMonthlyReturn > maxRealisticReturn) {
-      botReductionMultiplier *= maxRealisticReturn / expectedMonthlyReturn;
+      const capMultiplier = maxRealisticReturn / expectedMonthlyReturn;
+      botReductionMultiplier *= capMultiplier;
       reasoning.push(`⚠️ Return estimate capped at ${maxRealisticReturn}% for realistic expectations`);
     }
 
     expectedMonthlyReturn *= botReductionMultiplier;
+
+    // Debug logging for final result
+    if (trader.address === '0x7a0da16a1205ee51a56fa862e8baa61e350eff14' ||
+        trader.address === '0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d') {
+      console.log('🔍 Final Monthly Return for trader:', trader.address, {
+        botReductionMultiplier,
+        finalExpectedMonthlyReturn: expectedMonthlyReturn,
+        reasoning
+      });
+    }
 
     // Re-check finiteness after adjustments
     if (!Number.isFinite(expectedMonthlyReturn)) {
@@ -1172,6 +1224,10 @@ interface CopySuitability {
 const calculateCopySuitability = (trader: TraderData): CopySuitability => {
   const flags: string[] = [];
 
+  // Debug logging for copy suitability calculation
+  const debugTraders = ['0x7a0da16a1205ee51a56fa862e8baa61e350eff14', '0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d'];
+  const shouldDebug = debugTraders.includes(trader.address);
+
   // Calculate metrics - filter out invalid timestamps (timestamp 0 or before year 2001)
   const history = trader.pnlHistory || [];
   const validHistory = history.filter(h => h.timestamp > 1000000000000);
@@ -1265,7 +1321,19 @@ const calculateCopySuitability = (trader: TraderData): CopySuitability => {
     rating = 'High';
     executionDependent = false;
   }
-  
+
+  // Debug logging for copy suitability result
+  if (shouldDebug) {
+    console.log('🔍 Copy Suitability Result for trader:', trader.address, {
+      rating,
+      flags,
+      executionDependent,
+      tradesPerDay: Math.round(tradesPerDay * 10) / 10,
+      tradesPerPosition: Math.round(tradesPerPosition * 10) / 10,
+      avgTradeSizeUsd: Math.round(avgTradeSizeUsd)
+    });
+  }
+
   return {
     rating,
     flags,
