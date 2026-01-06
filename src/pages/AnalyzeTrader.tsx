@@ -359,7 +359,8 @@ const calculateSmartScore = (trader: TraderData) => {
       : trader.volume;
   const roi = effectiveVolume > 0 ? (trader.pnl / effectiveVolume) * 100 : 0; // as percentage
 
-  // Debug logging for HashDive comparison
+  // Debug logging for HashDive comparison - temporarily disabled due to page crash
+  /*
   if (trader.address === '0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d') {
     console.log('🔍 Smart Score Debug for trader 0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d:', {
       pnl: trader.pnl,
@@ -372,6 +373,7 @@ const calculateSmartScore = (trader: TraderData) => {
       pnlHistoryLength: trader.pnlHistory?.length || 0
     });
   }
+  */
   
   // ROI component (max 35 pts) - the primary performance indicator
   let roiScore: number;
@@ -420,7 +422,8 @@ const calculateSmartScore = (trader: TraderData) => {
     }
   }
 
-  // Debug logging for HashDive comparison
+  // Debug logging - temporarily disabled due to page crash
+  /*
   if (trader.address === '0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d') {
     console.log('🔍 Profit Factor Details for trader 0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d:', {
       profitFactorValue: profitFactorResult.value,
@@ -431,6 +434,7 @@ const calculateSmartScore = (trader: TraderData) => {
       avgLoss: profitFactorResult.avgLoss
     });
   }
+  */
   
   // Consistency component (max 20 pts) - based on Sharpe-like ratio
   // Uses PnL history to assess volatility of returns
@@ -449,7 +453,8 @@ const calculateSmartScore = (trader: TraderData) => {
       consistencyScore = Math.max(-10, meanReturn / 100); // Penalty for losing average
     }
 
-    // Debug logging for HashDive comparison
+    // Debug logging - temporarily disabled due to page crash
+    /*
     if (trader.address === '0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d') {
       console.log('🔍 Consistency Details for trader 0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d:', {
         pnlHistoryLength: history.length,
@@ -459,6 +464,7 @@ const calculateSmartScore = (trader: TraderData) => {
         consistencyScore
       });
     }
+    */
   }
   
   // Experience component (max 15 pts) - only if profitable
@@ -487,7 +493,8 @@ const calculateSmartScore = (trader: TraderData) => {
 
   const total = roiScore + winRateScore + consistencyScore + experienceScore + profitBonus;
 
-  // Debug logging for HashDive comparison
+  // Debug logging - temporarily disabled due to page crash
+  /*
   if (trader.address === '0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d') {
     console.log('🔍 Smart Score Components for trader 0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d:', {
       roiScore,
@@ -500,6 +507,7 @@ const calculateSmartScore = (trader: TraderData) => {
       finalScore: Math.round(Math.max(0, Math.min(100, total)))
     });
   }
+  */
 
   // Scale to 0-100 and round
   // Realistic distribution: most traders should be 30-60, excellent 70+, elite 85+
@@ -737,7 +745,8 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
     reasoning.push('Insufficient volume data - return estimate unavailable until full history loads');
   }
 
-  // Debug logging for expected monthly return calculation
+  // Debug logging - temporarily disabled due to page crash
+  /*
   if (trader.address === '0x7a0da16a1205ee51a56fa862e8baa61e350eff14' ||
       trader.address === '0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d') {
     console.log('🔍 Expected Monthly Return Debug for trader:', trader.address, {
@@ -755,6 +764,7 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
       tradesPerMonth
     });
   }
+  */
   
   // Reuse validHistory from earlier or filter for timestamp calculation
   const firstValidTimestamp = validHistory.length > 0
@@ -763,7 +773,8 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
   const tradesPerMonth = Math.min(totalTrades / Math.max(1, (Date.now() - firstValidTimestamp) / (30 * 24 * 60 * 60 * 1000)), 30);
   let expectedMonthlyReturn = expectedTradeReturn * (copyPercentage / 100) * (tradeSize / 100) * tradesPerMonth * 100;
 
-  // Debug logging for monthly return calculation
+  // Debug logging - temporarily disabled due to page crash
+  /*
   if (trader.address === '0x7a0da16a1205ee51a56fa862e8baa61e350eff14' ||
       trader.address === '0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d') {
     console.log('🔍 Monthly Return Base Calculation for trader:', trader.address, {
@@ -775,6 +786,7 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
       isFinite: Number.isFinite(expectedMonthlyReturn)
     });
   }
+  */
 
   if (!Number.isFinite(expectedMonthlyReturn)) {
     expectedMonthlyReturn = 0;
@@ -786,7 +798,8 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
     const botFlags = copySuitability.flags;
     let botReductionMultiplier = 1.0;
 
-    // Debug logging for bot detection
+    // Debug logging - temporarily disabled due to page crash
+    /*
     if (trader.address === '0x7a0da16a1205ee51a56fa862e8baa61e350eff14' ||
         trader.address === '0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d') {
       console.log('🔍 Bot Detection Flags for trader:', trader.address, {
@@ -794,6 +807,7 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
         initialExpectedMonthlyReturn: expectedMonthlyReturn
       });
     }
+    */
 
     // Check for high-frequency trading (likely bot behavior)
     if (botFlags.some(flag => flag.includes('High trade frequency') || flag.includes('Small trade sizes with high frequency'))) {
@@ -823,7 +837,8 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
 
     expectedMonthlyReturn *= botReductionMultiplier;
 
-    // Debug logging for final result
+    // Debug logging - temporarily disabled due to page crash
+    /*
     if (trader.address === '0x7a0da16a1205ee51a56fa862e8baa61e350eff14' ||
         trader.address === '0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d') {
       console.log('🔍 Final Monthly Return for trader:', trader.address, {
@@ -832,6 +847,7 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
         reasoning
       });
     }
+    */
 
     // Re-check finiteness after adjustments
     if (!Number.isFinite(expectedMonthlyReturn)) {
@@ -1224,9 +1240,11 @@ interface CopySuitability {
 const calculateCopySuitability = (trader: TraderData): CopySuitability => {
   const flags: string[] = [];
 
-  // Debug logging for copy suitability calculation
+  // Debug logging - temporarily disabled due to page crash
+  /*
   const debugTraders = ['0x7a0da16a1205ee51a56fa862e8baa61e350eff14', '0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d'];
   const shouldDebug = debugTraders.includes(trader.address);
+  */
 
   // Calculate metrics - filter out invalid timestamps (timestamp 0 or before year 2001)
   const history = trader.pnlHistory || [];
@@ -1322,7 +1340,8 @@ const calculateCopySuitability = (trader: TraderData): CopySuitability => {
     executionDependent = false;
   }
 
-  // Debug logging for copy suitability result
+  // Debug logging - temporarily disabled due to page crash
+  /*
   if (shouldDebug) {
     console.log('🔍 Copy Suitability Result for trader:', trader.address, {
       rating,
@@ -1333,6 +1352,7 @@ const calculateCopySuitability = (trader: TraderData): CopySuitability => {
       avgTradeSizeUsd: Math.round(avgTradeSizeUsd)
     });
   }
+  */
 
   return {
     rating,
