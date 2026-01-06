@@ -1345,6 +1345,7 @@ export default function AnalyzeTrader() {
     analysis.stages.recentTrades.isSuccess &&
     analysis.stages.closedPositionsSummary.isSuccess;
   const isFinalizingFull = fastStagesDone && analysis.stages.full.isFetching && !analysis.stages.full.isSuccess;
+  const finalMetricsReady = analysis.stages.full.isSuccess;
   const fastStagesComplete =
     analysis.stages.profile.isSuccess &&
     analysis.stages.openPositions.isSuccess &&
@@ -1494,14 +1495,10 @@ export default function AnalyzeTrader() {
     return copySuitability;
   }, [copySuitability, feeImpact]);
 
-  // Save to recent searches (localStorage) and public analyses (DB) when analysis completes
+  // Save to recent searches (localStorage) and public analyses (DB) when FINAL (full history) completes
   const savedAddressRef = useRef<string | null>(null);
   useEffect(() => {
-    const analysisComplete =
-      analysis.stages.profile.isSuccess &&
-      analysis.stages.openPositions.isSuccess &&
-      analysis.stages.recentTrades.isSuccess &&
-      analysis.stages.closedPositionsSummary.isSuccess;
+    const analysisComplete = analysis.stages.full.isSuccess;
 
     if (
       trader && 
@@ -1537,10 +1534,7 @@ export default function AnalyzeTrader() {
     smartScore,
     sharpeRatio,
     adjustedCopySuitability,
-    analysis.stages.profile.isSuccess,
-    analysis.stages.openPositions.isSuccess,
-    analysis.stages.recentTrades.isSuccess,
-    analysis.stages.closedPositionsSummary.isSuccess,
+    analysis.stages.full.isSuccess,
   ]);
 
   const watching = trader ? isWatching(trader.address) : false;
@@ -1914,6 +1908,52 @@ export default function AnalyzeTrader() {
               </div>
             )}
 
+            {/* Progressive loading stage visibility */}
+            {(analysis.isFetchingAny || !analysis.stages.full.isSuccess) && (
+              <div className="mb-6 p-4 rounded-lg bg-muted/30 border border-border/50">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className={`h-4 w-4 ${analysis.isFetchingAny ? 'animate-spin' : ''}`} />
+                    <p className="text-sm font-medium">Caricamento dati</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {analysis.stages.full.isSuccess ? 'Completato' : 'In corso…'}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 text-xs">
+                  {[
+                    { label: 'Profile', status: analysis.stages.profile.status },
+                    { label: 'Open positions', status: analysis.stages.openPositions.status },
+                    { label: 'Closed summary', status: analysis.stages.closedPositionsSummary.status },
+                    { label: 'Recent trades', status: analysis.stages.recentTrades.status },
+                    { label: 'Full history', status: analysis.stages.full.status },
+                  ].map((s) => (
+                    <div key={s.label} className="flex items-center justify-between px-3 py-2 rounded-md bg-background/40 border border-border/40">
+                      <span className="text-muted-foreground">{s.label}</span>
+                      <span className={
+                        s.status === 'success'
+                          ? 'text-green-400'
+                          : s.status === 'error'
+                          ? 'text-red-400'
+                          : s.status === 'pending'
+                          ? 'text-yellow-400'
+                          : 'text-muted-foreground'
+                      }>
+                        {s.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {!analysis.stages.full.isSuccess && (
+                  <p className="text-xs text-muted-foreground mt-3">
+                    Alcune metriche (Smart Score, Sharpe, Copy Suitability) vengono mostrate solo dopo <strong>Full history</strong> per evitare valori provvisori.
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Smart Score, Sharpe Ratio & Copy Suitability */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
               <Card className="glass-card">
@@ -1933,14 +1973,14 @@ export default function AnalyzeTrader() {
                             <div className="space-y-2">
                               <h4 className="text-sm font-semibold">What is Smart Score?</h4>
                               <p className="text-sm text-muted-foreground">
-                                A composite score (0-100) evaluating trader quality based on multiple factors:
+                                A composite score (0-100) evaluating trader quality based on:
                               </p>
                               <ul className="text-xs text-muted-foreground space-y-1 ml-4 list-disc">
-                                <li><strong>Win Rate (40%)</strong> - Percentage of profitable trades</li>
-                                <li><strong>Consistency (25%)</strong> - Low PnL volatility over time</li>
-                                <li><strong>Volume (20%)</strong> - Total trading volume</li>
-                                <li><strong>Activity (10%)</strong> - Number of trades executed</li>
-                                <li><strong>Profitability (5%)</strong> - Overall profit achieved</li>
+                                <li><strong>ROI</strong> - Profit relative to traded volume</li>
+                                <li><strong>Win rate</strong> - % of winning positions</li>
+                                <li><strong>Consistency</strong> - PnL volatility (history-based)</li>
+                                <li><strong>Experience</strong> - Closed-position track record</li>
+                                <li><strong>Profit bonus</strong> - Small bonus for strong absolute profits</li>
                               </ul>
                               <p className="text-xs text-muted-foreground pt-2 border-t">
                                 Higher scores indicate more reliable, consistent traders.
@@ -1950,17 +1990,29 @@ export default function AnalyzeTrader() {
                         </HoverCard>
                       </div>
                       <div className="flex items-baseline gap-3">
-                        <span className={`text-4xl font-bold font-mono ${smartScoreInfo.color}`}>
-                          {smartScore}
-                        </span>
-                        <span className="text-muted-foreground">/100</span>
-                        <Badge className={`${smartScoreInfo.bg} ${smartScoreInfo.color} border-0`}>
-                          {smartScoreInfo.label}
-                        </Badge>
+                        {finalMetricsReady ? (
+                          <>
+                            <span className={`text-4xl font-bold font-mono ${smartScoreInfo.color}`}>
+                              {smartScore}
+                            </span>
+                            <span className="text-muted-foreground">/100</span>
+                            <Badge className={`${smartScoreInfo.bg} ${smartScoreInfo.color} border-0`}>
+                              {smartScoreInfo.label}
+                            </Badge>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-4xl font-bold font-mono text-muted-foreground">—</span>
+                            <span className="text-muted-foreground">/100</span>
+                            <Badge className="bg-muted text-muted-foreground border-0">Loading…</Badge>
+                          </>
+                        )}
                       </div>
                     </div>
-                    <div className={`h-16 w-16 rounded-full ${smartScoreInfo.bg} flex items-center justify-center`}>
-                      <span className={`text-xl font-bold ${smartScoreInfo.color}`}>{smartScore}</span>
+                    <div className={`h-16 w-16 rounded-full ${finalMetricsReady ? smartScoreInfo.bg : 'bg-muted'} flex items-center justify-center`}>
+                      <span className={`text-xl font-bold ${finalMetricsReady ? smartScoreInfo.color : 'text-muted-foreground'}`}>
+                        {finalMetricsReady ? smartScore : '—'}
+                      </span>
                     </div>
                   </div>
                 </CardContent>
@@ -2000,12 +2052,21 @@ export default function AnalyzeTrader() {
                         </HoverCard>
                       </div>
                       <div className="flex items-baseline gap-3">
-                        <span className={`text-4xl font-bold font-mono ${sharpeRatio >= 1 ? 'text-green-500' : sharpeRatio >= 0 ? 'text-yellow-500' : 'text-red-500'}`}>
-                          {sharpeRatio.toFixed(2)}
-                        </span>
-                        <Badge className={`${sharpeRatio >= 1 ? 'bg-green-500/20 text-green-500' : sharpeRatio >= 0 ? 'bg-yellow-500/20 text-yellow-500' : 'bg-red-500/20 text-red-500'} border-0`}>
-                          {sharpeRatio >= 2 ? 'Excellent' : sharpeRatio >= 1 ? 'Good' : sharpeRatio >= 0 ? 'Average' : 'Poor'}
-                        </Badge>
+                        {finalMetricsReady ? (
+                          <>
+                            <span className={`text-4xl font-bold font-mono ${sharpeRatio >= 1 ? 'text-green-500' : sharpeRatio >= 0 ? 'text-yellow-500' : 'text-red-500'}`}>
+                              {sharpeRatio.toFixed(2)}
+                            </span>
+                            <Badge className={`${sharpeRatio >= 1 ? 'bg-green-500/20 text-green-500' : sharpeRatio >= 0 ? 'bg-yellow-500/20 text-yellow-500' : 'bg-red-500/20 text-red-500'} border-0`}>
+                              {sharpeRatio >= 2 ? 'Excellent' : sharpeRatio >= 1 ? 'Good' : sharpeRatio >= 0 ? 'Average' : 'Poor'}
+                            </Badge>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-4xl font-bold font-mono text-muted-foreground">—</span>
+                            <Badge className="bg-muted text-muted-foreground border-0">Loading…</Badge>
+                          </>
+                        )}
                       </div>
                     </div>
                     <div className="text-right">
@@ -2049,32 +2110,47 @@ export default function AnalyzeTrader() {
                         </HoverCard>
                       </div>
                       <div className="flex items-baseline gap-3">
-                        <span className={`text-4xl font-bold font-mono ${
-                          adjustedCopySuitability?.rating === 'High' ? 'text-green-500' : 
-                          adjustedCopySuitability?.rating === 'Medium' ? 'text-yellow-500' : 'text-red-500'
-                        }`}>
-                          {adjustedCopySuitability?.rating || 'N/A'}
-                        </span>
-                        <Badge className={`${
-                          adjustedCopySuitability?.rating === 'High' ? 'bg-green-500/20 text-green-500' : 
-                          adjustedCopySuitability?.rating === 'Medium' ? 'bg-yellow-500/20 text-yellow-500' : 
-                          'bg-red-500/20 text-red-500'
-                        } border-0`}>
-                          {adjustedCopySuitability?.rating === 'High' ? 'Suitable' : 
-                           adjustedCopySuitability?.rating === 'Medium' ? 'Caution' : 'Risky'}
-                        </Badge>
+                        {finalMetricsReady ? (
+                          <>
+                            <span className={`text-4xl font-bold font-mono ${
+                              adjustedCopySuitability?.rating === 'High' ? 'text-green-500' : 
+                              adjustedCopySuitability?.rating === 'Medium' ? 'text-yellow-500' : 'text-red-500'
+                            }`}>
+                              {adjustedCopySuitability?.rating || 'N/A'}
+                            </span>
+                            <Badge className={`${
+                              adjustedCopySuitability?.rating === 'High' ? 'bg-green-500/20 text-green-500' : 
+                              adjustedCopySuitability?.rating === 'Medium' ? 'bg-yellow-500/20 text-yellow-500' : 
+                              'bg-red-500/20 text-red-500'
+                            } border-0`}>
+                              {adjustedCopySuitability?.rating === 'High' ? 'Suitable' : 
+                               adjustedCopySuitability?.rating === 'Medium' ? 'Caution' : 'Risky'}
+                            </Badge>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-4xl font-bold font-mono text-muted-foreground">—</span>
+                            <Badge className="bg-muted text-muted-foreground border-0">Loading…</Badge>
+                          </>
+                        )}
                       </div>
                     </div>
                     <div className={`h-16 w-16 rounded-full ${
-                      adjustedCopySuitability?.rating === 'High' ? 'bg-green-500/20' : 
-                      adjustedCopySuitability?.rating === 'Medium' ? 'bg-yellow-500/20' : 'bg-red-500/20'
+                      finalMetricsReady
+                        ? (adjustedCopySuitability?.rating === 'High' ? 'bg-green-500/20' : 
+                          adjustedCopySuitability?.rating === 'Medium' ? 'bg-yellow-500/20' : 'bg-red-500/20')
+                        : 'bg-muted'
                     } flex items-center justify-center`}>
-                      {adjustedCopySuitability?.rating === 'High' ? (
-                        <TrendingUp className="h-7 w-7 text-green-500" />
-                      ) : adjustedCopySuitability?.rating === 'Medium' ? (
-                        <AlertTriangle className="h-7 w-7 text-yellow-500" />
+                      {finalMetricsReady ? (
+                        adjustedCopySuitability?.rating === 'High' ? (
+                          <TrendingUp className="h-7 w-7 text-green-500" />
+                        ) : adjustedCopySuitability?.rating === 'Medium' ? (
+                          <AlertTriangle className="h-7 w-7 text-yellow-500" />
+                        ) : (
+                          <AlertTriangle className="h-7 w-7 text-red-500" />
+                        )
                       ) : (
-                        <AlertTriangle className="h-7 w-7 text-red-500" />
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                       )}
                     </div>
                   </div>
