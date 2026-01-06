@@ -143,6 +143,30 @@ export type Database = {
         }
         Relationships: []
       }
+      trader_analysis_cache: {
+        Row: {
+          address: string
+          data: Json
+          id: string
+          stage: string
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          data: Json
+          id?: string
+          stage: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          data?: Json
+          id?: string
+          stage?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       watchlist: {
         Row: {
           created_at: string

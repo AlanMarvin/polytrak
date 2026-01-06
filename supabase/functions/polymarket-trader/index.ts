@@ -73,7 +73,7 @@ async function getCachedStage<T>(address: string, stage: string): Promise<T | nu
       .select("data, updated_at")
       .eq("address", address)
       .eq("stage", stage)
-      .maybeSingle();
+      .maybeSingle() as { data: { data: unknown; updated_at: string } | null; error: unknown };
 
     if (error || !data?.data || !data?.updated_at) return null;
     const ageMs = Date.now() - new Date(data.updated_at).getTime();
@@ -90,8 +90,8 @@ async function setCachedStage(address: string, stage: string, value: unknown) {
   if (!supabase) return;
 
   try {
-    await supabase
-      .from("trader_analysis_cache")
+    await (supabase
+      .from("trader_analysis_cache") as any)
       .upsert(
         {
           address,
