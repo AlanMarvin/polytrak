@@ -3340,7 +3340,8 @@ export default function AnalyzeTrader() {
                   <CardContent className="p-2">
                     {openPositionsReady ? (
                       trader.openPositions.length > 0 ? (
-                      <Table>
+                      <div className={trader.openPositions.length > 10 ? "max-h-[360px] overflow-y-auto pr-1" : ""}>
+                        <Table>
                         <TableHeader>
                           <TableRow>
                             <TableHead>Market</TableHead>
@@ -3377,7 +3378,8 @@ export default function AnalyzeTrader() {
                             </TableRow>
                           ))}
                         </TableBody>
-                      </Table>
+                        </Table>
+                      </div>
                       ) : (
                       <div className="p-8 text-center text-muted-foreground">
                         No open positions
