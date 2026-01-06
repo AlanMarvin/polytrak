@@ -95,6 +95,20 @@ export function Layout({ children }: LayoutProps) {
           </div>
 
           <div className="border-t border-border/50 mt-8 pt-6 text-center text-sm text-muted-foreground">
+            <div className="flex justify-center mb-4">
+              <a
+                href="https://www.producthunt.com/products/polytrak?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-polytrak"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <img
+                  alt="PolyTrak - Polymarket analytics + copy-trading config for thetradefox | Product Hunt"
+                  width="250"
+                  height="54"
+                  src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1059212&theme=dark&t=1767718064380"
+                />
+              </a>
+            </div>
             <p>© 2025 Polytrak.io. Use with{' '}
               <a
                 href="https://thetradefox.com?ref=POLYTRAK"
