@@ -44,6 +44,12 @@ let reliabilityMetrics: ReliabilityMetrics = {
 };
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL_BY_STAGE: Record<string, number> = {
+  profile: 10 * 60 * 1000,
+  openPositions: 2 * 60 * 1000,
+  recentTrades: 15 * 60 * 1000,
+  closedPositionsSummary: 15 * 60 * 1000,
+};
 let supabaseAdmin:
   | ReturnType<typeof createClient>
   | null = null;
@@ -77,7 +83,8 @@ async function getCachedStage<T>(address: string, stage: string): Promise<T | nu
 
     if (error || !data?.data || !data?.updated_at) return null;
     const ageMs = Date.now() - new Date(data.updated_at).getTime();
-    if (ageMs > CACHE_TTL_MS) return null;
+    const ttlMs = CACHE_TTL_BY_STAGE[stage] ?? CACHE_TTL_MS;
+    if (ageMs > ttlMs) return null;
 
     return data.data as T;
   } catch {

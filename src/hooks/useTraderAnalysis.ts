@@ -50,6 +50,7 @@ async function invokeFull<T>(address: string) {
 export function useTraderAnalysis(address: string) {
   const enabled = Boolean(address);
   const lastAutoFullAddressRef = useRef<string | null>(null);
+  const autoFullEnabled = false;
 
   const profile = useQuery({
     queryKey: ["trader-analysis", address, "profile"],
@@ -94,7 +95,7 @@ export function useTraderAnalysis(address: string) {
 
   // Auto-fetch full history after fast stages succeed (once per address).
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || !autoFullEnabled) return;
     if (full.isFetching || full.isSuccess) return;
 
     const fastDone =
