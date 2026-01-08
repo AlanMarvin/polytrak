@@ -328,6 +328,14 @@ function calculateReliability(metrics: ReliabilityMetrics, totalPositions: numbe
   };
 }
 
+function getClosedPositionPnl(pos: any): number {
+  const realized = Number(pos?.realizedPnl ?? 0);
+  const avgPrice = Number(pos?.avgPrice ?? 0);
+  const curPrice = Number(pos?.curPrice ?? 0);
+  if (!Number.isFinite(realized) || !Number.isFinite(avgPrice) || !Number.isFinite(curPrice)) return 0;
+  return realized * (curPrice - avgPrice);
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -606,7 +614,7 @@ serve(async (req) => {
       const allClosedForHistory: Array<{ timestamp: number; pnl: number }> = [];
 
       finalPositions.forEach((pos: any) => {
-        const pnl = pos.realizedPnl || 0;
+        const pnl = getClosedPositionPnl(pos);
         let timestamp: number;
         if (pos.endDate) timestamp = new Date(pos.endDate).getTime();
         else if (pos.timestamp) timestamp = pos.timestamp < 10000000000 ? pos.timestamp * 1000 : pos.timestamp;
@@ -785,7 +793,7 @@ serve(async (req) => {
     let negativePnl = 0;
     
     finalPositions.forEach((pos) => {
-      const pnl = pos.realizedPnl || 0;
+      const pnl = getClosedPositionPnl(pos);
       realizedPnlClosed += pnl;
       if (pnl > 0) positivePnl += pnl;
       else negativePnl += pnl;
