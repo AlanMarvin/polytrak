@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+﻿import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,6 +36,7 @@ import {
   AlertTriangle, Settings2
 } from 'lucide-react';
 import tradefoxLogo from '@/assets/tradefox-logo.png';
+import polycopLogo from '@/assets/polycop-logo.png';
 import { LoadingProgress } from '@/components/analyze/LoadingProgress';
 import { SEOHead } from '@/components/seo/SEOHead';
 import { EditCopyTradingModal, AdvancedSettingsModal } from '@/components/copy-trading';
@@ -220,9 +221,9 @@ const getProfitFactorColor = (pf: number) => {
 };
 
 const getProfitFactorBadge = (pf: number) => {
-  if (pf < 1.5) return '⚠️ Risky';
-  if (pf <= 2.5) return '✅ Healthy';
-  return '🟢 Elite';
+  if (pf < 1.5) return 'Warning  Risky';
+  if (pf <= 2.5) return 'OK Healthy';
+  return 'Strong Elite';
 };
 
 interface ProfitFactorResult {
@@ -251,7 +252,7 @@ const calculateROV = (trader: TraderData): ROVResult => {
   
   // Format volume for display
   const formatVolume = (vol: number | undefined): string => {
-    if (!vol || vol === 0) return '—';
+    if (!vol || vol === 0) return '-';
     if (vol >= 1000000) return '$' + (vol / 1000000).toFixed(2) + 'M';
     if (vol >= 1000) return '$' + (vol / 1000).toFixed(1) + 'K';
     return '$' + vol.toFixed(0);
@@ -263,7 +264,7 @@ const calculateROV = (trader: TraderData): ROVResult => {
   if (rovPercent === null || rovPercent === undefined) {
     return {
       value: null,
-      display: '—',
+      display: '-',
       label: 'Insufficient Data',
       color: 'text-muted-foreground',
       volumeDisplay,
@@ -300,7 +301,7 @@ const calculateROV = (trader: TraderData): ROVResult => {
   };
 };
 
-// Calculate Profit Factor: Total Gross Profits ÷ Total Gross Losses
+// Calculate Profit Factor: Total Gross Profits / Total Gross Losses
 // Uses realized PnL from closed positions (pnlHistory entries)
 const calculateProfitFactor = (trader: TraderData): ProfitFactorResult => {
   const pnlHistory = trader.pnlHistory || [];
@@ -571,7 +572,7 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
   // Apply risk level caps
   if (riskLevel === 'Aggressive') {
     tradeSize = Math.min(15, Math.max(5, baseTradeSizeKelly * bankrollMultiplier));
-    reasoning.push(`Kelly-optimized ${tradeSize.toFixed(0)}% per trade (${(kellyFraction * 100).toFixed(1)}% full Kelly × ${(kellyMultiplier * 100).toFixed(0)}%)`);
+    reasoning.push(`Kelly-optimized ${tradeSize.toFixed(0)}% per trade (${(kellyFraction * 100).toFixed(1)}% full Kelly x ${(kellyMultiplier * 100).toFixed(0)}%)`);
   } else if (riskLevel === 'Conservative') {
     tradeSize = Math.min(5, Math.max(1, baseTradeSizeKelly * bankrollMultiplier * 0.6));
     reasoning.push(`Conservative ${tradeSize.toFixed(0)}% per trade to protect capital`);
@@ -589,7 +590,7 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
   if (traderAvgVsYourMax > 10) {
     // Trader trades way bigger than you can afford
     copyPercentage = Math.max(1, Math.min(5, 100 / traderAvgVsYourMax));
-    reasoning.push(`Trader's avg trade ($${avgTradeSize.toLocaleString()}) is ${traderAvgVsYourMax.toFixed(0)}× your max - copy only ${copyPercentage.toFixed(0)}%`);
+    reasoning.push(`Trader's avg trade ($${avgTradeSize.toLocaleString()}) is ${traderAvgVsYourMax.toFixed(0)}x your max - copy only ${copyPercentage.toFixed(0)}%`);
   } else if (traderAvgVsYourMax > 3) {
     copyPercentage = Math.max(5, Math.min(20, 60 / traderAvgVsYourMax));
     reasoning.push(`Scale down to ${copyPercentage.toFixed(0)}% of trader's positions`);
@@ -610,9 +611,9 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
   if (experience < 20) {
     tradeSize = Math.max(1, tradeSize * 0.5);
     copyPercentage = Math.max(5, copyPercentage * 0.5);
-    reasoning.push(`⚠️ Limited track record (${experience} trades) - halved allocations`);
+    reasoning.push(`Warning  Limited track record (${experience} trades) - halved allocations`);
   } else if (experience > 100) {
-    reasoning.push(`✓ Proven track record with ${experience} closed positions`);
+    reasoning.push(`OK Proven track record with ${experience} closed positions`);
   }
   
   // Execution-dependent strategy adjustments
@@ -625,8 +626,8 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
     if (riskLevel === 'Aggressive') riskLevel = 'Moderate';
     else if (riskLevel === 'Moderate') riskLevel = 'Conservative';
     
-    reasoning.push(`⚠️ Execution-dependent strategy detected - settings reduced for safety`);
-    reasoning.push(`📉 Trade size reduced by ~45%, copy percentage reduced by ~65%`);
+    reasoning.push(`Warning  Execution-dependent strategy detected - settings reduced for safety`);
+    reasoning.push(`Note Trade size reduced by ~45%, copy percentage reduced by ~65%`);
   }
   
   // Calculate expected outcomes
@@ -643,7 +644,7 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
   /*
   if (trader.address === '0x7a0da16a1205ee51a56fa862e8baa61e350eff14' ||
       trader.address === '0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d') {
-    console.log('🔍 Expected Monthly Return Debug for trader:', trader.address, {
+    console.log('Debug Expected Monthly Return Debug for trader:', trader.address, {
       winRate,
       avgWin,
       avgLoss,
@@ -675,7 +676,7 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
   /*
   if (trader.address === '0x7a0da16a1205ee51a56fa862e8baa61e350eff14' ||
       trader.address === '0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d') {
-    console.log('🔍 Monthly Return Base Calculation for trader:', trader.address, {
+    console.log('Debug Monthly Return Base Calculation for trader:', trader.address, {
       expectedTradeReturn,
       copyPercentage,
       tradeSize,
@@ -700,7 +701,7 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
     /*
     if (trader.address === '0x7a0da16a1205ee51a56fa862e8baa61e350eff14' ||
         trader.address === '0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d') {
-      console.log('🔍 Bot Detection Flags for trader:', trader.address, {
+      console.log('Debug Bot Detection Flags for trader:', trader.address, {
         botFlags,
         initialExpectedMonthlyReturn: expectedMonthlyReturn
       });
@@ -710,19 +711,19 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
     // Check for high-frequency trading (likely bot behavior)
     if (botFlags.some(flag => flag.includes('High trade frequency') || flag.includes('Small trade sizes with high frequency'))) {
       botReductionMultiplier *= 0.6; // Reduce by 40% for high-frequency patterns
-      reasoning.push('⚠️ High-frequency trading detected - return estimate significantly reduced');
+      reasoning.push('Warning  High-frequency trading detected - return estimate significantly reduced');
     }
 
     // Check for execution-dependent strategies (difficult to replicate)
     if (botFlags.some(flag => flag.includes('Low profit margin on high volume'))) {
       botReductionMultiplier *= 0.75; // Reduce by 25% for execution-dependent strategies
-      reasoning.push('⚠️ Execution-dependent strategy - return estimate reduced for realism');
+      reasoning.push('Warning  Execution-dependent strategy - return estimate reduced for realism');
     }
 
     // Check for high position churn (frequent adjustments)
     if (botFlags.some(flag => flag.includes('High position churn'))) {
       botReductionMultiplier *= 0.85; // Reduce by 15% for high churn
-      reasoning.push('⚠️ High position adjustment frequency - return estimate moderated');
+      reasoning.push('Warning  High position adjustment frequency - return estimate moderated');
     }
 
     // Cap maximum expected monthly return to realistic levels
@@ -730,7 +731,7 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
     if (expectedMonthlyReturn > maxRealisticReturn) {
       const capMultiplier = maxRealisticReturn / expectedMonthlyReturn;
       botReductionMultiplier *= capMultiplier;
-      reasoning.push(`⚠️ Return estimate capped at ${maxRealisticReturn}% for realistic expectations`);
+      reasoning.push(`Warning  Return estimate capped at ${maxRealisticReturn}% for realistic expectations`);
     }
 
     expectedMonthlyReturn *= botReductionMultiplier;
@@ -739,7 +740,7 @@ const calculateOptimalStrategy = (trader: TraderData, allocatedFunds: number, co
     /*
     if (trader.address === '0x7a0da16a1205ee51a56fa862e8baa61e350eff14' ||
         trader.address === '0x0f8a7eb19e45234bb81134d1f2af474b69fbfd8d') {
-      console.log('🔍 Final Monthly Return for trader:', trader.address, {
+      console.log('Debug Final Monthly Return for trader:', trader.address, {
         botReductionMultiplier,
         finalExpectedMonthlyReturn: expectedMonthlyReturn,
         reasoning
@@ -1241,7 +1242,7 @@ const calculateCopySuitability = (trader: TraderData): CopySuitability => {
   // Debug logging - temporarily disabled due to page crash
   /*
   if (shouldDebug) {
-    console.log('🔍 Copy Suitability Result for trader:', trader.address, {
+    console.log('Debug Copy Suitability Result for trader:', trader.address, {
       rating,
       flags,
       executionDependent,
@@ -1262,7 +1263,7 @@ const calculateCopySuitability = (trader: TraderData): CopySuitability => {
   };
 };
 
-// Calculate fee impact based on TradeFox fee structure
+// Calculate fee impact based on platform fee structure
 interface CopyStrategy {
   tradeSize: number;
   copyPercentage: number;
@@ -1275,12 +1276,14 @@ const calculateFeeImpact = (
   trader: TraderData,
   copyStrategy: CopyStrategy,
   allocatedFunds: number,
-  copySuitability: CopySuitability
+  copySuitability: CopySuitability,
+  feeConfig: {
+    netFeeRate: number;
+    cashbackRate: number;
+    assumedTier: string;
+  }
 ): FeeImpact => {
-  // TradeFox fee constants for lowest tier (Cub)
-  const NET_FEE_RATE = 0.0095; // 0.95%
-  const CASHBACK_RATE = 0.05;  // 5%
-  const EFFECTIVE_FEE = NET_FEE_RATE * (1 - CASHBACK_RATE); // ~0.90%
+  const effectiveFee = feeConfig.netFeeRate * (1 - feeConfig.cashbackRate);
   
   // Use actual trades30d from trader data if available, otherwise estimate consistently
   let tradesPerMonth: number;
@@ -1302,7 +1305,7 @@ const calculateFeeImpact = (
   const avgTradeUsd = allocatedFunds * (copyStrategy.tradeSize / 100);
   
   // Total monthly fees estimate
-  const monthlyFees = tradesPerMonth * avgTradeUsd * EFFECTIVE_FEE;
+  const monthlyFees = tradesPerMonth * avgTradeUsd * effectiveFee;
   
   // Compare fees to expected return
   const expectedReturnUsd = (allocatedFunds * copyStrategy.expectedMonthlyReturn) / 100;
@@ -1332,13 +1335,16 @@ const calculateFeeImpact = (
     if (expectedReturnUsd > 0 && feesAsPercentOfReturn > 30) {
       reasons.push(`Fees may consume ~${Math.min(100, Math.round(feesAsPercentOfReturn))}% of returns`);
     }
-    recommendations.push('Consider upgrading to a higher TradeFox tier for better cashback');
-    recommendations.push('Consider larger allocation to reduce relative fee impact');
+    if (feeConfig.cashbackRate > 0) {
+      recommendations.push('Consider upgrading to a higher tier for better cashback');
+    }
+    recommendations.push('Consider larger allocation or wider position sizes to reduce relative fee impact');
+    recommendations.push('Reduce trade frequency if fees overwhelm expected returns');
   } else if (feesAsPercentOfReturn > 20 || tradesPerMonth > 100) {
     level = 'Medium';
     reasons.push(`Est. ${Math.round(tradesPerMonth)} trades/month`);
     if (avgTradeUsd < 100) reasons.push('Moderate trade sizes may increase fee impact');
-    recommendations.push('Higher tier or larger positions may improve net returns');
+    recommendations.push('Larger positions may improve net returns relative to fees');
   } else {
     level = 'Low';
     reasons.push('Reasonable trade frequency');
@@ -1354,7 +1360,7 @@ const calculateFeeImpact = (
     netReturnHigh: Math.round(netReturnHigh * 10) / 10,
     reasons,
     recommendations,
-    assumedTier: 'Cub (lowest tier)'
+    assumedTier: feeConfig.assumedTier
   };
 };
 
@@ -1367,6 +1373,7 @@ export default function AnalyzeTrader() {
   const [allocatedFunds, setAllocatedFunds] = useState(1000);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [advancedModalOpen, setAdvancedModalOpen] = useState(false);
+  const [executionTab, setExecutionTab] = useState<'tradefox' | 'polycop'>('tradefox');
 
   const analysis = useTraderAnalysis(analyzedAddress);
   const trader = analysis.trader as TraderData | null;
@@ -1400,9 +1407,27 @@ export default function AnalyzeTrader() {
   const { user } = useAuth();
   const { isWatching, addToWatchlist, removeFromWatchlist } = useWatchlist();
   const { toast } = useToast();
-  const handleCopyReferralLink = () => {
-    navigator.clipboard.writeText('https://thetradefox.com?ref=POLYTRAK');
-    toast({ title: 'Link copied to clipboard!' });
+  const tradefoxReferralUrl = (import.meta.env.VITE_TRADEFOX_REFERRAL_URL as string | undefined)?.trim()
+    || 'https://thetradefox.com?ref=POLYTRAK';
+  const polycopReferralUrl = (import.meta.env.VITE_POLYCOP_REFERRAL_URL as string | undefined)?.trim();
+  const hasTradeFoxReferral = Boolean(tradefoxReferralUrl);
+  const hasPolyCopReferral = Boolean(polycopReferralUrl);
+  const handleCopyTradeFoxReferralLink = () => {
+    if (!tradefoxReferralUrl) return;
+    navigator.clipboard.writeText(tradefoxReferralUrl);
+    toast({ title: 'TradeFox link copied to clipboard!' });
+  };
+  const handleCopyPolyCopReferralLink = () => {
+    if (!hasPolyCopReferral || !polycopReferralUrl) {
+      toast({
+        title: 'Referral link missing',
+        description: 'Set VITE_POLYCOP_REFERRAL_URL in .env to enable PolyCop links.',
+        variant: 'destructive'
+      });
+      return;
+    }
+    navigator.clipboard.writeText(polycopReferralUrl);
+    toast({ title: 'PolyCop link copied to clipboard!' });
   };
 
   // Watch for URL query param changes and trigger re-analysis
@@ -1490,26 +1515,92 @@ export default function AnalyzeTrader() {
       isHighFrequency,
     };
   }, [autoSettings, settingsReasons, traderStyleSignals, copyStrategy]);
+
+  const polycopAdjustedSettings = useMemo(() => {
+    if (!autoSettings) return null;
+    const fixedCopyAmount = Math.round((allocatedFunds * autoSettings.tradeSizePercent) / 100);
+    const safeMaxPerTrade = Math.max(autoSettings.maxCopyAmountPerTrade, fixedCopyAmount);
+    const safeTotalTokenSpend = Math.max(autoSettings.maxAmountPerMarket, safeMaxPerTrade);
+    return {
+      fixedCopyAmount,
+      safeMaxPerTrade,
+      safeTotalTokenSpend,
+      minAmountPerMarket: autoSettings.minAmountPerMarket,
+    };
+  }, [autoSettings, allocatedFunds]);
+
+  const polycopQuickConfig = useMemo(() => {
+    if (!trader || !autoSettings || !polycopAdjustedSettings) return '';
+    const tag = trader.username || `${trader.address.slice(0, 6)}...${trader.address.slice(-4)}`;
+    return [
+      'PolyCop Quick Config',
+      `Target Wallet: ${trader.address}`,
+      `Tag: ${tag}`,
+      `Copy Percentage: ${autoSettings.copyPercentage}%`,
+      `Fixed Copy Amount (if using $): $${polycopAdjustedSettings.fixedCopyAmount}`,
+      'Limit Order Copy: On',
+      'Market Order Copy: Off',
+      'Limit Order Duration: Default',
+      `Limit Price Offset: ${autoSettings.maxSlippageCents} cents`,
+      `Max Token Spend: $${polycopAdjustedSettings.safeMaxPerTrade}`,
+      `Total Token Spend: $${polycopAdjustedSettings.safeTotalTokenSpend}`,
+      'Below Min Limit, Buy at Min: On',
+      `Min/Max Copy Amount per Trade: $${polycopAdjustedSettings.minAmountPerMarket} / $${polycopAdjustedSettings.safeMaxPerTrade}`
+    ].join('\n');
+  }, [trader, autoSettings, polycopAdjustedSettings]);
+
+  const handleCopyPolyCopConfig = () => {
+    if (!polycopQuickConfig) {
+      toast({ title: 'No config yet', description: 'Analyze a trader first.' });
+      return;
+    }
+    navigator.clipboard.writeText(polycopQuickConfig);
+    toast({ title: 'PolyCop config copied' });
+  };
   
-  const feeImpact = useMemo(() => 
+  const tradefoxFeeImpact = useMemo(() => 
     trader && copyStrategy && copySuitability 
-      ? calculateFeeImpact(trader, copyStrategy, allocatedFunds, copySuitability) 
+      ? calculateFeeImpact(trader, copyStrategy, allocatedFunds, copySuitability, {
+          netFeeRate: 0.0095,
+          cashbackRate: 0.05,
+          assumedTier: 'TradeFox Cub (lowest tier)'
+        })
       : null,
     [trader, copyStrategy, allocatedFunds, copySuitability]
   );
 
+  const polycopFeeImpact = useMemo(() => 
+    trader && copyStrategy && copySuitability 
+      ? calculateFeeImpact(trader, copyStrategy, allocatedFunds, copySuitability, {
+          netFeeRate: 0.005,
+          cashbackRate: 0,
+          assumedTier: 'PolyCop (0.5% trading fee)'
+        })
+      : null,
+    [trader, copyStrategy, allocatedFunds, copySuitability]
+  );
+
+  const currentPlatformName = executionTab === 'tradefox' ? 'TheTradeFox' : 'PolyCop';
+  const currentPlatformShort = executionTab === 'tradefox' ? 'TradeFox' : 'PolyCop';
+  const currentFeeImpact = executionTab === 'tradefox' ? tradefoxFeeImpact : polycopFeeImpact;
+  const polycopNetExpectedReturn = useMemo(() => {
+    if (!copyStrategy || !polycopFeeImpact || allocatedFunds <= 0) return null;
+    const feePct = (polycopFeeImpact.estimatedMonthlyFees / allocatedFunds) * 100;
+    return Math.round((copyStrategy.expectedMonthlyReturn - feePct) * 10) / 10;
+  }, [copyStrategy, polycopFeeImpact, allocatedFunds]);
+
   // Adjust Copy Suitability based on Fee Impact (two-pass approach)
   const adjustedCopySuitability = useMemo(() => {
-    if (!copySuitability || !feeImpact) return copySuitability;
+    if (!copySuitability || !tradefoxFeeImpact) return copySuitability;
 
     // Adjust based on fee impact level and trading frequency
     const isHighFrequency = copySuitability.tradesPerDay > 15;
-    const shouldDowngrade = feeImpact.level === 'High' ||
-                           (feeImpact.level === 'Medium' && isHighFrequency);
+    const shouldDowngrade = tradefoxFeeImpact.level === 'High' ||
+                           (tradefoxFeeImpact.level === 'Medium' && isHighFrequency);
 
     if (shouldDowngrade) {
       const newFlags = [...copySuitability.flags];
-      const feeMessage = feeImpact.level === 'High'
+      const feeMessage = tradefoxFeeImpact.level === 'High'
         ? 'High fee impact may significantly affect returns'
         : 'Moderate fee impact may reduce returns for high-frequency trading';
       newFlags.push(feeMessage);
@@ -1518,7 +1609,7 @@ export default function AnalyzeTrader() {
       let newRating = copySuitability.rating;
       if (copySuitability.rating === 'High') {
         newRating = 'Medium';
-      } else if (copySuitability.rating === 'Medium' && feeImpact.level === 'High') {
+      } else if (copySuitability.rating === 'Medium' && tradefoxFeeImpact.level === 'High') {
         newRating = 'Low';
       }
 
@@ -1530,7 +1621,7 @@ export default function AnalyzeTrader() {
     }
     
     return copySuitability;
-  }, [copySuitability, feeImpact]);
+  }, [copySuitability, tradefoxFeeImpact]);
 
   // Save to recent searches (localStorage) and public analyses (DB) when summary metrics are ready
   const savedAddressRef = useRef<string | null>(null);
@@ -1641,8 +1732,8 @@ export default function AnalyzeTrader() {
   return (
     <Layout>
       <SEOHead
-        title="Analyze Polymarket Traders | Wallet Performance & Copy Trading Settings – PolyTrak"
-        description="Paste any Polymarket wallet address to analyze performance, risk metrics, and AI-generated copy trading settings optimized for TradeFox."
+        title="Analyze Polymarket Traders | Wallet Performance & Copy Trading Settings - PolyTrak"
+        description="Paste any Polymarket wallet address to analyze performance, risk metrics, and AI-generated copy trading settings optimized for TradeFox or PolyCop."
         canonicalUrl="/analyze"
       />
       <div className="container py-8">
@@ -1677,7 +1768,7 @@ export default function AnalyzeTrader() {
               <div className="mt-3 flex justify-center">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-muted/30 border border-border/50 text-xs text-muted-foreground">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Full history in progress… metrics may refine.
+                  Full history in progress... metrics may refine.
                 </div>
               </div>
             )}
@@ -1694,11 +1785,11 @@ export default function AnalyzeTrader() {
                   {analysis.stages.full.isFetching ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      Loading full history…
+                      Loading full history...
                     </>
                   ) : (
                     <>Load full history (slower, more accurate)</>
-                  )}
+                    )}
                 </Button>
               </div>
             )}
@@ -1745,7 +1836,7 @@ export default function AnalyzeTrader() {
                 <div className="flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin text-primary" />
                   <p className="text-sm text-muted-foreground">
-                    Full history in progress… metrics may refine.
+                    Full history in progress... metrics may refine.
                   </p>
                 </div>
                 <Button
@@ -1759,7 +1850,7 @@ export default function AnalyzeTrader() {
               </div>
             )}
             {/* High-Frequency Trader Warning Banner */}
-            {(advancedSettings?.isHighFrequency || feeImpact?.level === 'High' || (feeImpact && feeImpact.netReturnLow < 0)) && (
+            {(advancedSettings?.isHighFrequency || currentFeeImpact?.level === 'High' || (currentFeeImpact && currentFeeImpact.netReturnLow < 0)) && (
               <div className="mb-6 p-4 rounded-lg bg-orange-500/10 border border-orange-500/30 flex items-start gap-3">
                 <AlertTriangle className="h-5 w-5 text-orange-400 flex-shrink-0 mt-0.5" />
                 <div>
@@ -1798,12 +1889,12 @@ export default function AnalyzeTrader() {
                     </h2>
                     {trader.totalInvested > 1000000 && (
                       <Badge className="bg-yellow-500/20 text-yellow-500 border-yellow-500/30">
-                        💰 Millionaire
+                        Millionaire Millionaire
                       </Badge>
                     )}
                     {trader.totalInvested > 100000 && trader.totalInvested <= 1000000 && (
                       <Badge className="bg-blue-500/20 text-blue-500 border-blue-500/30">
-                        🐋 Whale
+                        Whale Whale
                       </Badge>
                     )}
                     {(() => {
@@ -1837,7 +1928,7 @@ export default function AnalyzeTrader() {
                     >
                       Polymarket
                     </a>
-                    <span className="text-border">•</span>
+                    <span className="text-border">-</span>
                     <a 
                       href={`https://hashdive.com/polymarket/${trader.address}`}
                       target="_blank"
@@ -1846,7 +1937,7 @@ export default function AnalyzeTrader() {
                     >
                       HashDive
                     </a>
-                    <span className="text-border">•</span>
+                    <span className="text-border">-</span>
                     <a 
                       href={`https://polymarketanalytics.com/trader/${trader.address}`}
                       target="_blank"
@@ -1855,7 +1946,7 @@ export default function AnalyzeTrader() {
                     >
                       PolymarketAnalytics
                     </a>
-                    <span className="text-border">•</span>
+                    <span className="text-border">-</span>
                     <a 
                       href={`https://polygonscan.com/address/${trader.address}`}
                       target="_blank"
@@ -1867,7 +1958,7 @@ export default function AnalyzeTrader() {
                   </div>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {user && (
                     <Button 
                       variant={watching ? 'default' : 'outline'}
@@ -1877,15 +1968,32 @@ export default function AnalyzeTrader() {
                       {watching ? 'Watching' : 'Add to Watchlist'}
                     </Button>
                   )}
-                  <a 
-                    href="https://thetradefox.com/?ref=POLYTRAK"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <Button
+                    className="glow-primary"
+                    onClick={() => {
+                      setExecutionTab('tradefox');
+                      if (tradefoxReferralUrl) {
+                        window.open(tradefoxReferralUrl, '_blank');
+                      }
+                    }}
+                    disabled={!hasTradeFoxReferral}
                   >
-                    <Button className="glow-primary">
-                      Copy on TheTradeFox
-                    </Button>
-                  </a>
+                    <img src={tradefoxLogo} alt="TradeFox" className="h-4 w-auto mr-2" />
+                    Copy on TheTradeFox
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setExecutionTab('polycop');
+                      if (polycopReferralUrl) {
+                        window.open(polycopReferralUrl, '_blank');
+                      }
+                    }}
+                    disabled={!hasPolyCopReferral}
+                  >
+                    <img src={polycopLogo} alt="PolyCop" className="h-4 w-auto mr-2" />
+                    Copy on PolyCop
+                  </Button>
                 </div>
               </div>
             </div>
@@ -1918,7 +2026,7 @@ export default function AnalyzeTrader() {
                   <h4 className="font-semibold text-yellow-500">Data Accuracy Notice</h4>
                   <ul className="text-sm text-yellow-200/80 mt-1 space-y-1">
                     {trader.dataReliability.warnings.map((warning, i) => (
-                      <li key={i}>• {warning}</li>
+                      <li key={i}>- {warning}</li>
                     ))}
                   </ul>
                   <p className="text-sm text-muted-foreground mt-2">
@@ -1955,7 +2063,7 @@ export default function AnalyzeTrader() {
                     <p className="text-sm font-medium">Loading data</p>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {analysis.isFetchingAny ? 'In progress…' : 'Awaiting optional full history'}
+                    {analysis.isFetchingAny ? 'In progress...' : 'Awaiting optional full history...'}
                   </p>
                 </div>
 
@@ -2016,7 +2124,7 @@ export default function AnalyzeTrader() {
                               <ul className="text-xs text-muted-foreground space-y-1 ml-4 list-disc">
                                 <li><strong>Sharpe</strong> - Risk-adjusted returns (annualized)</li>
                                 <li><strong>Profitability</strong> - Total and recent PnL (log-scaled)</li>
-                                <li><strong>Profit factor</strong> - Gross profits ÷ gross losses</li>
+                                <li><strong>Profit factor</strong> - Gross profits / gross losses</li>
                                 <li><strong>ROI</strong> - Profit relative to capital/volume</li>
                                 <li><strong>Win rate</strong> - % of winning positions</li>
                                 <li><strong>Activity</strong> - Recent and overall trading activity</li>
@@ -2041,16 +2149,16 @@ export default function AnalyzeTrader() {
                           </>
                         ) : (
                           <>
-                            <span className="text-4xl font-bold font-mono text-muted-foreground">—</span>
+                            <span className="text-4xl font-bold font-mono text-muted-foreground">-</span>
                             <span className="text-muted-foreground">/100</span>
-                            <Badge className="bg-muted text-muted-foreground border-0">Loading…</Badge>
+                            <Badge className="bg-muted text-muted-foreground border-0">Loading...</Badge>
                           </>
-                        )}
+                    )}
                       </div>
                     </div>
                     <div className={`h-16 w-16 rounded-full ${metricsReady ? smartScoreInfo.bg : 'bg-muted'} flex items-center justify-center`}>
                       <span className={`text-xl font-bold ${metricsReady ? smartScoreInfo.color : 'text-muted-foreground'}`}>
-                        {metricsReady ? smartScore : '—'}
+                        {metricsReady ? smartScore : '-'}
                       </span>
                     </div>
                   </div>
@@ -2102,10 +2210,10 @@ export default function AnalyzeTrader() {
                           </>
                         ) : (
                           <>
-                            <span className="text-4xl font-bold font-mono text-muted-foreground">—</span>
-                            <Badge className="bg-muted text-muted-foreground border-0">Loading…</Badge>
+                            <span className="text-4xl font-bold font-mono text-muted-foreground">-</span>
+                            <Badge className="bg-muted text-muted-foreground border-0">Loading...</Badge>
                           </>
-                        )}
+                    )}
                       </div>
                     </div>
                     <div className="text-right">
@@ -2134,7 +2242,7 @@ export default function AnalyzeTrader() {
                             <div className="space-y-2">
                               <h4 className="text-sm font-semibold">What is Copy Suitability?</h4>
                               <p className="text-sm text-muted-foreground">
-                                Measures how realistically this trader can be copied on TradeFox given execution constraints and fee impact.
+                                Measures how realistically this trader can be copied on execution bots like TradeFox or PolyCop given execution constraints and fee impact.
                               </p>
                               <ul className="text-xs text-muted-foreground space-y-1 ml-4 list-disc">
                                 <li><strong>High</strong> - Directional trades, suitable for copy trading</li>
@@ -2168,10 +2276,10 @@ export default function AnalyzeTrader() {
                           </>
                         ) : (
                           <>
-                            <span className="text-4xl font-bold font-mono text-muted-foreground">—</span>
-                            <Badge className="bg-muted text-muted-foreground border-0">Loading…</Badge>
+                            <span className="text-4xl font-bold font-mono text-muted-foreground">-</span>
+                            <Badge className="bg-muted text-muted-foreground border-0">Loading...</Badge>
                           </>
-                        )}
+                    )}
                       </div>
                     </div>
                     <div className={`h-16 w-16 rounded-full ${
@@ -2321,17 +2429,17 @@ export default function AnalyzeTrader() {
                           <p className="text-sm font-medium">Profit Factor</p>
                           <p className="text-sm text-muted-foreground">
                             Ratio of gross profits to gross losses.
-                            Calculated as total winning trade profits ÷ total losing trade losses.
+                            Calculated as total winning trade profits / total losing trade losses.
                             Values above 1.0 indicate profitability.
                             Higher values suggest stronger downside efficiency.
                           </p>
                           <div className="text-xs space-y-1">
                             <p><strong>Interpretation:</strong></p>
-                            <p>❌ &lt; 1.0: Unprofitable</p>
-                            <p>⚠️ 1.0–1.3: Weak edge</p>
-                            <p>🟡 1.3–1.7: Decent</p>
-                            <p>🟢 1.7–2.0: Strong</p>
-                            <p>🔥 &gt; 2.0: Elite</p>
+                            <p>X &lt; 1.0: Unprofitable</p>
+                            <p>Warning  1.0-1.3: Weak edge</p>
+                            <p>Moderate 1.3-1.7: Decent</p>
+                            <p>Strong 1.7-2.0: Strong</p>
+                            <p>Hot &gt; 2.0: Elite</p>
                           </div>
                         </div>
                       </HoverCardContent>
@@ -2348,7 +2456,7 @@ export default function AnalyzeTrader() {
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Gross profits ÷ gross losses
+                    Gross profits / gross losses
                   </p>
                 </CardContent>
               </Card>
@@ -2448,9 +2556,9 @@ export default function AnalyzeTrader() {
                           </p>
                           <div className="text-xs space-y-1">
                             <p><strong>Interpretation:</strong></p>
-                            <p>🟢 ≥ 0.30%: High Efficiency</p>
-                            <p>🟡 0.15–0.30%: Moderate Efficiency</p>
-                            <p>🟠 &lt; 0.15%: Low Efficiency</p>
+                            <p>Strong &gt;= 0.30%: High Efficiency</p>
+                            <p>Moderate 0.15-0.30%: Moderate Efficiency</p>
+                            <p>Low  &lt; 0.15%: Low Efficiency</p>
                           </div>
                         </div>
                       </HoverCardContent>
@@ -2513,7 +2621,7 @@ export default function AnalyzeTrader() {
                         </HoverCardTrigger>
                         <HoverCardContent className="w-72 z-50" side="top">
                           <p className="text-sm text-muted-foreground">
-                            Realized PnL from closed/settled positions. This is the closest match to Polymarket/Hashdive “Total PnL” style figures.
+                            Realized PnL from closed/settled positions. This is the closest match to Polymarket/Hashdive "Total PnL" style figures.
                           </p>
                         </HoverCardContent>
                       </HoverCard>
@@ -2533,7 +2641,7 @@ export default function AnalyzeTrader() {
                         </HoverCardTrigger>
                         <HoverCardContent className="w-72 z-50" side="top">
                           <p className="text-sm text-muted-foreground">
-                            Profit/loss already realized via partial exits on still-open positions. We show this separately so “Realized (Closed)” stays comparable.
+                            Profit/loss already realized via partial exits on still-open positions. We show this separately so "Realized (Closed)" stays comparable.
                           </p>
                         </HoverCardContent>
                       </HoverCard>
@@ -2634,14 +2742,18 @@ export default function AnalyzeTrader() {
               </Card>
             )}
 
-            {/* TradeFox Copy Trading Configuration */}
+            {/* Execution Copy Trading Configuration */}
             <Card className="mb-8 border-2 border-orange-500/50 bg-gradient-to-br from-orange-500/10 via-background to-amber-500/10 shadow-lg shadow-orange-500/10">
               <CardHeader className="border-b border-orange-500/20 pb-4">
                 <div className="flex flex-col items-center text-center gap-3">
-                  <img src={tradefoxLogo} alt="TradeFox" className="h-auto w-48 object-contain" />
+                  {executionTab === 'tradefox' ? (
+                    <img src={tradefoxLogo} alt="TradeFox" className="h-auto w-48 object-contain" />
+                  ) : (
+                    <img src={polycopLogo} alt="PolyCop" className="h-auto w-20 object-contain" />
+                  )}
                   <CardTitle className="text-xl">
                     <span className="bg-gradient-to-r from-orange-400 to-amber-500 bg-clip-text text-transparent font-bold">
-                      AI-Optimized Copy Trading for TheTradeFox
+                      AI-Optimized Copy Trading for {currentPlatformName}
                     </span>
                   </CardTitle>
                   {copyStrategy && (
@@ -2656,8 +2768,16 @@ export default function AnalyzeTrader() {
                     </Badge>
                   )}
                 </div>
+                <Tabs value={executionTab} onValueChange={(value) => setExecutionTab(value as 'tradefox' | 'polycop')} className="mt-4">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="tradefox">TheTradeFox</TabsTrigger>
+                    <TabsTrigger value="polycop">PolyCop</TabsTrigger>
+                  </TabsList>
+                </Tabs>
               </CardHeader>
               <CardContent className="space-y-6 pt-6">
+                {executionTab === 'tradefox' && (
+                  <div className="space-y-6">
                 {/* Execution-Dependent Strategy Warning */}
                 {adjustedCopySuitability?.executionDependent && (
                   <div className="p-4 rounded-lg bg-red-500/10 border-2 border-red-500/40">
@@ -2680,7 +2800,7 @@ export default function AnalyzeTrader() {
                           </HoverCard>
                         </h4>
                         <p className="text-sm text-muted-foreground">
-                          This trader's performance may rely on order execution tactics (fast limit orders, frequent updates, spread capture). TradeFox copy trading can't replicate timing and limit management, so results may differ.
+                          This trader's performance may rely on order execution tactics (fast limit orders, frequent updates, spread capture). {currentPlatformShort} copy trading can't replicate timing and limit management, so results may differ.
                         </p>
                         <ul className="text-sm text-red-400 space-y-1">
                           {adjustedCopySuitability.flags.map((flag, i) => (
@@ -2692,7 +2812,7 @@ export default function AnalyzeTrader() {
                         </ul>
                         <div className="pt-2 border-t border-red-500/20 mt-2">
                           <p className="text-xs text-muted-foreground">
-                            <strong className="text-red-400">Recommendation:</strong> Not ideal for TradeFox copy trading. Consider copying longer-hold traders instead. Settings have been automatically reduced for safety.
+                            <strong className="text-red-400">Recommendation:</strong> Not ideal for {currentPlatformShort} copy trading. Consider copying longer-hold traders instead. Settings have been automatically reduced for safety.
                           </p>
                         </div>
                       </div>
@@ -2702,9 +2822,6 @@ export default function AnalyzeTrader() {
 
                 {/* Allocation Input - Centered and Bigger */}
                 <div className="flex flex-col items-center justify-center py-4">
-                  <label className="text-sm text-muted-foreground mb-3">
-                    How much do you want to allocate to this trader?
-                  </label>
                   {/* Preset Amount Buttons */}
                   <div className="flex flex-wrap justify-center gap-2 mb-4">
                     {[100, 250, 500, 1000, 2000, 5000, 10000].map((amount) => (
@@ -2739,27 +2856,7 @@ export default function AnalyzeTrader() {
 
                 {/* Copy Settings - Read-Only Auto-Calculated */}
                 {copyStrategy && advancedSettings && (
-                  <>
-                    {/* Follow Exits Status Pill */}
-                    <div className="flex items-center justify-center">
-                      <Badge className="bg-green-500/20 text-green-400 border-green-500/30 px-4 py-1">
-                        Follow Exits: ON
-                      </Badge>
-                    </div>
-
-                    {/* Trader Classification */}
-                    <div className="flex items-center justify-center">
-                      <Badge className={
-                        advancedSettings.traderClassification === 'Aggressive' 
-                          ? 'bg-red-500/20 text-red-400 border-red-500/30'
-                          : advancedSettings.traderClassification === 'Conservative'
-                          ? 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-                          : 'bg-orange-500/20 text-orange-400 border-orange-500/30'
-                      }>
-                        {advancedSettings.traderClassification} Trader Profile
-                      </Badge>
-                    </div>
-
+                      <div className="space-y-6">
                     {/* Main % Settings - Read Only */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/30">
@@ -2779,7 +2876,7 @@ export default function AnalyzeTrader() {
                                     r.includes('Kelly') || r.includes('per trade') || r.includes('bankroll')
                                   ).map((reason, i) => (
                                     <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
-                                      <span className="text-orange-400">•</span>
+                                      <span className="text-orange-400">-</span>
                                       {reason}
                                     </li>
                                   ))}
@@ -2811,7 +2908,7 @@ export default function AnalyzeTrader() {
                                     r.includes('copy') || r.includes('trade') || r.includes('avg') || r.includes('position')
                                   ).map((reason, i) => (
                                     <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
-                                      <span className="text-orange-400">•</span>
+                                      <span className="text-orange-400">-</span>
                                       {reason}
                                     </li>
                                   ))}
@@ -2835,7 +2932,7 @@ export default function AnalyzeTrader() {
                           Advanced Copy Settings (Auto-Configured)
                         </h4>
                         <p className="text-xs text-muted-foreground">
-                          PolyTrak automatically configures TradeFox's advanced copy-trading settings based on this trader's real behavior and your budget. This helps reduce slippage, avoid illiquid markets, and control risk without manual tuning.
+                          PolyTrak automatically configures {currentPlatformShort}'s advanced copy-trading settings based on this trader's real behavior and your budget. This helps reduce slippage, avoid illiquid markets, and control risk without manual tuning.
                         </p>
                       </div>
                       
@@ -2899,7 +2996,7 @@ export default function AnalyzeTrader() {
                         <div className="p-3 rounded-lg bg-background/50 space-y-1">
                           <span className="text-sm text-muted-foreground">Market price range</span>
                           <p className="text-xl font-bold text-amber-400 font-mono">
-                            {advancedSettings.marketPriceRangeMin}¢ – {advancedSettings.marketPriceRangeMax}¢
+                            {advancedSettings.marketPriceRangeMin}¢ - {advancedSettings.marketPriceRangeMax}¢
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {advancedSettings.marketPriceRangeReason}
@@ -2945,7 +3042,7 @@ export default function AnalyzeTrader() {
                               <div className="space-y-2">
                                 <p className="text-sm font-semibold">Maximum Potential Return</p>
                                 <p className="text-xs text-muted-foreground">
-                                  This is the <span className="font-semibold">best-case scenario</span> return based on the AI-recommended copy settings — not the trader's actual historical return.
+                                  This is the <span className="font-semibold">best-case scenario</span> return based on the AI-recommended copy settings - not the trader's actual historical return.
                                 </p>
                                 <p className="text-xs text-muted-foreground">
                                   <span className="font-semibold">Assumes:</span>
@@ -2957,20 +3054,20 @@ export default function AnalyzeTrader() {
                                   <li>All signals are caught and copied</li>
                                 </ul>
                                 <p className="text-xs text-muted-foreground">
-                                  <span className="font-semibold">Formula:</span> (Win Rate × Avg Win) − (Loss Rate × Avg Loss), 
+                                  <span className="font-semibold">Formula:</span> (Win Rate x Avg Win) - (Loss Rate x Avg Loss), 
                                   scaled by trade size ({copyStrategy.tradeSize}%) and copy % ({copyStrategy.copyPercentage}%).
                                 </p>
                                 <p className="text-xs text-yellow-400/80 font-medium">
-                                  💡 Reality check: Most copy traders achieve 40-70% of the maximum estimate.
+                                  Tip Reality check: Most copy traders achieve 40-70% of the maximum estimate.
                                 </p>
                                 {copySuitability?.executionDependent && (
                                   <p className="text-xs text-yellow-400">
-                                    ⚠️ Execution-dependent strategy detected — settings reduced by ~80% for safety.
+                                    Warning  Execution-dependent strategy detected - settings reduced by ~80% for safety.
                                   </p>
                                 )}
                                 {trader && trader.winRate < 0.52 && (
                                   <p className="text-xs text-orange-400">
-                                    📉 Win rate near break-even ({(trader.winRate * 100).toFixed(1)}%) — expected gain per trade is low.
+                                    Note Win rate near break-even ({(trader.winRate * 100).toFixed(1)}%) - expected gain per trade is low.
                                   </p>
                                 )}
                               </div>
@@ -2993,7 +3090,7 @@ export default function AnalyzeTrader() {
                               Loading...
                             </p>
                           </>
-                        )}
+                    )}
                       </div>
                       
                       <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30">
@@ -3012,7 +3109,7 @@ export default function AnalyzeTrader() {
                               Loading...
                             </p>
                           </>
-                        )}
+                    )}
                       </div>
                     </div>
 
@@ -3026,7 +3123,7 @@ export default function AnalyzeTrader() {
                       <ul className="space-y-1.5">
                         {copyStrategy.reasoning.map((reason, i) => (
                           <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                            <span className="text-orange-400">•</span>
+                            <span className="text-orange-400">-</span>
                             {reason}
                           </li>
                         ))}
@@ -3101,7 +3198,7 @@ export default function AnalyzeTrader() {
                                 </HoverCardTrigger>
                                 <HoverCardContent className="w-72 z-50" side="top">
                                   <p className="text-sm text-muted-foreground">
-                                    With ${allocatedFunds.toLocaleString()} allocation, ~{Math.round(Math.max(5, Math.min(25, 50000 / allocatedFunds)))}% of trades may be skipped due to minimum buy size requirements on TradeFox.
+                                    With ${allocatedFunds.toLocaleString()} allocation, ~{Math.round(Math.max(5, Math.min(25, 50000 / allocatedFunds)))}% of trades may be skipped due to minimum buy size requirements on {currentPlatformShort}.
                                   </p>
                                 </HoverCardContent>
                               </HoverCard>
@@ -3125,24 +3222,24 @@ export default function AnalyzeTrader() {
                     )}
 
                     {/* Fee Impact Analysis Card */}
-                    {feeImpact && (
+                    {currentFeeImpact && (
                       <div className={`p-4 rounded-lg border ${
-                        feeImpact.level === 'High' 
+                        currentFeeImpact.level === 'High' 
                           ? 'bg-red-500/10 border-red-500/30' 
-                          : feeImpact.level === 'Medium'
+                          : currentFeeImpact.level === 'Medium'
                           ? 'bg-yellow-500/10 border-yellow-500/30'
                           : 'bg-green-500/10 border-green-500/30'
                       }`}>
                         <div className="flex items-center gap-2 mb-3">
                           <Activity className="h-4 w-4" />
                           <span className="text-sm font-semibold">Fee Impact (Est.)</span>
-                          <Badge variant="outline" className={`ml-auto ${
-                            feeImpact.level === 'High' ? 'border-red-500/50 text-red-400' :
-                            feeImpact.level === 'Medium' ? 'border-yellow-500/50 text-yellow-400' :
-                            'border-green-500/50 text-green-400'
-                          }`}>
-                            {feeImpact.level}
-                          </Badge>
+                            <Badge variant="outline" className={`ml-auto ${
+                              currentFeeImpact.level === 'High' ? 'border-red-500/50 text-red-400' :
+                              currentFeeImpact.level === 'Medium' ? 'border-yellow-500/50 text-yellow-400' :
+                              'border-green-500/50 text-green-400'
+                            }`}>
+                              {currentFeeImpact.level}
+                            </Badge>
                           <HoverCard>
                             <HoverCardTrigger asChild>
                               <button>
@@ -3151,17 +3248,18 @@ export default function AnalyzeTrader() {
                             </HoverCardTrigger>
                             <HoverCardContent className="w-80 z-[100]" side="top">
                               <div className="space-y-2">
-                                <p className="text-sm font-semibold">About TradeFox Fees</p>
+                                <p className="text-sm font-semibold">About {currentPlatformShort} Fees</p>
                                 <p className="text-xs text-muted-foreground">
-                                  TradeFox applies a net trading fee (0.95% → 0.75%) and cashback (5% → 25%) 
-                                  depending on your tier.
+                                  {executionTab === 'tradefox'
+                                    ? 'TradeFox applies a net trading fee (0.95% -> 0.75%) and cashback (5% -> 25%) depending on your tier.'
+                                    : 'PolyCop charges a flat 0.5% trading fee (per docs).'}
                                 </p>
                                 <p className="text-xs text-muted-foreground">
-                                  This analysis assumes the <span className="font-semibold">{feeImpact.assumedTier}</span>. 
-                                  Higher tiers or larger allocations can significantly reduce fee impact.
+                                  This analysis assumes <span className="font-semibold">{currentFeeImpact?.assumedTier}</span>. 
+                                  Larger allocations or fewer trades reduce relative fee impact.
                                 </p>
                                 <p className="text-xs text-muted-foreground italic">
-                                  Est. ~{feeImpact.estimatedMonthlyTradeCount} trades/month with this strategy.
+                                  Est. ~{currentFeeImpact.estimatedMonthlyTradeCount} trades/month with this strategy.
                                 </p>
                               </div>
                             </HoverCardContent>
@@ -3178,13 +3276,13 @@ export default function AnalyzeTrader() {
                               </Badge>
                             </div>
                             <p className={`text-lg font-bold font-mono ${
-                              feeImpact.level === 'High' ? 'text-red-400' :
-                              feeImpact.level === 'Medium' ? 'text-yellow-400' : 'text-foreground'
+                              currentFeeImpact.level === 'High' ? 'text-red-400' :
+                              currentFeeImpact.level === 'Medium' ? 'text-yellow-400' : 'text-foreground'
                             }`}>
-                              ${feeImpact.estimatedMonthlyFees.toFixed(0)}
+                              ${currentFeeImpact.estimatedMonthlyFees.toFixed(0)}
                             </p>
                             <p className="text-[10px] text-muted-foreground mt-0.5">
-                              ~{feeImpact.estimatedMonthlyTradeCount} trades × ${(allocatedFunds * (copyStrategy?.tradeSize || 5) / 100).toFixed(0)}/trade
+                              ~{currentFeeImpact.estimatedMonthlyTradeCount} trades x ${(allocatedFunds * (copyStrategy?.tradeSize || 5) / 100).toFixed(0)}/trade
                             </p>
                           </div>
                           
@@ -3196,16 +3294,16 @@ export default function AnalyzeTrader() {
                               </Badge>
                             </div>
                             <div className="flex items-baseline gap-1">
-                              <p className={`text-lg font-bold font-mono ${feeImpact.netReturnLow >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                {feeImpact.netReturnLow >= 0 ? '+' : ''}{feeImpact.netReturnLow}%
+                              <p className={`text-lg font-bold font-mono ${currentFeeImpact.netReturnLow >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                {currentFeeImpact.netReturnLow >= 0 ? '+' : ''}{currentFeeImpact.netReturnLow}%
                               </p>
                               <span className="text-muted-foreground text-sm">to</span>
-                              <p className={`text-lg font-bold font-mono ${feeImpact.netReturnHigh >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                {feeImpact.netReturnHigh >= 0 ? '+' : ''}{feeImpact.netReturnHigh}%
+                              <p className={`text-lg font-bold font-mono ${currentFeeImpact.netReturnHigh >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                {currentFeeImpact.netReturnHigh >= 0 ? '+' : ''}{currentFeeImpact.netReturnHigh}%
                               </p>
                             </div>
                             <p className="text-[10px] text-muted-foreground mt-0.5">
-                              ≈ ${((allocatedFunds * feeImpact.netReturnLow) / 100).toFixed(0)} to ${((allocatedFunds * feeImpact.netReturnHigh) / 100).toFixed(0)}/month
+                              ~ ${((allocatedFunds * currentFeeImpact.netReturnLow) / 100).toFixed(0)} to ${((allocatedFunds * currentFeeImpact.netReturnHigh) / 100).toFixed(0)}/month
                             </p>
                           </div>
                         </div>
@@ -3214,12 +3312,12 @@ export default function AnalyzeTrader() {
                         <div className="mb-3">
                           <p className="text-xs text-muted-foreground mb-1.5">Analysis:</p>
                           <ul className="space-y-1">
-                            {feeImpact.reasons.map((reason, i) => (
+                            {currentFeeImpact.reasons.map((reason, i) => (
                               <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
                                 <span className={
-                                  feeImpact.level === 'High' ? 'text-red-400' : 
-                                  feeImpact.level === 'Medium' ? 'text-yellow-400' : 'text-green-400'
-                                }>•</span>
+                                  currentFeeImpact.level === 'High' ? 'text-red-400' : 
+                                  currentFeeImpact.level === 'Medium' ? 'text-yellow-400' : 'text-green-400'
+                                }>-</span>
                                 {reason}
                               </li>
                             ))}
@@ -3227,13 +3325,13 @@ export default function AnalyzeTrader() {
                         </div>
                         
                         {/* Recommendations - only show if Medium or High */}
-                        {feeImpact.level !== 'Low' && feeImpact.recommendations.length > 0 && (
+                        {currentFeeImpact.level !== 'Low' && currentFeeImpact.recommendations.length > 0 && (
                           <div className="p-3 rounded-lg bg-background/50">
                             <p className="text-xs font-semibold mb-1.5">Recommendations:</p>
                             <ul className="space-y-1">
-                              {feeImpact.recommendations.map((rec, i) => (
+                              {currentFeeImpact.recommendations.map((rec, i) => (
                                 <li key={i} className="text-xs text-muted-foreground">
-                                  💡 {rec}
+                                  Tip {rec}
                                 </li>
                               ))}
                             </ul>
@@ -3241,7 +3339,7 @@ export default function AnalyzeTrader() {
                         )}
                         
                         <p className="text-xs text-muted-foreground/60 mt-3 italic">
-                          Based on {feeImpact.assumedTier}. Actual results vary by your TradeFox tier.
+                          Based on {currentFeeImpact.assumedTier}. Actual results vary with execution and market conditions.
                         </p>
                       </div>
                     )}
@@ -3275,69 +3373,439 @@ export default function AnalyzeTrader() {
                         </div>
                       </div>
                     </div>
-                  </>
+                  </div>
+                )}
+              </div>
+            )}
+          {executionTab === 'polycop' && (
+                  <div className="space-y-6">
+                    {adjustedCopySuitability?.executionDependent && (
+                      <div className="p-4 rounded-lg bg-red-500/10 border-2 border-red-500/40">
+                        <div className="flex items-start gap-3">
+                          <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+                          <div className="space-y-2">
+                            <h4 className="font-semibold text-red-500 flex items-center gap-2">
+                              Execution-Dependent Strategy Detected
+                              <HoverCard>
+                                <HoverCardTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-5 w-5 p-0">
+                                    <Info className="h-4 w-4 text-red-400 hover:text-red-300" />
+                                  </Button>
+                                </HoverCardTrigger>
+                                <HoverCardContent className="w-80">
+                                  <p className="text-xs text-muted-foreground">
+                                    Copy trading works best for directional traders who hold positions long enough for followers to get similar fills. This trader's strategy may rely on precise execution timing.
+                                  </p>
+                                </HoverCardContent>
+                              </HoverCard>
+                            </h4>
+                            <p className="text-sm text-muted-foreground">
+                              This trader's performance may rely on order execution tactics (fast limit orders, frequent updates, spread capture). PolyCop copy trading can't replicate timing and limit management, so results may differ.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex flex-col items-center justify-center py-4">
+                      <div className="flex flex-wrap justify-center gap-2 mb-4">
+                        {[100, 250, 500, 1000, 2000, 5000, 10000].map((amount) => (
+                          <Button
+                            key={amount}
+                            variant={allocatedFunds === amount ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setAllocatedFunds(amount)}
+                            className={allocatedFunds === amount 
+                              ? "bg-orange-500 hover:bg-orange-600 text-white border-orange-500" 
+                              : "border-orange-500/30 text-orange-400 hover:bg-orange-500/20 hover:border-orange-500/50"
+                            }
+                          >
+                            ${amount.toLocaleString()}
+                          </Button>
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-2 p-6 rounded-xl bg-background/50 border-2 border-orange-500/40">
+                        <span className="text-orange-400 font-mono text-4xl font-bold">$</span>
+                        <input 
+                          type="text"
+                          inputMode="numeric"
+                          value={allocatedFunds}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            setAllocatedFunds(Number(val) || 0);
+                          }}
+                          className="w-36 text-center bg-transparent border-none font-mono text-4xl font-bold text-orange-400 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    {trader && autoSettings && polycopAdjustedSettings && (
+                      <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="text-sm font-semibold text-amber-400">PolyCop Quick Config</h4>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={handleCopyPolyCopConfig}
+                            className="shrink-0"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="grid gap-0 text-xs text-muted-foreground rounded-lg overflow-hidden border border-border/40">
+                          <div className="flex items-center justify-between gap-3 px-3 py-2 odd:bg-background/30 even:bg-background/50">
+                            <div className="flex items-center gap-1">
+                              <span>Target Wallet</span>
+                              <HoverCard>
+                                <HoverCardTrigger asChild>
+                                  <button>
+                                    <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                                  </button>
+                                </HoverCardTrigger>
+                                <HoverCardContent className="w-72 z-50" side="top">
+                                  <p className="text-xs text-muted-foreground">
+                                    The wallet you will copy. PolyCop links trades to this address.
+                                  </p>
+                                </HoverCardContent>
+                              </HoverCard>
+                            </div>
+                            <span className="font-mono text-foreground break-all">{trader.address}</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3 px-3 py-2 odd:bg-background/30 even:bg-background/50">
+                            <div className="flex items-center gap-1">
+                              <span>Tag</span>
+                              <HoverCard>
+                                <HoverCardTrigger asChild>
+                                  <button>
+                                    <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                                  </button>
+                                </HoverCardTrigger>
+                                <HoverCardContent className="w-72 z-50" side="top">
+                                  <p className="text-xs text-muted-foreground">
+                                    A label so you can recognize this copied wallet in PolyCop.
+                                  </p>
+                                </HoverCardContent>
+                              </HoverCard>
+                            </div>
+                            <span className="font-mono text-foreground">
+                              {trader.username || `${trader.address.slice(0, 6)}...${trader.address.slice(-4)}`}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3 px-3 py-2 odd:bg-background/30 even:bg-background/50">
+                            <div className="flex items-center gap-1">
+                              <span>Copy Percentage / $</span>
+                              <HoverCard>
+                                <HoverCardTrigger asChild>
+                                  <button>
+                                    <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                                  </button>
+                                </HoverCardTrigger>
+                                <HoverCardContent className="w-72 z-50" side="top">
+                                  <p className="text-xs text-muted-foreground">
+                                    Percentage of the trader's size and the equivalent fixed dollar amount for your allocation.
+                                  </p>
+                                </HoverCardContent>
+                              </HoverCard>
+                            </div>
+                            <span className="font-mono text-foreground">
+                              {autoSettings.copyPercentage}% / ${polycopAdjustedSettings.fixedCopyAmount}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3 px-3 py-2 odd:bg-background/30 even:bg-background/50">
+                            <div className="flex items-center gap-1">
+                              <span>Limit Order Copy</span>
+                              <HoverCard>
+                                <HoverCardTrigger asChild>
+                                  <button>
+                                    <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                                  </button>
+                                </HoverCardTrigger>
+                                <HoverCardContent className="w-72 z-50" side="top">
+                                  <p className="text-xs text-muted-foreground">
+                                    Uses limit orders at the trader's price to reduce slippage.
+                                  </p>
+                                </HoverCardContent>
+                              </HoverCard>
+                            </div>
+                            <span className="font-mono text-foreground">On</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3 px-3 py-2 odd:bg-background/30 even:bg-background/50">
+                            <div className="flex items-center gap-1">
+                              <span>Market Order Copy</span>
+                              <HoverCard>
+                                <HoverCardTrigger asChild>
+                                  <button>
+                                    <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                                  </button>
+                                </HoverCardTrigger>
+                                <HoverCardContent className="w-72 z-50" side="top">
+                                  <p className="text-xs text-muted-foreground">
+                                    Keeps market orders off to avoid bad fills during volatility.
+                                  </p>
+                                </HoverCardContent>
+                              </HoverCard>
+                            </div>
+                            <span className="font-mono text-foreground">Off</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3 px-3 py-2 odd:bg-background/30 even:bg-background/50">
+                            <div className="flex items-center gap-1">
+                              <span>Limit Order Duration</span>
+                              <HoverCard>
+                                <HoverCardTrigger asChild>
+                                  <button>
+                                    <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                                  </button>
+                                </HoverCardTrigger>
+                                <HoverCardContent className="w-72 z-50" side="top">
+                                  <p className="text-xs text-muted-foreground">
+                                    Default duration keeps limits active long enough without hanging too long.
+                                  </p>
+                                </HoverCardContent>
+                              </HoverCard>
+                            </div>
+                            <span className="font-mono text-foreground">Default</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3 px-3 py-2 odd:bg-background/30 even:bg-background/50">
+                            <div className="flex items-center gap-1">
+                              <span>Limit Price Offset</span>
+                              <HoverCard>
+                                <HoverCardTrigger asChild>
+                                  <button>
+                                    <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                                  </button>
+                                </HoverCardTrigger>
+                                <HoverCardContent className="w-72 z-50" side="top">
+                                  <p className="text-xs text-muted-foreground">
+                                    Max price you accept above the trader's fill. Lower is safer but may miss trades.
+                                  </p>
+                                </HoverCardContent>
+                              </HoverCard>
+                            </div>
+                            <span className="font-mono text-foreground">{autoSettings.maxSlippageCents} cents</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3 px-3 py-2 odd:bg-background/30 even:bg-background/50">
+                            <div className="flex items-center gap-1">
+                              <span>Max Token Spend</span>
+                              <HoverCard>
+                                <HoverCardTrigger asChild>
+                                  <button>
+                                    <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                                  </button>
+                                </HoverCardTrigger>
+                                <HoverCardContent className="w-72 z-50" side="top">
+                                  <p className="text-xs text-muted-foreground">
+                                    Per-market cap. Raised automatically if it is below your copy size.
+                                  </p>
+                                </HoverCardContent>
+                              </HoverCard>
+                            </div>
+                            <span className="font-mono text-foreground">${polycopAdjustedSettings.safeMaxPerTrade}</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3 px-3 py-2 odd:bg-background/30 even:bg-background/50">
+                            <div className="flex items-center gap-1">
+                              <span>Total Token Spend</span>
+                              <HoverCard>
+                                <HoverCardTrigger asChild>
+                                  <button>
+                                    <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                                  </button>
+                                </HoverCardTrigger>
+                                <HoverCardContent className="w-72 z-50" side="top">
+                                  <p className="text-xs text-muted-foreground">
+                                    Total cap per market across buys. Prevents overexposure.
+                                  </p>
+                                </HoverCardContent>
+                              </HoverCard>
+                            </div>
+                            <span className="font-mono text-foreground">${polycopAdjustedSettings.safeTotalTokenSpend}</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3 px-3 py-2 odd:bg-background/30 even:bg-background/50">
+                            <div className="flex items-center gap-1">
+                              <span>Below Min Limit, Buy at Min</span>
+                              <HoverCard>
+                                <HoverCardTrigger asChild>
+                                  <button>
+                                    <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                                  </button>
+                                </HoverCardTrigger>
+                                <HoverCardContent className="w-72 z-50" side="top">
+                                  <p className="text-xs text-muted-foreground">
+                                    If your copy size is below the minimum, PolyCop buys the minimum instead.
+                                  </p>
+                                </HoverCardContent>
+                              </HoverCard>
+                            </div>
+                            <span className="font-mono text-foreground">On</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3 px-3 py-2 odd:bg-background/30 even:bg-background/50">
+                            <div className="flex items-center gap-1">
+                              <span>Min/Max Copy Amount per Trade</span>
+                              <HoverCard>
+                                <HoverCardTrigger asChild>
+                                  <button>
+                                    <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                                  </button>
+                                </HoverCardTrigger>
+                                <HoverCardContent className="w-72 z-50" side="top">
+                                  <p className="text-xs text-muted-foreground">
+                                    Floor and ceiling for each copied trade after percentage sizing.
+                                  </p>
+                                </HoverCardContent>
+                              </HoverCard>
+                            </div>
+                            <span className="font-mono text-foreground">
+                              ${polycopAdjustedSettings.minAmountPerMarket} / ${polycopAdjustedSettings.safeMaxPerTrade}
+                            </span>
+                          </div>
+                        </div>
+                        {polycopAdjustedSettings.safeMaxPerTrade !== autoSettings.maxCopyAmountPerTrade && (
+                          <p className="text-[11px] text-muted-foreground mt-3">
+                            Max limits auto-adjusted to avoid PolyCop "token spend maximum" errors.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    {copyStrategy && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+                          <div className="flex items-center gap-1">
+                            <span className="text-sm text-muted-foreground">Est. Max Monthly Return</span>
+                            <HoverCard>
+                              <HoverCardTrigger asChild>
+                                <button>
+                                  <Info className="h-3 w-3 text-muted-foreground hover:text-foreground cursor-help transition-colors" />
+                                </button>
+                              </HoverCardTrigger>
+                              <HoverCardContent className="w-80 z-[100]" side="top">
+                                <div className="space-y-2">
+                                  <p className="text-sm font-semibold">Maximum Potential Return</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Best-case estimate based on the AI copy settings, not historical return.
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Includes the PolyCop 0.5% trading fee in the net return.
+                                  </p>
+                                </div>
+                              </HoverCardContent>
+                            </HoverCard>
+                          </div>
+                          {metricsReady && Number.isFinite(copyStrategy.expectedMonthlyReturn) ? (
+                            <>
+                              <p className={`text-2xl font-bold font-mono ${polycopNetExpectedReturn !== null && polycopNetExpectedReturn >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                {polycopNetExpectedReturn !== null && polycopNetExpectedReturn >= 0 ? '+' : ''}{polycopNetExpectedReturn ?? copyStrategy.expectedMonthlyReturn}%
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                ~ ${((allocatedFunds * (polycopNetExpectedReturn ?? copyStrategy.expectedMonthlyReturn)) / 100).toFixed(0)}/month
+                              </p>
+                              <p className="text-[11px] text-muted-foreground mt-1">
+                                Fee applied: 0.5% trading fee (PolyCop).
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="text-2xl font-bold font-mono text-muted-foreground">--</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Loading...
+                              </p>
+                            </>
+                          )}
+                        </div>
+                        <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+                          <span className="text-sm text-muted-foreground">Est. Max Drawdown</span>
+                          {metricsReady ? (
+                            <>
+                              <p className="text-2xl font-bold text-red-400 font-mono">-{copyStrategy.maxDrawdown}%</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                ~ -${((allocatedFunds * copyStrategy.maxDrawdown) / 100).toFixed(0)} worst case
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="text-2xl font-bold font-mono text-muted-foreground">--</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Loading...
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    <div className="p-3 rounded-lg bg-background/40 border border-dashed border-orange-500/40">
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/40">Beta</Badge>
+                        <p className="text-xs text-muted-foreground">
+                          PolyCop integration is in beta. Settings are auto-generated and may change as we refine accuracy.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </CardContent>
             </Card>
 
-            {/* Copy on TradeFox Section */}
-            <Card className="mb-8 border-border/50">
-              <CardHeader>
-                <CardTitle>Copy on TradeFox</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  To copy this trader, you'll need a TradeFox account.
-                  <br />
-                  If you sign up using my referral link, it really helps support Polytrak.io and lets me keep building new features.
-                </p>
-                
-                {/* Configure Copy Settings Button */}
-                {copyStrategy && advancedSettings && (
-                  <Button
-                    onClick={() => setEditModalOpen(true)}
-                    variant="outline"
-                    className="w-full border-primary/50 text-primary hover:bg-primary/10"
-                    size="lg"
-                  >
-                    <Settings2 className="h-4 w-4 mr-2" />
-                    View Copy Settings
-                  </Button>
-                )}
-                
-                {/* Referral Link */}
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30 border border-border/50">
-                  <code className="text-sm text-primary flex-1 break-all">
-                    https://thetradefox.com?ref=POLYTRAK
-                  </code>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleCopyReferralLink}
-                    className="shrink-0"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
-                
-                {/* Primary CTA Button */}
-                <Button
-                  onClick={() => window.open('https://thetradefox.com?ref=POLYTRAK', '_blank')}
-                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-                  size="lg"
-                >
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Sign up on TradeFox (Referral Link)
-                </Button>
-                
-                {/* Disclaimer */}
-                <p className="text-xs text-muted-foreground/70 leading-relaxed">
-                  Disclaimer: Polytrak.io is an independent analytics tool and is not affiliated with TradeFox.
-                  Using my referral link is optional, but I'd really appreciate it — it helps support the project.
-                  Polytrak.io does not execute trades and this is not financial advice.
-                </p>
-              </CardContent>
-            </Card>
+                        {executionTab === 'tradefox' && (
+                  <div className="space-y-6">
+                {/* Copy on TradeFox Section */}
+                <Card className="mb-8 border-border/50">
+                  <CardHeader>
+                    <CardTitle>Copy on TradeFox</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      To copy this trader, you'll need a TradeFox account.
+                      <br />
+                      If you sign up using my referral link, it really helps support Polytrak.io and lets me keep building new features.
+                    </p>
+                    
+                    {/* Configure Copy Settings Button */}
+                    {copyStrategy && advancedSettings && (
+                      <Button
+                        onClick={() => setEditModalOpen(true)}
+                        variant="outline"
+                        className="w-full border-primary/50 text-primary hover:bg-primary/10"
+                        size="lg"
+                      >
+                        <Settings2 className="h-4 w-4 mr-2" />
+                        View Copy Settings
+                      </Button>
+                    )}
+                    
+                    {/* Referral Link */}
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30 border border-border/50">
+                      <code className="text-sm text-primary flex-1 break-all">
+                        {tradefoxReferralUrl}
+                      </code>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleCopyTradeFoxReferralLink}
+                        className="shrink-0"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    
+                    {/* Primary CTA Button */}
+                    <Button
+                      onClick={() => window.open(tradefoxReferralUrl, '_blank')}
+                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+                      size="lg"
+                      disabled={!hasTradeFoxReferral}
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Open TradeFox (Referral Link)
+                    </Button>
+                    
+                    {/* Disclaimer */}
+                    <p className="text-xs text-muted-foreground/70 leading-relaxed">
+                      Disclaimer: Polytrak.io is an independent analytics tool and is not affiliated with TradeFox.
+                      Using my referral link is optional, but I'd really appreciate it — it helps support the project.
+                      Polytrak.io does not execute trades and this is not financial advice.
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+                    )}
 
             {/* Tabs for Positions and Trade History */}
             <div className="mt-4">
@@ -3399,7 +3867,7 @@ export default function AnalyzeTrader() {
                       )
                     ) : (
                       <div className="p-8 text-center text-muted-foreground">
-                        Loading open positions…
+                        Loading open positions...
                       </div>
                     )}
                   </CardContent>
@@ -3455,7 +3923,7 @@ export default function AnalyzeTrader() {
                       )
                     ) : (
                       <div className="p-8 text-center text-muted-foreground">
-                        Loading recent trades…
+                        Loading recent trades...
                       </div>
                     )}
                   </CardContent>
@@ -3465,7 +3933,6 @@ export default function AnalyzeTrader() {
             </div>
           </>
         )}
-
         {/* Empty State */}
         {!trader && !isAnalyzing && !showErrorState && (
           <div className="text-center py-16">
@@ -3478,73 +3945,92 @@ export default function AnalyzeTrader() {
             </p>
           </div>
         )}
+        {/* Copy Trading Modals */}
+        {copyStrategy && advancedSettings && autoSettings && (
+          <>
+            <EditCopyTradingModal
+              open={editModalOpen}
+              onOpenChange={setEditModalOpen}
+              settings={{
+                allocatedFunds,
+                tradeSizePercent: autoSettings.tradeSizePercent,
+                copyPercentage: autoSettings.copyPercentage,
+                exitMode: autoSettings.exitMode,
+                availableBalance: allocatedFunds * 0.26, // Placeholder - shows ~26% available
+                spentOnTrader: allocatedFunds * 0.74, // Placeholder - shows ~74% spent
+              }}
+              onSettingsChange={(updates) => {
+                if (updates.allocatedFunds !== undefined) {
+                  setAllocatedFunds(updates.allocatedFunds);
+                }
+              }}
+              onOpenAdvanced={() => {
+                setEditModalOpen(false);
+                setAdvancedModalOpen(true);
+              }}
+              onSave={() => {
+                setEditModalOpen(false);
+                toast({ title: 'Settings saved', description: 'Your copy trading settings have been updated.' });
+              }}
+              onStopCopy={() => {
+                setEditModalOpen(false);
+                toast({ title: 'Copy trading stopped', variant: 'destructive' });
+              }}
+              traderName={trader?.username || undefined}
+            />
+
+            <AdvancedSettingsModal
+              open={advancedModalOpen}
+              onOpenChange={setAdvancedModalOpen}
+              settings={{
+                maxAmountPerMarket: autoSettings.maxAmountPerMarket,
+                minAmountPerMarket: autoSettings.minAmountPerMarket,
+                maxCopyAmountPerTrade: autoSettings.maxCopyAmountPerTrade,
+                minVolumePerMarket: autoSettings.minVolumePerMarket,
+                minLiquidityPerMarket: autoSettings.minLiquidityPerMarket,
+                marketPriceRangeMin: autoSettings.marketPriceRangeMin,
+                marketPriceRangeMax: autoSettings.marketPriceRangeMax,
+                maxSlippageCents: autoSettings.maxSlippageCents,
+                maxTimeUntilResolution: typeof autoSettings.maxTimeUntilResolution === 'number' ? autoSettings.maxTimeUntilResolution : 90,
+              }}
+              onSettingsChange={() => {
+                // Settings are read-only in PolyTrak
+              }}
+              onSave={() => {
+                setAdvancedModalOpen(false);
+                setEditModalOpen(true);
+              }}
+              onReset={() => {
+                toast({ title: 'Settings reset to default' });
+              }}
+              onBack={() => {
+                setAdvancedModalOpen(false);
+                setEditModalOpen(true);
+              }}
+            />
+          </>
+        )}
       </div>
-
-      {/* Copy Trading Modals */}
-      {copyStrategy && advancedSettings && autoSettings && (
-        <>
-          <EditCopyTradingModal
-            open={editModalOpen}
-            onOpenChange={setEditModalOpen}
-            settings={{
-              allocatedFunds,
-              tradeSizePercent: autoSettings.tradeSizePercent,
-              copyPercentage: autoSettings.copyPercentage,
-              exitMode: autoSettings.exitMode,
-              availableBalance: allocatedFunds * 0.26, // Placeholder - shows ~26% available
-              spentOnTrader: allocatedFunds * 0.74, // Placeholder - shows ~74% spent
-            }}
-            onSettingsChange={(updates) => {
-              if (updates.allocatedFunds !== undefined) {
-                setAllocatedFunds(updates.allocatedFunds);
-              }
-            }}
-            onOpenAdvanced={() => {
-              setEditModalOpen(false);
-              setAdvancedModalOpen(true);
-            }}
-            onSave={() => {
-              setEditModalOpen(false);
-              toast({ title: 'Settings saved', description: 'Your copy trading settings have been updated.' });
-            }}
-            onStopCopy={() => {
-              setEditModalOpen(false);
-              toast({ title: 'Copy trading stopped', variant: 'destructive' });
-            }}
-            traderName={trader?.username || undefined}
-          />
-
-          <AdvancedSettingsModal
-            open={advancedModalOpen}
-            onOpenChange={setAdvancedModalOpen}
-            settings={{
-              maxAmountPerMarket: autoSettings.maxAmountPerMarket,
-              minAmountPerMarket: autoSettings.minAmountPerMarket,
-              maxCopyAmountPerTrade: autoSettings.maxCopyAmountPerTrade,
-              minVolumePerMarket: autoSettings.minVolumePerMarket,
-              minLiquidityPerMarket: autoSettings.minLiquidityPerMarket,
-              marketPriceRangeMin: autoSettings.marketPriceRangeMin,
-              marketPriceRangeMax: autoSettings.marketPriceRangeMax,
-              maxSlippageCents: autoSettings.maxSlippageCents,
-              maxTimeUntilResolution: typeof autoSettings.maxTimeUntilResolution === 'number' ? autoSettings.maxTimeUntilResolution : 90,
-            }}
-            onSettingsChange={() => {
-              // Settings are read-only in PolyTrak
-            }}
-            onSave={() => {
-              setAdvancedModalOpen(false);
-              setEditModalOpen(true);
-            }}
-            onReset={() => {
-              toast({ title: 'Settings reset to default' });
-            }}
-            onBack={() => {
-              setAdvancedModalOpen(false);
-              setEditModalOpen(true);
-            }}
-          />
-        </>
-      )}
     </Layout>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
