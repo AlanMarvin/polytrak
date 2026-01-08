@@ -2094,7 +2094,7 @@ export default function AnalyzeTrader() {
 
                 {!analysis.stages.full.isSuccess && (
                   <p className="text-xs text-muted-foreground mt-3">
-                    Full history is optional and may take longer. We show Smart Score, Sharpe, and Copy Suitability once summary data is available.
+                    Full history may take longer. We show Smart Score, Sharpe, and Copy Suitability once summary data is available.
                   </p>
                 )}
               </div>
