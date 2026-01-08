@@ -28,7 +28,6 @@ export type Database = {
           market_price_range_min: number
           max_amount_per_market: number
           max_copy_amount_per_trade: number
-          max_slippage_cents: number
           max_time_until_resolution: string
           min_amount_per_market: number
           min_liquidity_per_market: number
@@ -51,7 +50,6 @@ export type Database = {
           market_price_range_min?: number
           max_amount_per_market?: number
           max_copy_amount_per_trade?: number
-          max_slippage_cents?: number
           max_time_until_resolution?: string
           min_amount_per_market?: number
           min_liquidity_per_market?: number
@@ -74,7 +72,6 @@ export type Database = {
           market_price_range_min?: number
           max_amount_per_market?: number
           max_copy_amount_per_trade?: number
-          max_slippage_cents?: number
           max_time_until_resolution?: string
           min_amount_per_market?: number
           min_liquidity_per_market?: number
