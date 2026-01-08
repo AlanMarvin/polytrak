@@ -1043,7 +1043,7 @@ serve(async (req) => {
       address: trimmedAddress,
       username: profile?.name || profile?.username || profile?.pseudonym || null,
       profileImage: profile?.profileImage || profile?.profileImageOptimized || profile?.image || profile?.avatar || null,
-      pnl: totalPnl,
+      pnl: realizedPnl,
       pnlIncludingOpenPartial: totalPnlIncludingOpenPartial,
       pnl24h,
       pnl7d,
@@ -1096,7 +1096,7 @@ serve(async (req) => {
       })),
     };
 
-    console.log(`Returning: PnL=${totalPnl}, Realized=${realizedPnl}, Unrealized=${unrealizedPnl}, Open=${trulyOpenPositions.length}, Resolved=${resolvedPositions.length}, Closed=${closed.length}, Trades30d=${trades30d}, Positions30d=${positions30d}`);
+    console.log(`Returning: PnL=${realizedPnl}, Realized=${realizedPnl}, Unrealized=${unrealizedPnl}, Open=${trulyOpenPositions.length}, Resolved=${resolvedPositions.length}, Closed=${closed.length}, Trades30d=${trades30d}, Positions30d=${positions30d}`);
     console.log(`[stage=full] computed in ${Math.round(performance.now() - tAll)}ms`);
 
     return new Response(

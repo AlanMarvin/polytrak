@@ -2383,7 +2383,7 @@ export default function AnalyzeTrader() {
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 text-muted-foreground mb-1">
                     <Wallet className="h-4 w-4" />
-                    <span className="text-sm">Total PnL</span>
+                    <span className="text-sm">Total PnL (Closed)</span>
                   </div>
                   <p className={`text-2xl font-bold font-mono ${trader.pnl >= 0 ? 'stat-profit' : 'stat-loss'}`}>
                     {formatPnl(trader.pnl)}
