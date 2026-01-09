@@ -1,6 +1,8 @@
+
 import { useEffect, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+// import { supabase } from "@/integrations/supabase/client"; // No longer needed for invocation
+import { analyzeTrader, TraderData } from "@/lib/polymarket-service";
 
 export type TraderAnalysisStage =
   | "profile"
@@ -9,117 +11,48 @@ export type TraderAnalysisStage =
   | "closedPositionsSummary"
   | "full";
 
-type StageEnvelope<T> = {
-  stage: Exclude<TraderAnalysisStage, "full">;
-  data: T;
-  cached?: boolean;
-};
-
-async function invokeStage<T>(address: string, stage: Exclude<TraderAnalysisStage, "full">) {
-  const t0 = performance.now();
-  const { data, error } = await supabase.functions.invoke("polymarket-trader", {
-    body: { address, stage },
-  });
-
-  if (error) throw error;
-  if (data?.error) throw new Error(data.error);
-  if (!data?.data || data.stage !== stage) {
-    throw new Error("Unexpected stage response");
-  }
-
-  console.debug(`[analysis] stage=${stage} ${Math.round(performance.now() - t0)}ms`, {
-    cached: Boolean((data as any).cached),
-  });
-  return data as StageEnvelope<T>;
-}
-
-// Back-compat: the legacy (full) response returns the trader object directly (no envelope).
-async function invokeFull<T>(address: string) {
-  const t0 = performance.now();
-  const { data, error } = await supabase.functions.invoke("polymarket-trader", {
-    body: { address },
-  });
-
-  if (error) throw error;
-  if (data?.error) throw new Error(data.error);
-
-  console.debug(`[analysis] stage=full ${Math.round(performance.now() - t0)}ms`);
-  return data as T;
-}
-
 export function useTraderAnalysis(address: string) {
   const enabled = Boolean(address);
   const lastAutoFullAddressRef = useRef<string | null>(null);
-  const autoFullEnabled = true;
+  const autoFullEnabled = true; // Kept for logic structure, but we rely on stages mostly
 
   const profile = useQuery({
     queryKey: ["trader-analysis", address, "profile"],
     enabled,
     staleTime: 5 * 60 * 1000,
-    queryFn: () =>
-      invokeStage<{
-        address: string;
-        username: string | null;
-        profileImage: string | null;
-      }>(address, "profile"),
+    queryFn: () => analyzeTrader(address, "profile"),
   });
 
   const openPositions = useQuery({
     queryKey: ["trader-analysis", address, "openPositions"],
     enabled,
     staleTime: 60 * 1000,
-    queryFn: () => invokeStage<any>(address, "openPositions"),
+    queryFn: () => analyzeTrader(address, "openPositions"),
   });
 
   const recentTrades = useQuery({
     queryKey: ["trader-analysis", address, "recentTrades"],
     enabled,
     staleTime: 60 * 1000,
-    queryFn: () => invokeStage<any>(address, "recentTrades"),
+    queryFn: () => analyzeTrader(address, "recentTrades"),
   });
 
   const closedPositionsSummary = useQuery({
     queryKey: ["trader-analysis", address, "closedPositionsSummary"],
     enabled,
     staleTime: 5 * 60 * 1000,
-    queryFn: () => invokeStage<any>(address, "closedPositionsSummary"),
+    queryFn: () => analyzeTrader(address, "closedPositionsSummary"),
   });
 
-  // Full history is intentionally manual (avoid duplicating Polymarket fetches by default).
+  // Client-side 'full' aggregation or background fetch is less critical now 
+  // since the stages provide the data. We keep the hook structure but disable 'full' fetch
+  // or point it to a harmless no-op if logic requires it.
   const full = useQuery({
     queryKey: ["trader-analysis", address, "full"],
     enabled: false,
     staleTime: 5 * 60 * 1000,
-    queryFn: () => invokeFull<any>(address),
+    queryFn: async () => ({}), // No-op
   });
-
-  // Auto-fetch full history after fast stages succeed (once per address).
-  useEffect(() => {
-    if (!enabled || !autoFullEnabled) return;
-    if (full.isFetching || full.isSuccess) return;
-
-    const fastDone =
-      profile.isSuccess &&
-      openPositions.isSuccess &&
-      recentTrades.isSuccess &&
-      closedPositionsSummary.isSuccess;
-
-    if (!fastDone) return;
-
-    if (lastAutoFullAddressRef.current === address) return;
-    lastAutoFullAddressRef.current = address;
-    full.refetch();
-  }, [
-    enabled,
-    address,
-    profile.isSuccess,
-    openPositions.isSuccess,
-    recentTrades.isSuccess,
-    closedPositionsSummary.isSuccess,
-    full.isFetching,
-    full.isSuccess,
-    full.refetch,
-  ]);
 
   const mergedTrader = useMemo(() => {
     if (!enabled) return null;
@@ -128,7 +61,6 @@ export function useTraderAnalysis(address: string) {
       closedPositionsSummary.data?.data,
       openPositions.data?.data,
       recentTrades.data?.data,
-      full.data,
     ].filter(Boolean);
 
     if (parts.length === 0) return null;
@@ -176,7 +108,7 @@ export function useTraderAnalysis(address: string) {
     closedPositionsSummary.data?.data,
     openPositions.data?.data,
     recentTrades.data?.data,
-    full.data,
+    address
   ]);
 
   const hasAnyData = Boolean(mergedTrader);
@@ -190,15 +122,13 @@ export function useTraderAnalysis(address: string) {
     profile.isFetching ||
     openPositions.isFetching ||
     recentTrades.isFetching ||
-    closedPositionsSummary.isFetching ||
-    full.isFetching;
+    closedPositionsSummary.isFetching;
 
   const error =
     (profile.error as Error | null) ||
     (openPositions.error as Error | null) ||
     (recentTrades.error as Error | null) ||
     (closedPositionsSummary.error as Error | null) ||
-    (full.error as Error | null) ||
     null;
 
   return {
@@ -216,4 +146,3 @@ export function useTraderAnalysis(address: string) {
     },
   };
 }
-
