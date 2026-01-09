@@ -332,11 +332,28 @@ function calculateReliability(metrics: ReliabilityMetrics, totalPositions: numbe
 }
 
 function getClosedPositionPnl(pos: any): number {
-  // The realizedPnl field from Polymarket API is already the PnL in USD
-  // No need to multiply by price difference - that was causing inflated PnL values
-  const realized = Number(pos?.realizedPnl ?? 0);
-  if (!Number.isFinite(realized)) return 0;
-  return realized;
+  // Method 1: Use realizedPnl directly from API (what Polymarket returns)
+  const apiRealized = Number(pos?.realizedPnl ?? 0);
+  
+  // Method 2: Calculate from price difference - this is what some analytics sites use
+  // PnL = (curPrice - avgPrice) * (totalBought / avgPrice)
+  // This represents: (exit_price - entry_price) * shares_held
+  const avgPrice = Number(pos?.avgPrice ?? 0);
+  const curPrice = Number(pos?.curPrice ?? 0);
+  const totalBought = Number(pos?.totalBought ?? 0);
+  
+  let calculatedPnl = 0;
+  if (avgPrice > 0 && avgPrice < 1) {
+    const shares = totalBought / avgPrice;
+    calculatedPnl = (curPrice - avgPrice) * shares;
+  }
+  
+  // CRITICAL INSIGHT: The API's realizedPnl might include partial exits/entries
+  // that are already accounted for. We should use the API value directly.
+  // But if it seems too high, the issue may be cumulative counting.
+  
+  if (!Number.isFinite(apiRealized)) return 0;
+  return apiRealized;
 }
 
 serve(async (req) => {
@@ -804,9 +821,11 @@ serve(async (req) => {
     
     console.log(`DEDUP: ${closed.length} raw closed entries -> ${finalPositions.size} unique final positions`);
     
-    // Step 2: Calculate realized PnL from FINAL position states only (closed/settled)
-    // NOTE: We keep open-position partial-exit realized PnL separate to match Polymarket/Hashdive style totals.
+    // Step 2: Calculate realized PnL using TWO methods for comparison
+    // Method A: Sum of API realizedPnl values
+    // Method B: Calculated from (curPrice - avgPrice) * shares
     let realizedPnlClosed = 0;
+    let calculatedPnlTotal = 0;
     let realizedPnlOpenPartial = 0;
     let positivePnl = 0;
     let negativePnl = 0;
@@ -816,6 +835,15 @@ serve(async (req) => {
       realizedPnlClosed += pnl;
       if (pnl > 0) positivePnl += pnl;
       else negativePnl += pnl;
+      
+      // Calculate Method B: (curPrice - avgPrice) * shares
+      const avgPrice = Number(pos?.avgPrice ?? 0);
+      const curPrice = Number(pos?.curPrice ?? 0);
+      const totalBought = Number(pos?.totalBought ?? 0);
+      if (avgPrice > 0 && avgPrice < 1) {
+        const shares = totalBought / avgPrice;
+        calculatedPnlTotal += (curPrice - avgPrice) * shares;
+      }
     });
 
     // Open positions can have partial exits; Polymarket often separates these from "closed PnL".
@@ -824,6 +852,11 @@ serve(async (req) => {
     });
     
     const realizedPnl = realizedPnlClosed;
+    console.log(
+      `PnL Methods: API_realizedPnl=${realizedPnlClosed.toFixed(2)}, ` +
+      `Calculated=(curPrice-avgPrice)*shares=${calculatedPnlTotal.toFixed(2)}, ` +
+      `Difference=${(realizedPnlClosed - calculatedPnlTotal).toFixed(2)}`
+    );
     console.log(
       `Realized PnL (closed)=${realizedPnlClosed.toFixed(2)}, ` +
       `Realized PnL (open partial)=${realizedPnlOpenPartial.toFixed(2)}, ` +
