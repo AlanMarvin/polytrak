@@ -758,6 +758,13 @@ serve(async (req) => {
     // Step 1: Group closed positions by asset (unique outcome token) and keep only the LATEST entry
     const finalPositions = new Map<string, any>();
     
+    // Debug: Log sample closed position structure to understand the data
+    if (closed.length > 0) {
+      const sample = closed[0];
+      console.log(`Sample closed position fields: ${Object.keys(sample).join(', ')}`);
+      console.log(`Sample closed position: conditionId=${sample.conditionId}, outcome=${sample.outcome}, realizedPnl=${sample.realizedPnl}, asset=${sample.asset}`);
+    }
+    
     // Count multi-entry groups for diagnostic logging
     const groupSizes = new Map<string, number>();
     closed.forEach((pos: any) => {
