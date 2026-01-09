@@ -758,11 +758,20 @@ serve(async (req) => {
     // Step 1: Group closed positions by asset (unique outcome token) and keep only the LATEST entry
     const finalPositions = new Map<string, any>();
     
-    // Debug: Log sample closed position structure to understand the data
+    // Debug: Log sample closed position structure and a few PnL values to understand the data
     if (closed.length > 0) {
       const sample = closed[0];
-      console.log(`Sample closed position fields: ${Object.keys(sample).join(', ')}`);
-      console.log(`Sample closed position: conditionId=${sample.conditionId}, outcome=${sample.outcome}, realizedPnl=${sample.realizedPnl}, asset=${sample.asset}`);
+      console.log(`Sample closed position keys: ${Object.keys(sample).join(', ')}`);
+      console.log(`Sample: conditionId=${sample.conditionId?.slice(0,20)}..., outcome=${sample.outcome}, realizedPnl=${sample.realizedPnl}, avgPrice=${sample.avgPrice}, curPrice=${sample.curPrice}, totalBought=${sample.totalBought}`);
+      
+      // Sample 5 positions to see PnL distribution
+      const samplePnls = closed.slice(0, 5).map((p: any) => ({
+        realizedPnl: p.realizedPnl,
+        avgPrice: p.avgPrice,
+        curPrice: p.curPrice,
+        totalBought: p.totalBought,
+      }));
+      console.log(`Sample 5 PnLs: ${JSON.stringify(samplePnls)}`);
     }
     
     // Count multi-entry groups for diagnostic logging
