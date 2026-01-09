@@ -8,6 +8,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { RotatingWord } from '@/components/ui/rotating-word';
 import { Search, Brain, Sparkles, Target, ArrowRight, Zap, TrendingUp, Shield, Settings, BarChart3, Wallet, Copy, Activity, Droplets, CheckCircle } from 'lucide-react';
 import tradeFoxLogo from '@/assets/tradefox-logo.png';
+import polycopLogo from '@/assets/polycop-logo.png';
 import { RecentSearches } from '@/components/home/RecentSearches';
 import { PublicRecentAnalyses } from '@/components/analyze/PublicRecentAnalyses';
 import { SEOHead } from '@/components/seo/SEOHead';
@@ -41,8 +42,8 @@ const Index = () => {
 
   const features = [
     { label: 'AI-Powered Analysis', description: 'AI analyzes real Polymarket trading history, profitability, and risk behavior.', icon: Brain, useLogo: false },
-    { label: 'Optimized Settings', description: 'Automatically calculates optimal copy-trading settings tailored for TheTradeFox execution.', icon: null, useLogo: true },
-    { label: 'Personalized Strategy', description: 'Adapts position sizing, exits, and exposure based on your risk tolerance and budget.', icon: Sparkles, useLogo: false },
+    { label: 'Optimized Settings', description: 'Automatically calculates optimal copy-trading settings tailored for TheTradeFox execution.', icon: null, useLogo: "tradefox" },
+    { label: 'Personalized Strategy', description: 'Adapts position sizing, exits, and exposure for PolyCop and TradeFox based on risk tolerance.', icon: null, useLogo: "polycop" },
   ];
 
   const previewSlides = [
@@ -171,29 +172,29 @@ const Index = () => {
   ];
 
   const howItWorks = [
-    { 
-      step: '1', 
-      title: 'Paste Wallet Address', 
+    {
+      step: '1',
+      title: 'Paste Wallet Address',
       description: 'Enter any Polymarket trader wallet address to start the analysis',
-      icon: Wallet 
+      icon: Wallet
     },
-    { 
-      step: '2', 
-      title: 'AI Analyzes Performance', 
+    {
+      step: '2',
+      title: 'AI Analyzes Performance',
       description: 'Our AI evaluates win rate, Sharpe ratio, PnL history, and trading patterns',
-      icon: BarChart3 
+      icon: BarChart3
     },
-    { 
-      step: '3', 
-      title: 'Get Optimized Settings', 
+    {
+      step: '3',
+      title: 'Get Optimized Settings',
       description: 'Receive personalized copy trading configuration based on your budget',
-      icon: Settings 
+      icon: Settings
     },
-    { 
-      step: '4', 
-      title: 'Copy on TheTradeFox', 
+    {
+      step: '4',
+      title: 'Copy on TheTradeFox',
       description: 'Use the recommended settings to start copy trading with confidence',
-      icon: Copy 
+      icon: Copy
     },
   ];
 
@@ -229,23 +230,23 @@ const Index = () => {
       />
       {/* Hero Section */}
       <section className="relative overflow-hidden border-b border-border/50">
-        
+
         {/* Gradient effects on top */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-accent/10" />
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/15 rounded-full blur-3xl" />
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent/15 rounded-full blur-3xl" />
-        
+
         <div className="container relative py-16 md:py-24">
           <div className="max-w-3xl mx-auto text-center space-y-6">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-sm text-primary">
               <Zap className="h-4 w-4" />
               <span>AI-Powered Copy Trading Optimization</span>
             </div>
-            
+
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight flex flex-col items-center gap-2 md:gap-3">
               <span>Let AI find</span>
               <span className="inline-flex items-center justify-center text-primary">
-                <RotatingWord 
+                <RotatingWord
                   words={["recommended", "risk-adjusted", "starting", "suggested", "optimized"]}
                   interval={2500}
                   reducedMotionFallbackIndex={3}
@@ -253,13 +254,13 @@ const Index = () => {
               </span>
               <span>settings for copy trading</span>
             </h1>
-            
+
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
               Analyze any Polymarket wallet, let AI calculate the best copy-trading settings, and mirror traders with risk-adjusted performance on <span className="text-primary font-semibold">TheTradeFox</span>.
             </p>
 
             {/* Search Bar */}
-            <form 
+            <form
               onSubmit={(e) => { e.preventDefault(); handleAnalyze(); }}
               className="flex flex-col sm:flex-row gap-3 max-w-xl mx-auto pt-4"
             >
@@ -281,12 +282,14 @@ const Index = () => {
           {/* AI Features */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 max-w-3xl mx-auto mt-12 md:mt-16">
             {features.map((feature) => (
-              <div 
-                key={feature.label} 
+              <div
+                key={feature.label}
                 className="text-center p-5 rounded-xl bg-card/50 border border-border/50 hover:border-primary/30 transition-colors"
               >
-                {feature.useLogo ? (
+                {feature.useLogo === "tradefox" ? (
                   <img src={tradeFoxLogo} alt="TheTradeFox" className="h-10 w-auto mx-auto mb-3" />
+                ) : feature.useLogo === "polycop" ? (
+                  <img src={polycopLogo} alt="PolyCop" className="h-10 w-auto mx-auto mb-3" />
                 ) : (
                   feature.icon && <feature.icon className="h-8 w-8 mx-auto mb-3 text-primary" />
                 )}
@@ -311,7 +314,7 @@ const Index = () => {
         <div className="text-center mb-10">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">How these settings are generated</h2>
         </div>
-        
+
         <div className="max-w-4xl mx-auto">
           <div className="relative rounded-2xl overflow-hidden border border-border/50 shadow-2xl">
             <video
@@ -385,11 +388,10 @@ const Index = () => {
               <button
                 key={index}
                 onClick={() => carouselApi?.scrollTo(index)}
-                className={`w-2 h-2 rounded-full transition-all ${
-                  currentSlide === index 
-                    ? 'bg-primary w-6' 
-                    : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
-                }`}
+                className={`w-2 h-2 rounded-full transition-all ${currentSlide === index
+                  ? 'bg-primary w-6'
+                  : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
+                  }`}
               />
             ))}
           </div>
@@ -476,17 +478,17 @@ const Index = () => {
               Analyze any Polymarket wallet and get AI-optimized settings for TheTradeFox copy trading.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
-              <Button 
-                size="lg" 
+              <Button
+                size="lg"
                 className="min-w-[180px]"
                 onClick={() => document.querySelector('input')?.focus()}
               >
                 <Search className="mr-2 h-4 w-4" />
                 Start Analyzing
               </Button>
-              <a 
-                href="https://thetradefox.com?ref=POLYTRAK" 
-                target="_blank" 
+              <a
+                href="https://thetradefox.com?ref=POLYTRAK"
+                target="_blank"
                 rel="noopener noreferrer"
               >
                 <Button variant="outline" size="lg" className="min-w-[180px]">
