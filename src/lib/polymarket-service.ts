@@ -3,6 +3,34 @@ import { supabase } from "@/integrations/supabase/client";
 const POLYMARKET_API = 'https://data-api.polymarket.com';
 
 // Types and Interfaces
+export interface OpenPosition {
+  id: string;
+  marketTitle: string;
+  outcome: string;
+  size: number;
+  avgPrice: number;
+  currentPrice: number;
+  pnl: number;
+  pnlPercent: number;
+  initialValue: number;
+  currentValue: number;
+  slug?: string;
+  icon?: string;
+  createdAt?: string | null;
+}
+
+export interface RecentTrade {
+  id: string;
+  timestamp: string;
+  marketTitle: string;
+  outcome: string;
+  side: 'buy' | 'sell' | string;
+  size: number;
+  price: number;
+  slug?: string;
+  pnl?: number;
+}
+
 export interface TraderData {
   address: string;
   username: string | null;
@@ -39,8 +67,8 @@ export interface TraderData {
     hitApiLimit: boolean;
     dataCompleteness: number;
   };
-  openPositions: any[];
-  recentTrades: any[];
+  openPositions: OpenPosition[];
+  recentTrades: RecentTrade[];
 }
 
 interface PnlHistoryPoint {
@@ -333,6 +361,7 @@ export async function analyzeTrader(address: string, stage: 'profile' | 'openPos
         currentValue: pos.currentValue || 0,
         slug: pos.slug,
         icon: pos.icon,
+        createdAt: pos.createdAt || pos.updatedAt, // Add timestamp
       })),
     };
     await setCachedStage(trimmedAddress, stage, data);
@@ -372,6 +401,7 @@ export async function analyzeTrader(address: string, stage: 'profile' | 'openPos
         size: trade.size || 0,
         price: trade.price || 0,
         slug: trade.slug,
+        pnl: trade.profit ?? trade.pnl ?? 0, // Add Trade PnL
       })),
       tradeHistoryPartial: trades.length >= 490,
     };
