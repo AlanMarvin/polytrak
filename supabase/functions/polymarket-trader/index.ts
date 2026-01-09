@@ -332,11 +332,11 @@ function calculateReliability(metrics: ReliabilityMetrics, totalPositions: numbe
 }
 
 function getClosedPositionPnl(pos: any): number {
+  // The realizedPnl field from Polymarket API is already the PnL in USD
+  // No need to multiply by price difference - that was causing inflated PnL values
   const realized = Number(pos?.realizedPnl ?? 0);
-  const avgPrice = Number(pos?.avgPrice ?? 0);
-  const curPrice = Number(pos?.curPrice ?? 0);
-  if (!Number.isFinite(realized) || !Number.isFinite(avgPrice) || !Number.isFinite(curPrice)) return 0;
-  return realized * (curPrice - avgPrice);
+  if (!Number.isFinite(realized)) return 0;
+  return realized;
 }
 
 serve(async (req) => {
