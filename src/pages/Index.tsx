@@ -256,7 +256,7 @@ const Index = () => {
             </h1>
 
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-              Analyze any Polymarket wallet, let AI calculate the best copy-trading settings, and mirror traders with risk-adjusted performance on <span className="text-primary font-semibold">TheTradeFox</span>.
+              Analyze any Polymarket wallet, let AI calculate the best copy-trading settings, and mirror traders with risk-adjusted performance on <span className="text-primary font-semibold">TheTradeFox</span> or <span className="text-green-500 font-semibold">PolyCop</span>.
             </p>
 
             {/* Search Bar */}
