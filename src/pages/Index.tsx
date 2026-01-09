@@ -9,6 +9,7 @@ import { RotatingWord } from '@/components/ui/rotating-word';
 import { Search, Brain, Sparkles, Target, ArrowRight, Zap, TrendingUp, Shield, Settings, BarChart3, Wallet, Copy, Activity, Droplets, CheckCircle } from 'lucide-react';
 import tradeFoxLogo from '@/assets/tradefox-logo.png';
 import polycopLogo from '@/assets/polycop-logo.png';
+import polygunLogo from '@/assets/polygun-logo.png';
 import { RecentSearches } from '@/components/home/RecentSearches';
 import { PublicRecentAnalyses } from '@/components/analyze/PublicRecentAnalyses';
 import { SEOHead } from '@/components/seo/SEOHead';
@@ -41,9 +42,9 @@ const Index = () => {
   }, [carouselApi]);
 
   const features = [
-    { label: 'AI-Powered Analysis', description: 'AI analyzes real Polymarket trading history, profitability, and risk behavior.', icon: Brain, useLogo: false },
+    { label: 'PolyGun Ready', description: 'Fully compatible with PolyGun bot parameters for automated copy trading on Telegram.', icon: null, useLogo: "polygun" },
     { label: 'Optimized Settings', description: 'Automatically calculates optimal copy-trading settings tailored for TheTradeFox execution.', icon: null, useLogo: "tradefox" },
-    { label: 'Personalized Strategy', description: 'Adapts position sizing, exits, and exposure for PolyCop and TradeFox based on risk tolerance.', icon: null, useLogo: "polycop" },
+    { label: 'Personalized Strategy', description: 'Adapts position sizing, exits, and exposure for PolyCop based on risk tolerance.', icon: null, useLogo: "polycop" },
   ];
 
   const previewSlides = [
@@ -256,7 +257,7 @@ const Index = () => {
             </h1>
 
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-              Analyze any Polymarket wallet, let AI calculate the best copy-trading settings, and mirror traders with risk-adjusted performance on <span className="text-primary font-semibold">TheTradeFox</span> or <span className="text-primary font-semibold">PolyCop</span>.
+              Analyze any Polymarket wallet, let AI calculate the best copy-trading settings, and mirror traders with risk-adjusted performance on <span className="text-primary font-semibold">TheTradeFox</span>, <span className="text-primary font-semibold">PolyCop</span> and <span className="text-primary font-semibold">PolyGun</span>.
             </p>
 
             {/* Search Bar */}
@@ -290,6 +291,8 @@ const Index = () => {
                   <img src={tradeFoxLogo} alt="TheTradeFox" className="h-10 w-auto mx-auto mb-3" />
                 ) : feature.useLogo === "polycop" ? (
                   <img src={polycopLogo} alt="PolyCop" className="h-10 w-auto mx-auto mb-3" />
+                ) : feature.useLogo === "polygun" ? (
+                  <img src={polygunLogo} alt="PolyGun" className="h-10 w-auto mx-auto mb-3" />
                 ) : (
                   feature.icon && <feature.icon className="h-8 w-8 mx-auto mb-3 text-primary" />
                 )}
