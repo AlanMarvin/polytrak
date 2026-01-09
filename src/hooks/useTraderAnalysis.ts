@@ -66,19 +66,23 @@ export function useTraderAnalysis(address: string) {
     if (parts.length === 0) return null;
     const merged = Object.assign({}, ...parts);
 
+    const realized = merged.realizedPnl || 0;
+    const unrealized = merged.unrealizedPnl || 0;
+    const totalPnl = realized + unrealized;
+
     // Provide safe defaults so the UI can render progressively without crashing.
     return {
       address,
       username: null,
       profileImage: null,
-      pnl: 0,
-      pnlIncludingOpenPartial: 0,
+      pnl: totalPnl, // Sum of Realized + Unrealized
+      pnlIncludingOpenPartial: totalPnl, // Approximation if partials aren't distinct
       pnl24h: 0,
       pnl7d: 0,
       pnl30d: 0,
-      realizedPnl: 0,
+      realizedPnl: realized,
       realizedPnlOpenPartial: 0,
-      unrealizedPnl: 0,
+      unrealizedPnl: unrealized,
       winRate: 0,
       totalTrades: 0,
       trades30d: 0,

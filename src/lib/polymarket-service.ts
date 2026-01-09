@@ -381,7 +381,7 @@ export async function analyzeTrader(address: string, stage: 'profile' | 'openPos
 
   if (stage === 'closedPositionsSummary') {
     const closed = await fetchSmartPaginated(`${POLYMARKET_API}/closed-positions?user=${trimmedAddress}`, {
-      maxItems: 10000, pageSize: 50, prioritizeRecent: true, endpointType: 'closed-positions'
+      maxItems: 50000, pageSize: 50, prioritizeRecent: true, endpointType: 'closed-positions'
     });
 
     const finalPositions = new Map<string, any>();

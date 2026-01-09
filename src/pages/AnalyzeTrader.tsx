@@ -33,7 +33,7 @@ import {
   Star, Copy, ExternalLink, TrendingUp, TrendingDown,
   Wallet, Activity, Target, Clock, Search, ArrowRight,
   BarChart3, PieChart, Calendar, Zap, Brain, Gauge, Loader2, Info,
-  AlertTriangle, Settings2
+  AlertTriangle, Settings2, CheckCircle, Smartphone
 } from 'lucide-react';
 import tradefoxLogo from '@/assets/tradefox-logo.png';
 import polycopLogo from '@/assets/polycop-logo.png';
@@ -1503,6 +1503,8 @@ export default function AnalyzeTrader() {
       minMarketReason: 'Auto-configured based on trader analysis',
       maxCopyPerTrade: autoSettings.maxCopyAmountPerTrade,
       maxCopyPerTradeReason: settingsReasons.find(r => r.field === 'maxCopyAmountPerTrade')?.reason || 'Default setting',
+      fixedAmount: autoSettings.fixedAmountPerTrade,
+      fixedAmountReason: 'Default to 0 for percentage-based sizing',
       minVolumePerMarket: autoSettings.minVolumePerMarket,
       minVolumePerMarketReason: 'Auto-configured based on trader analysis',
       minLiquidityPerMarket: autoSettings.minLiquidityPerMarket,
@@ -1514,6 +1516,8 @@ export default function AnalyzeTrader() {
       maxSlippageReason: settingsReasons.find(r => r.field === 'maxSlippageCents')?.reason || `Max slippage capped at ${autoSettings.maxSlippageCents}¢ per market`,
       maxTimeUntilResolution: typeof autoSettings.maxTimeUntilResolution === 'number' ? autoSettings.maxTimeUntilResolution : 90,
       maxTimeUntilResolutionReason: settingsReasons.find(r => r.field === 'maxTimeUntilResolution')?.reason || 'Default resolution window',
+      copyAsLimitOrders: autoSettings.copyAsLimitOrders,
+      copyAsLimitOrdersReason: 'Market orders recommended for execution certainty',
       traderClassification: (copyStrategy?.riskLevel || 'Moderate') as 'Conservative' | 'Moderate' | 'Aggressive',
       isHighFrequency,
     };
@@ -2899,524 +2903,543 @@ export default function AnalyzeTrader() {
                       </div>
                     </div>
 
-                    {/* Copy Settings - Read-Only Auto-Calculated */}
-                    {copyStrategy && advancedSettings && (
-                      <div className="space-y-6">
-                        {/* Main % Settings - Read Only */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/30">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-sm text-muted-foreground">% Size for each trade</span>
-                              <HoverCard>
-                                <HoverCardTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-6 w-6 text-orange-400 hover:bg-orange-500/20">
-                                    <Info className="h-4 w-4" />
-                                  </Button>
-                                </HoverCardTrigger>
-                                <HoverCardContent className="w-80 bg-background/95 backdrop-blur border-orange-500/30">
-                                  <div className="space-y-2">
-                                    <h4 className="text-sm font-semibold text-orange-400">Why this percentage?</h4>
-                                    <ul className="space-y-1">
-                                      {copyStrategy.reasoning.filter(r =>
-                                        r.includes('Kelly') || r.includes('per trade') || r.includes('bankroll')
-                                      ).map((reason, i) => (
-                                        <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
-                                          <span className="text-orange-400">-</span>
-                                          {reason}
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  </div>
-                                </HoverCardContent>
-                              </HoverCard>
-                            </div>
-                            <p className="text-3xl font-bold text-orange-400 font-mono">{copyStrategy.tradeSize}%</p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              = ${((allocatedFunds * copyStrategy.tradeSize) / 100).toFixed(0)} max per trade
-                            </p>
-                          </div>
-
-                          <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/30">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-sm text-muted-foreground">% of each trade to copy</span>
-                              <HoverCard>
-                                <HoverCardTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-6 w-6 text-orange-400 hover:bg-orange-500/20">
-                                    <Info className="h-4 w-4" />
-                                  </Button>
-                                </HoverCardTrigger>
-                                <HoverCardContent className="w-80 bg-background/95 backdrop-blur border-orange-500/30">
-                                  <div className="space-y-2">
-                                    <h4 className="text-sm font-semibold text-orange-400">Why this copy %?</h4>
-                                    <ul className="space-y-1">
-                                      {copyStrategy.reasoning.filter(r =>
-                                        r.includes('copy') || r.includes('trade') || r.includes('avg') || r.includes('position')
-                                      ).map((reason, i) => (
-                                        <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
-                                          <span className="text-orange-400">-</span>
-                                          {reason}
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  </div>
-                                </HoverCardContent>
-                              </HoverCard>
-                            </div>
-                            <p className="text-3xl font-bold text-orange-400 font-mono">{copyStrategy.copyPercentage}%</p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              of trader's order size
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Advanced Copy Settings (Auto-Configured) */}
-                        <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
-                          <div className="mb-4">
-                            <h4 className="text-sm font-semibold text-amber-400 mb-2 flex items-center gap-2">
-                              <Zap className="h-4 w-4" />
-                              Advanced Copy Settings (Auto-Configured)
+                    {/* Main & Advanced Settings - New Split Layout */}
+                    {copyStrategy && advancedSettings && autoSettings && (
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* LEFT COLUMN: Main Configuration */}
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-semibold flex items-center gap-2 text-primary">
+                              <Settings2 className="h-4 w-4" />
+                              Main Configuration
                             </h4>
-                            <p className="text-xs text-muted-foreground">
-                              PolyTrak automatically configures {currentPlatformShort}'s advanced copy-trading settings based on this trader's real behavior and your budget. This helps reduce slippage, avoid illiquid markets, and control risk without manual tuning.
-                            </p>
+                            <Badge variant="outline" className="text-xs font-normal text-muted-foreground">
+                              Match these settings
+                            </Badge>
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* Max amount per market */}
-                            <div className="p-3 rounded-lg bg-background/50 space-y-1">
-                              <span className="text-sm text-muted-foreground">Max amount per market</span>
-                              <p className="text-xl font-bold text-amber-400 font-mono">
-                                ${advancedSettings.maxMarket.toLocaleString()}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {advancedSettings.maxMarketReason}
-                              </p>
-                            </div>
-
-                            {/* Min amount per market */}
-                            <div className="p-3 rounded-lg bg-background/50 space-y-1">
-                              <span className="text-sm text-muted-foreground">Min amount per market</span>
-                              <p className="text-xl font-bold text-amber-400 font-mono">
-                                ${advancedSettings.minMarket.toLocaleString()}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {advancedSettings.minMarketReason}
-                              </p>
-                            </div>
-
-                            {/* Max copy amount per trade */}
-                            <div className="p-3 rounded-lg bg-background/50 space-y-1">
-                              <span className="text-sm text-muted-foreground">Max copy amount per trade</span>
-                              <p className="text-xl font-bold text-amber-400 font-mono">
-                                ${advancedSettings.maxCopyPerTrade.toLocaleString()}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {advancedSettings.maxCopyPerTradeReason}
-                              </p>
-                            </div>
-
-                            {/* Min volume per market */}
-                            <div className="p-3 rounded-lg bg-background/50 space-y-1">
-                              <span className="text-sm text-muted-foreground">Min volume per market</span>
-                              <p className="text-xl font-bold text-amber-400 font-mono">
-                                ${advancedSettings.minVolumePerMarket.toLocaleString()}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {advancedSettings.minVolumePerMarketReason}
-                              </p>
-                            </div>
-
-                            {/* Min liquidity per market */}
-                            <div className="p-3 rounded-lg bg-background/50 space-y-1">
-                              <span className="text-sm text-muted-foreground">Min liquidity per market</span>
-                              <p className="text-xl font-bold text-amber-400 font-mono">
-                                ${advancedSettings.minLiquidityPerMarket.toLocaleString()}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {advancedSettings.minLiquidityPerMarketReason}
-                              </p>
-                            </div>
-
-                            {/* Market price range */}
-                            <div className="p-3 rounded-lg bg-background/50 space-y-1">
-                              <span className="text-sm text-muted-foreground">Market price range</span>
-                              <p className="text-xl font-bold text-amber-400 font-mono">
-                                {advancedSettings.marketPriceRangeMin}¢ - {advancedSettings.marketPriceRangeMax}¢
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {advancedSettings.marketPriceRangeReason}
-                              </p>
-                            </div>
-
-                            {/* Max slippage per market */}
-                            <div className="p-3 rounded-lg bg-background/50 space-y-1">
-                              <span className="text-sm text-muted-foreground">Max slippage per market</span>
-                              <p className="text-xl font-bold text-amber-400 font-mono">
-                                {advancedSettings.maxSlippageCents}¢
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {advancedSettings.maxSlippageReason}
-                              </p>
-                            </div>
-
-                            {/* Max time until resolution */}
-                            <div className="p-3 rounded-lg bg-background/50 space-y-1">
-                              <span className="text-sm text-muted-foreground">Max time until resolution</span>
-                              <p className="text-xl font-bold text-amber-400 font-mono">
-                                {advancedSettings.maxTimeUntilResolution} days
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {advancedSettings.maxTimeUntilResolutionReason}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Expected Outcomes */}
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
-                            <div className="flex items-center gap-1">
-                              <span className="text-sm text-muted-foreground">Est. Max Monthly Return</span>
-                              <HoverCard>
-                                <HoverCardTrigger asChild>
-                                  <button>
-                                    <Info className="h-3 w-3 text-muted-foreground hover:text-foreground cursor-help transition-colors" />
-                                  </button>
-                                </HoverCardTrigger>
-                                <HoverCardContent className="w-80 z-[100]" side="top">
-                                  <div className="space-y-2">
-                                    <p className="text-sm font-semibold">Maximum Potential Return</p>
-                                    <p className="text-xs text-muted-foreground">
-                                      This is the <span className="font-semibold">best-case scenario</span> return based on the AI-recommended copy settings - not the trader's actual historical return.
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      <span className="font-semibold">Assumes:</span>
-                                    </p>
-                                    <ul className="text-xs text-muted-foreground list-disc list-inside space-y-0.5">
-                                      <li>Same price execution as the trader</li>
-                                      <li>No slippage or delays</li>
-                                      <li>Similar market conditions continue</li>
-                                      <li>All signals are caught and copied</li>
-                                    </ul>
-                                    <p className="text-xs text-muted-foreground">
-                                      <span className="font-semibold">Formula:</span> (Win Rate x Avg Win) - (Loss Rate x Avg Loss),
-                                      scaled by trade size ({copyStrategy.tradeSize}%) and copy % ({copyStrategy.copyPercentage}%).
-                                    </p>
-                                    <p className="text-xs text-yellow-400/80 font-medium">
-                                      Tip Reality check: Most copy traders achieve 40-70% of the maximum estimate.
-                                    </p>
-                                    {copySuitability?.executionDependent && (
-                                      <p className="text-xs text-yellow-400">
-                                        Warning  Execution-dependent strategy detected - settings reduced by ~80% for safety.
-                                      </p>
-                                    )}
-                                    {trader && trader.winRate < 0.52 && (
-                                      <p className="text-xs text-orange-400">
-                                        Note Win rate near break-even ({(trader.winRate * 100).toFixed(1)}%) - expected gain per trade is low.
-                                      </p>
-                                    )}
-                                  </div>
-                                </HoverCardContent>
-                              </HoverCard>
-                            </div>
-                            {metricsReady && Number.isFinite(copyStrategy.expectedMonthlyReturn) ? (
-                              <>
-                                <p className={`text-2xl font-bold font-mono ${copyStrategy.expectedMonthlyReturn >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                  {copyStrategy.expectedMonthlyReturn >= 0 ? '+' : ''}{copyStrategy.expectedMonthlyReturn}%
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  ~ ${((allocatedFunds * copyStrategy.expectedMonthlyReturn) / 100).toFixed(0)}/month
-                                </p>
-                              </>
-                            ) : (
-                              <>
-                                <p className="text-2xl font-bold font-mono text-muted-foreground">--</p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  Loading...
-                                </p>
-                              </>
-                            )}
-                          </div>
-
-                          <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30">
-                            <span className="text-sm text-muted-foreground">Est. Max Drawdown</span>
-                            {metricsReady ? (
-                              <>
-                                <p className="text-2xl font-bold text-red-400 font-mono">-{copyStrategy.maxDrawdown}%</p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  ~ -${((allocatedFunds * copyStrategy.maxDrawdown) / 100).toFixed(0)} worst case
-                                </p>
-                              </>
-                            ) : (
-                              <>
-                                <p className="text-2xl font-bold font-mono text-muted-foreground">--</p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  Loading...
-                                </p>
-                              </>
-                            )}
-                          </div>
-                        </div>
-
-
-                        {/* Full Strategy Reasoning - Always Visible */}
-                        <div className="p-4 rounded-lg bg-background/30 border border-orange-500/30">
-                          <div className="flex items-center gap-2 mb-3">
-                            <Brain className="h-4 w-4 text-orange-400" />
-                            <span className="text-sm font-semibold text-orange-400">Strategy Analysis</span>
-                          </div>
-                          <ul className="space-y-1.5">
-                            {copyStrategy.reasoning.map((reason, i) => (
-                              <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                                <span className="text-orange-400">-</span>
-                                {reason}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-
-                        {/* Risk Regime Detection Card */}
-                        {riskRegime && (
-                          <div className="p-4 rounded-lg bg-purple-500/10 border border-purple-500/30">
-                            <div className="flex items-center gap-2 mb-4">
-                              <Gauge className="h-4 w-4 text-purple-400" />
-                              <span className="text-sm font-semibold text-purple-400">Trader Risk Regime</span>
-                              <HoverCard>
-                                <HoverCardTrigger asChild>
-                                  <button className="ml-auto">
-                                    <Info className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-help transition-colors" />
-                                  </button>
-                                </HoverCardTrigger>
-                                <HoverCardContent className="w-72 z-50" side="top">
-                                  <p className="text-sm text-muted-foreground">
-                                    Risk regime analysis explains why the AI chose specific settings. It's based on the trader's historical behavior patterns.
-                                  </p>
-                                </HoverCardContent>
-                              </HoverCard>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4 mb-4">
-                              <div className="p-3 rounded-lg bg-background/50">
-                                <p className="text-xs text-muted-foreground mb-1">Risk Profile</p>
-                                <p className={`text-lg font-bold ${riskRegime.riskProfile === 'Conservative' ? 'text-green-400' :
-                                  riskRegime.riskProfile === 'Moderate' ? 'text-yellow-400' : 'text-red-400'
-                                  }`}>
-                                  {riskRegime.riskProfile}
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-1">{riskRegime.riskReasoning}</p>
-                              </div>
-
-                              <div className="p-3 rounded-lg bg-background/50">
-                                <p className="text-xs text-muted-foreground mb-1">Liquidity Sensitivity</p>
-                                <p className={`text-lg font-bold ${riskRegime.liquiditySensitivity === 'Low' ? 'text-green-400' :
-                                  riskRegime.liquiditySensitivity === 'Medium' ? 'text-yellow-400' : 'text-purple-400'
-                                  }`}>
-                                  {riskRegime.liquiditySensitivity}
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-1">{riskRegime.liquidityReasoning}</p>
+                          <div className="p-5 rounded-xl bg-card border border-border/60 shadow-sm space-y-6">
+                            {/* Allocation Display */}
+                            <div className="space-y-2">
+                              <label className="text-xs font-medium text-muted-foreground">How much do you want to allocate?</label>
+                              <div className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border/50">
+                                <span className="text-sm text-foreground">Allocated Funds</span>
+                                <span className="font-mono font-bold text-lg text-primary">${allocatedFunds.toLocaleString()}</span>
                               </div>
                             </div>
 
-                            <div className="p-3 rounded-lg bg-background/50">
-                              <p className="text-xs text-muted-foreground mb-2">Trader performs best in:</p>
-                              <div className="flex flex-wrap gap-2">
-                                {riskRegime.bestConditions.map((condition, i) => (
-                                  <Badge key={i} variant="outline" className="border-purple-500/50 text-purple-300 text-xs">
-                                    {condition}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-
-                            {/* Why AI Chose These Settings */}
-                            {copyStrategy && (
-                              <div className="p-3 rounded-lg bg-purple-500/20 border border-purple-500/40 mt-4">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <p className="text-xs font-semibold text-purple-400">Why AI chose these settings:</p>
-                                  <HoverCard>
-                                    <HoverCardTrigger asChild>
-                                      <button>
-                                        <Info className="h-3.5 w-3.5 text-purple-400 hover:text-purple-300 cursor-help transition-colors" />
-                                      </button>
-                                    </HoverCardTrigger>
-                                    <HoverCardContent className="w-72 z-50" side="top">
-                                      <p className="text-sm text-muted-foreground">
-                                        With ${allocatedFunds.toLocaleString()} allocation, ~{Math.round(Math.max(5, Math.min(25, 50000 / allocatedFunds)))}% of trades may be skipped due to minimum buy size requirements on {currentPlatformShort}.
-                                      </p>
-                                    </HoverCardContent>
-                                  </HoverCard>
-                                </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-2xl font-bold text-orange-400 font-mono">{copyStrategy.tradeSize}%</span>
-                                    <span className="text-xs text-muted-foreground">per trade</span>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-2xl font-bold text-orange-400 font-mono">{copyStrategy.copyPercentage}%</span>
-                                    <span className="text-xs text-muted-foreground">copy size</span>
-                                  </div>
-                                </div>
-                                <p className="text-xs text-muted-foreground mt-2">
-                                  Based on {riskRegime.riskProfile.toLowerCase()} risk profile and {riskRegime.liquiditySensitivity.toLowerCase()} liquidity needs
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Fee Impact Analysis Card */}
-                        {currentFeeImpact && (
-                          <div className={`p-4 rounded-lg border ${currentFeeImpact.level === 'High'
-                            ? 'bg-red-500/10 border-red-500/30'
-                            : currentFeeImpact.level === 'Medium'
-                              ? 'bg-yellow-500/10 border-yellow-500/30'
-                              : 'bg-green-500/10 border-green-500/30'
-                            }`}>
-                            <div className="flex items-center gap-2 mb-3">
-                              <Activity className="h-4 w-4" />
-                              <span className="text-sm font-semibold">Fee Impact (Est.)</span>
-                              <Badge variant="outline" className={`ml-auto ${currentFeeImpact.level === 'High' ? 'border-red-500/50 text-red-400' :
-                                currentFeeImpact.level === 'Medium' ? 'border-yellow-500/50 text-yellow-400' :
-                                  'border-green-500/50 text-green-400'
-                                }`}>
-                                {currentFeeImpact.level}
-                              </Badge>
-                              <HoverCard>
-                                <HoverCardTrigger asChild>
-                                  <button>
-                                    <Info className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-help transition-colors" />
-                                  </button>
-                                </HoverCardTrigger>
-                                <HoverCardContent className="w-80 z-[100]" side="top">
-                                  <div className="space-y-2">
-                                    <p className="text-sm font-semibold">About {currentPlatformShort} Fees</p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {executionTab === 'tradefox'
-                                        ? 'TradeFox applies a net trading fee (0.95% -> 0.75%) and cashback (5% -> 25%) depending on your tier.'
-                                        : 'PolyCop charges a flat 0.5% trading fee (per docs).'}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      This analysis assumes <span className="font-semibold">{currentFeeImpact?.assumedTier}</span>.
-                                      Larger allocations or fewer trades reduce relative fee impact.
-                                    </p>
-                                    <p className="text-xs text-muted-foreground italic">
-                                      Est. ~{currentFeeImpact.estimatedMonthlyTradeCount} trades/month with this strategy.
-                                    </p>
-                                  </div>
-                                </HoverCardContent>
-                              </HoverCard>
-                            </div>
-
-                            {/* Key Fee Metrics */}
-                            <div className="grid grid-cols-2 gap-3 mb-4">
-                              <div className="p-3 rounded-lg bg-background/50">
-                                <div className="flex items-center gap-1 mb-1">
-                                  <p className="text-xs text-muted-foreground">Est. Monthly Fees</p>
-                                  <Badge variant="outline" className="text-[10px] px-1 py-0 border-muted-foreground/30 text-muted-foreground">
-                                    Estimated
-                                  </Badge>
-                                </div>
-                                <p className={`text-lg font-bold font-mono ${currentFeeImpact.level === 'High' ? 'text-red-400' :
-                                  currentFeeImpact.level === 'Medium' ? 'text-yellow-400' : 'text-foreground'
-                                  }`}>
-                                  ${currentFeeImpact.estimatedMonthlyFees.toFixed(0)}
-                                </p>
-                                <p className="text-[10px] text-muted-foreground mt-0.5">
-                                  ~{currentFeeImpact.estimatedMonthlyTradeCount} trades x ${(allocatedFunds * (copyStrategy?.tradeSize || 5) / 100).toFixed(0)}/trade
-                                </p>
-                              </div>
-
-                              <div className="p-3 rounded-lg bg-background/50">
-                                <div className="flex items-center gap-1 mb-1">
-                                  <p className="text-xs text-muted-foreground">Net Return Range</p>
-                                  <Badge variant="outline" className="text-[10px] px-1 py-0 border-muted-foreground/30 text-muted-foreground">
-                                    After Fees
-                                  </Badge>
-                                </div>
-                                <div className="flex items-baseline gap-1">
-                                  <p className={`text-lg font-bold font-mono ${currentFeeImpact.netReturnLow >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                    {currentFeeImpact.netReturnLow >= 0 ? '+' : ''}{currentFeeImpact.netReturnLow}%
-                                  </p>
-                                  <span className="text-muted-foreground text-sm">to</span>
-                                  <p className={`text-lg font-bold font-mono ${currentFeeImpact.netReturnHigh >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                    {currentFeeImpact.netReturnHigh >= 0 ? '+' : ''}{currentFeeImpact.netReturnHigh}%
-                                  </p>
-                                </div>
-                                <p className="text-[10px] text-muted-foreground mt-0.5">
-                                  ~ ${((allocatedFunds * currentFeeImpact.netReturnLow) / 100).toFixed(0)} to ${((allocatedFunds * currentFeeImpact.netReturnHigh) / 100).toFixed(0)}/month
-                                </p>
-                              </div>
-                            </div>
-
-                            {/* Reasons */}
-                            <div className="mb-3">
-                              <p className="text-xs text-muted-foreground mb-1.5">Analysis:</p>
-                              <ul className="space-y-1">
-                                {currentFeeImpact.reasons.map((reason, i) => (
-                                  <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                                    <span className={
-                                      currentFeeImpact.level === 'High' ? 'text-red-400' :
-                                        currentFeeImpact.level === 'Medium' ? 'text-yellow-400' : 'text-green-400'
-                                    }>-</span>
-                                    {reason}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-
-                            {/* Recommendations - only show if Medium or High */}
-                            {currentFeeImpact.level !== 'Low' && currentFeeImpact.recommendations.length > 0 && (
-                              <div className="p-3 rounded-lg bg-background/50">
-                                <p className="text-xs font-semibold mb-1.5">Recommendations:</p>
-                                <ul className="space-y-1">
-                                  {currentFeeImpact.recommendations.map((rec, i) => (
-                                    <li key={i} className="text-xs text-muted-foreground">
-                                      Tip {rec}
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-
-                            <p className="text-xs text-muted-foreground/60 mt-3 italic">
-                              Based on {currentFeeImpact.assumedTier}. Actual results vary with execution and market conditions.
-                            </p>
-                          </div>
-                        )}
-
-                        {/* Follow Exits - Always Enabled */}
-                        <div className="p-3 rounded-lg bg-background/30 border border-border/30">
-                          <div className="flex items-center gap-3">
-                            <input
-                              type="checkbox"
-                              checked={true}
-                              readOnly
-                              className="h-4 w-4 rounded border-green-500 text-green-500 focus:ring-green-500 accent-green-500"
-                            />
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <p className="text-sm font-medium">Follow Exits</p>
-                                <Badge variant="outline" className="text-xs border-green-500/50 text-green-500">Always On</Badge>
+                            {/* Trade Size % */}
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <label className="text-xs font-medium text-muted-foreground">What percent into each trade?</label>
                                 <HoverCard>
-                                  <HoverCardTrigger asChild>
-                                    <button className="ml-auto">
-                                      <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground cursor-help transition-colors" />
-                                    </button>
-                                  </HoverCardTrigger>
-                                  <HoverCardContent className="w-72 z-50" side="top">
-                                    <p className="text-xs text-muted-foreground">
-                                      Follow exits is always enabled for risk management. When the trader reduces or closes a position, you automatically sell the same percentage.
-                                    </p>
-                                  </HoverCardContent>
+                                  <HoverCardTrigger><Info className="h-3 w-3 text-muted-foreground/50" /></HoverCardTrigger>
+                                  <HoverCardContent className="text-xs w-64">{settingsReasons.find(r => r.field === 'tradeSizePercent')?.reason}</HoverCardContent>
                                 </HoverCard>
+                              </div>
+                              <div className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border/50">
+                                <span className="text-sm text-foreground">% Size for each trade</span>
+                                <span className="font-mono font-bold text-lg text-primary">{autoSettings.tradeSizePercent}%</span>
+                              </div>
+                            </div>
+
+                            {/* Max % to copy (Copy Percentage) */}
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <label className="text-xs font-medium text-muted-foreground">Percentage of each trade to copy</label>
+                                <HoverCard>
+                                  <HoverCardTrigger><Info className="h-3 w-3 text-muted-foreground/50" /></HoverCardTrigger>
+                                  <HoverCardContent className="text-xs w-64">{settingsReasons.find(r => r.field === 'copyPercentage')?.reason}</HoverCardContent>
+                                </HoverCard>
+                              </div>
+                              <div className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border/50">
+                                <span className="text-sm text-foreground">Max % per trade</span>
+                                <span className="font-mono font-bold text-lg text-primary">{autoSettings.copyPercentage}%</span>
+                              </div>
+                            </div>
+
+                            {/* Exit Mode Selection Display */}
+                            <div className="space-y-3 pt-2 border-t border-border/40">
+                              <label className="text-xs font-medium text-muted-foreground block">Recommended Exit Mode</label>
+                              <div className="grid grid-cols-3 gap-2">
+                                {['proportional', 'mirror', 'manual'].map((mode) => (
+                                  <div
+                                    key={mode}
+                                    className={`px-2 py-2 rounded-md border text-center text-xs font-medium transition-colors ${autoSettings.exitMode === mode
+                                      ? 'bg-primary/20 border-primary text-primary'
+                                      : 'bg-muted/20 border-transparent text-muted-foreground opacity-50'
+                                      }`}
+                                  >
+                                    {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                                  </div>
+                                ))}
+                              </div>
+                              <p className="text-[10px] text-muted-foreground italic">
+                                {autoSettings.exitMode === 'proportional' && "Sell proportional to your allocation."}
+                                {autoSettings.exitMode === 'mirror' && "Mirror trader's exact exit %."}
+                                {autoSettings.exitMode === 'manual' && "You manage exits manually."}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* RIGHT COLUMN: Advanced Settings */}
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-semibold flex items-center gap-2 text-amber-500">
+                              <Zap className="h-4 w-4" />
+                              Advanced Settings
+                            </h4>
+                            <Badge variant="outline" className="text-xs font-normal text-muted-foreground border-amber-500/30 text-amber-500">
+                              Auto-Configured
+                            </Badge>
+                          </div>
+
+                          <div className="p-5 rounded-xl bg-card border border-border/60 shadow-sm">
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-5">
+                              {/* Max Amount per Market */}
+                              <div className="space-y-1.5">
+                                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Max amount per market</label>
+                                <div className="px-3 py-2 rounded bg-background/50 border border-border/40 font-mono text-sm">
+                                  ${advancedSettings.maxMarket}
+                                </div>
+                              </div>
+
+                              {/* Min Amount per Market */}
+                              <div className="space-y-1.5">
+                                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Min amount per market</label>
+                                <div className="px-3 py-2 rounded bg-background/50 border border-border/40 font-mono text-sm">
+                                  ${advancedSettings.minMarket}
+                                </div>
+                              </div>
+
+                              {/* Max Copy per Trade */}
+                              <div className="space-y-1.5">
+                                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Max copy amount per trade</label>
+                                <div className="px-3 py-2 rounded bg-background/50 border border-border/40 font-mono text-sm">
+                                  ${advancedSettings.maxCopyPerTrade}
+                                </div>
+                              </div>
+
+                              {/* Fixed Amount per Trade */}
+                              <div className="space-y-1.5">
+                                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Fixed amount per trade</label>
+                                <div className="px-3 py-2 rounded bg-background/50 border border-border/40 font-mono text-sm">
+                                  ${advancedSettings.fixedAmount}
+                                </div>
+                              </div>
+
+                              {/* Min Volume */}
+                              <div className="space-y-1.5">
+                                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Min volume of market</label>
+                                <div className="px-3 py-2 rounded bg-background/50 border border-border/40 font-mono text-sm">
+                                  ${advancedSettings.minVolumePerMarket}
+                                </div>
+                              </div>
+
+                              {/* Min Liquidity */}
+                              <div className="space-y-1.5">
+                                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Min liquidity per market</label>
+                                <div className="px-3 py-2 rounded bg-background/50 border border-border/40 font-mono text-sm">
+                                  ${advancedSettings.minLiquidityPerMarket}
+                                </div>
+                              </div>
+
+                              {/* Market Price Range */}
+                              <div className="col-span-2 space-y-1.5">
+                                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Market price range</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div className="flex items-center justify-between px-3 py-2 rounded bg-background/50 border border-border/40 font-mono text-sm">
+                                    <span className="text-muted-foreground text-xs">Min</span>
+                                    <span>{advancedSettings.marketPriceRangeMin}¢</span>
+                                  </div>
+                                  <div className="flex items-center justify-between px-3 py-2 rounded bg-background/50 border border-border/40 font-mono text-sm">
+                                    <span className="text-muted-foreground text-xs">Max</span>
+                                    <span>{advancedSettings.marketPriceRangeMax}¢</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Max Slippage */}
+                              <div className="space-y-1.5">
+                                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Max slippage per market</label>
+                                <div className="px-3 py-2 rounded bg-background/50 border border-border/40 font-mono text-sm">
+                                  {advancedSettings.maxSlippageCents}¢
+                                </div>
+                              </div>
+
+                              {/* Max Time */}
+                              <div className="space-y-1.5">
+                                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Max time until resolution</label>
+                                <div className="px-3 py-2 rounded bg-background/50 border border-border/40 font-mono text-sm">
+                                  {advancedSettings.maxTimeUntilResolution === 90 ? '90 days' :
+                                    advancedSettings.maxTimeUntilResolution === 30 ? '30 days' :
+                                      advancedSettings.maxTimeUntilResolution === 7 ? '7 days' :
+                                        advancedSettings.maxTimeUntilResolution === 2 ? '2 days' :
+                                          'Any'}
+                                </div>
+                              </div>
+
+                              {/* Copy As Limit Orders */}
+                              <div className="col-span-2 pt-2 border-t border-border/40 flex items-center justify-between">
+                                <label className="text-sm text-foreground font-medium">Copy As Limit Orders</label>
+                                <div className={`h-5 w-5 rounded border flex items-center justify-center ${advancedSettings.copyAsLimitOrders
+                                  ? 'bg-primary border-primary text-primary-foreground'
+                                  : 'border-muted-foreground/50'
+                                  }`}>
+                                  {advancedSettings.copyAsLimitOrders && <CheckCircle className="h-3.5 w-3.5" />}
+                                </div>
                               </div>
                             </div>
                           </div>
                         </div>
                       </div>
                     )}
+
+                    {/* Expected Outcomes */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30">
+                        <div className="flex items-center gap-1">
+                          <span className="text-sm text-muted-foreground">Est. Max Monthly Return</span>
+                          <HoverCard>
+                            <HoverCardTrigger asChild>
+                              <button>
+                                <Info className="h-3 w-3 text-muted-foreground hover:text-foreground cursor-help transition-colors" />
+                              </button>
+                            </HoverCardTrigger>
+                            <HoverCardContent className="w-80 z-[100]" side="top">
+                              <div className="space-y-2">
+                                <p className="text-sm font-semibold">Maximum Potential Return</p>
+                                <p className="text-xs text-muted-foreground">
+                                  This is the <span className="font-semibold">best-case scenario</span> return based on the AI-recommended copy settings - not the trader's actual historical return.
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  <span className="font-semibold">Assumes:</span>
+                                </p>
+                                <ul className="text-xs text-muted-foreground list-disc list-inside space-y-0.5">
+                                  <li>Same price execution as the trader</li>
+                                  <li>No slippage or delays</li>
+                                  <li>Similar market conditions continue</li>
+                                  <li>All signals are caught and copied</li>
+                                </ul>
+                                <p className="text-xs text-muted-foreground">
+                                  <span className="font-semibold">Formula:</span> (Win Rate x Avg Win) - (Loss Rate x Avg Loss),
+                                  scaled by trade size ({copyStrategy.tradeSize}%) and copy % ({copyStrategy.copyPercentage}%).
+                                </p>
+                                <p className="text-xs text-yellow-400/80 font-medium">
+                                  Tip Reality check: Most copy traders achieve 40-70% of the maximum estimate.
+                                </p>
+                                {copySuitability?.executionDependent && (
+                                  <p className="text-xs text-yellow-400">
+                                    Warning  Execution-dependent strategy detected - settings reduced by ~80% for safety.
+                                  </p>
+                                )}
+                                {trader && trader.winRate < 0.52 && (
+                                  <p className="text-xs text-orange-400">
+                                    Note Win rate near break-even ({(trader.winRate * 100).toFixed(1)}%) - expected gain per trade is low.
+                                  </p>
+                                )}
+                              </div>
+                            </HoverCardContent>
+                          </HoverCard>
+                        </div>
+                        {metricsReady && Number.isFinite(copyStrategy.expectedMonthlyReturn) ? (
+                          <>
+                            <p className={`text-2xl font-bold font-mono ${copyStrategy.expectedMonthlyReturn >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                              {copyStrategy.expectedMonthlyReturn >= 0 ? '+' : ''}{copyStrategy.expectedMonthlyReturn}%
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              ~ ${((allocatedFunds * copyStrategy.expectedMonthlyReturn) / 100).toFixed(0)}/month
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-2xl font-bold font-mono text-muted-foreground">--</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Loading...
+                            </p>
+                          </>
+                        )}
+                      </div>
+
+                      <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+                        <span className="text-sm text-muted-foreground">Est. Max Drawdown</span>
+                        {metricsReady ? (
+                          <>
+                            <p className="text-2xl font-bold text-red-400 font-mono">-{copyStrategy.maxDrawdown}%</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              ~ -${((allocatedFunds * copyStrategy.maxDrawdown) / 100).toFixed(0)} worst case
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-2xl font-bold font-mono text-muted-foreground">--</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Loading...
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+
+                    {/* Full Strategy Reasoning - Always Visible */}
+                    <div className="p-4 rounded-lg bg-background/30 border border-orange-500/30">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Brain className="h-4 w-4 text-orange-400" />
+                        <span className="text-sm font-semibold text-orange-400">Strategy Analysis</span>
+                      </div>
+                      <ul className="space-y-1.5">
+                        {copyStrategy.reasoning.map((reason, i) => (
+                          <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                            <span className="text-orange-400">-</span>
+                            {reason}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Risk Regime Detection Card */}
+                    {riskRegime && (
+                      <div className="p-4 rounded-lg bg-purple-500/10 border border-purple-500/30">
+                        <div className="flex items-center gap-2 mb-4">
+                          <Gauge className="h-4 w-4 text-purple-400" />
+                          <span className="text-sm font-semibold text-purple-400">Trader Risk Regime</span>
+                          <HoverCard>
+                            <HoverCardTrigger asChild>
+                              <button className="ml-auto">
+                                <Info className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-help transition-colors" />
+                              </button>
+                            </HoverCardTrigger>
+                            <HoverCardContent className="w-72 z-50" side="top">
+                              <p className="text-sm text-muted-foreground">
+                                Risk regime analysis explains why the AI chose specific settings. It's based on the trader's historical behavior patterns.
+                              </p>
+                            </HoverCardContent>
+                          </HoverCard>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                          <div className="p-3 rounded-lg bg-background/50">
+                            <p className="text-xs text-muted-foreground mb-1">Risk Profile</p>
+                            <p className={`text-lg font-bold ${riskRegime.riskProfile === 'Conservative' ? 'text-green-400' :
+                              riskRegime.riskProfile === 'Moderate' ? 'text-yellow-400' : 'text-red-400'
+                              }`}>
+                              {riskRegime.riskProfile}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">{riskRegime.riskReasoning}</p>
+                          </div>
+
+                          <div className="p-3 rounded-lg bg-background/50">
+                            <p className="text-xs text-muted-foreground mb-1">Liquidity Sensitivity</p>
+                            <p className={`text-lg font-bold ${riskRegime.liquiditySensitivity === 'Low' ? 'text-green-400' :
+                              riskRegime.liquiditySensitivity === 'Medium' ? 'text-yellow-400' : 'text-purple-400'
+                              }`}>
+                              {riskRegime.liquiditySensitivity}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">{riskRegime.liquidityReasoning}</p>
+                          </div>
+                        </div>
+
+                        <div className="p-3 rounded-lg bg-background/50">
+                          <p className="text-xs text-muted-foreground mb-2">Trader performs best in:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {riskRegime.bestConditions.map((condition, i) => (
+                              <Badge key={i} variant="outline" className="border-purple-500/50 text-purple-300 text-xs">
+                                {condition}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Why AI Chose These Settings */}
+                        {copyStrategy && (
+                          <div className="p-3 rounded-lg bg-purple-500/20 border border-purple-500/40 mt-4">
+                            <div className="flex items-center gap-2 mb-2">
+                              <p className="text-xs font-semibold text-purple-400">Why AI chose these settings:</p>
+                              <HoverCard>
+                                <HoverCardTrigger asChild>
+                                  <button>
+                                    <Info className="h-3.5 w-3.5 text-purple-400 hover:text-purple-300 cursor-help transition-colors" />
+                                  </button>
+                                </HoverCardTrigger>
+                                <HoverCardContent className="w-72 z-50" side="top">
+                                  <p className="text-sm text-muted-foreground">
+                                    With ${allocatedFunds.toLocaleString()} allocation, ~{Math.round(Math.max(5, Math.min(25, 50000 / allocatedFunds)))}% of trades may be skipped due to minimum buy size requirements on {currentPlatformShort}.
+                                  </p>
+                                </HoverCardContent>
+                              </HoverCard>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="flex items-center gap-2">
+                                <span className="text-2xl font-bold text-orange-400 font-mono">{copyStrategy.tradeSize}%</span>
+                                <span className="text-xs text-muted-foreground">per trade</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-2xl font-bold text-orange-400 font-mono">{copyStrategy.copyPercentage}%</span>
+                                <span className="text-xs text-muted-foreground">copy size</span>
+                              </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-2">
+                              Based on {riskRegime.riskProfile.toLowerCase()} risk profile and {riskRegime.liquiditySensitivity.toLowerCase()} liquidity needs
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Fee Impact Analysis Card */}
+                    {currentFeeImpact && (
+                      <div className={`p-4 rounded-lg border ${currentFeeImpact.level === 'High'
+                        ? 'bg-red-500/10 border-red-500/30'
+                        : currentFeeImpact.level === 'Medium'
+                          ? 'bg-yellow-500/10 border-yellow-500/30'
+                          : 'bg-green-500/10 border-green-500/30'
+                        }`}>
+                        <div className="flex items-center gap-2 mb-3">
+                          <Activity className="h-4 w-4" />
+                          <span className="text-sm font-semibold">Fee Impact (Est.)</span>
+                          <Badge variant="outline" className={`ml-auto ${currentFeeImpact.level === 'High' ? 'border-red-500/50 text-red-400' :
+                            currentFeeImpact.level === 'Medium' ? 'border-yellow-500/50 text-yellow-400' :
+                              'border-green-500/50 text-green-400'
+                            }`}>
+                            {currentFeeImpact.level}
+                          </Badge>
+                          <HoverCard>
+                            <HoverCardTrigger asChild>
+                              <button>
+                                <Info className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-help transition-colors" />
+                              </button>
+                            </HoverCardTrigger>
+                            <HoverCardContent className="w-80 z-[100]" side="top">
+                              <div className="space-y-2">
+                                <p className="text-sm font-semibold">About {currentPlatformShort} Fees</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {executionTab === 'tradefox'
+                                    ? 'TradeFox applies a net trading fee (0.95% -> 0.75%) and cashback (5% -> 25%) depending on your tier.'
+                                    : 'PolyCop charges a flat 0.5% trading fee (per docs).'}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  This analysis assumes <span className="font-semibold">{currentFeeImpact?.assumedTier}</span>.
+                                  Larger allocations or fewer trades reduce relative fee impact.
+                                </p>
+                                <p className="text-xs text-muted-foreground italic">
+                                  Est. ~{currentFeeImpact.estimatedMonthlyTradeCount} trades/month with this strategy.
+                                </p>
+                              </div>
+                            </HoverCardContent>
+                          </HoverCard>
+                        </div>
+
+                        {/* Key Fee Metrics */}
+                        <div className="grid grid-cols-2 gap-3 mb-4">
+                          <div className="p-3 rounded-lg bg-background/50">
+                            <div className="flex items-center gap-1 mb-1">
+                              <p className="text-xs text-muted-foreground">Est. Monthly Fees</p>
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 border-muted-foreground/30 text-muted-foreground">
+                                Estimated
+                              </Badge>
+                            </div>
+                            <p className={`text-lg font-bold font-mono ${currentFeeImpact.level === 'High' ? 'text-red-400' :
+                              currentFeeImpact.level === 'Medium' ? 'text-yellow-400' : 'text-foreground'
+                              }`}>
+                              ${currentFeeImpact.estimatedMonthlyFees.toFixed(0)}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              ~{currentFeeImpact.estimatedMonthlyTradeCount} trades x ${(allocatedFunds * (copyStrategy?.tradeSize || 5) / 100).toFixed(0)}/trade
+                            </p>
+                          </div>
+
+                          <div className="p-3 rounded-lg bg-background/50">
+                            <div className="flex items-center gap-1 mb-1">
+                              <p className="text-xs text-muted-foreground">Net Return Range</p>
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 border-muted-foreground/30 text-muted-foreground">
+                                After Fees
+                              </Badge>
+                            </div>
+                            <div className="flex items-baseline gap-1">
+                              <p className={`text-lg font-bold font-mono ${currentFeeImpact.netReturnLow >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                {currentFeeImpact.netReturnLow >= 0 ? '+' : ''}{currentFeeImpact.netReturnLow}%
+                              </p>
+                              <span className="text-muted-foreground text-sm">to</span>
+                              <p className={`text-lg font-bold font-mono ${currentFeeImpact.netReturnHigh >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                {currentFeeImpact.netReturnHigh >= 0 ? '+' : ''}{currentFeeImpact.netReturnHigh}%
+                              </p>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              ~ ${((allocatedFunds * currentFeeImpact.netReturnLow) / 100).toFixed(0)} to ${((allocatedFunds * currentFeeImpact.netReturnHigh) / 100).toFixed(0)}/month
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Reasons */}
+                        <div className="mb-3">
+                          <p className="text-xs text-muted-foreground mb-1.5">Analysis:</p>
+                          <ul className="space-y-1">
+                            {currentFeeImpact.reasons.map((reason, i) => (
+                              <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                                <span className={
+                                  currentFeeImpact.level === 'High' ? 'text-red-400' :
+                                    currentFeeImpact.level === 'Medium' ? 'text-yellow-400' : 'text-green-400'
+                                }>-</span>
+                                {reason}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        {/* Recommendations - only show if Medium or High */}
+                        {currentFeeImpact.level !== 'Low' && currentFeeImpact.recommendations.length > 0 && (
+                          <div className="p-3 rounded-lg bg-background/50">
+                            <p className="text-xs font-semibold mb-1.5">Recommendations:</p>
+                            <ul className="space-y-1">
+                              {currentFeeImpact.recommendations.map((rec, i) => (
+                                <li key={i} className="text-xs text-muted-foreground">
+                                  Tip {rec}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        <p className="text-xs text-muted-foreground/60 mt-3 italic">
+                          Based on {currentFeeImpact.assumedTier}. Actual results vary with execution and market conditions.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Follow Exits - Always Enabled */}
+                    <div className="p-3 rounded-lg bg-background/30 border border-border/30">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={true}
+                          readOnly
+                          className="h-4 w-4 rounded border-green-500 text-green-500 focus:ring-green-500 accent-green-500"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium">Follow Exits</p>
+                            <Badge variant="outline" className="text-xs border-green-500/50 text-green-500">Always On</Badge>
+                            <HoverCard>
+                              <HoverCardTrigger asChild>
+                                <button className="ml-auto">
+                                  <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground cursor-help transition-colors" />
+                                </button>
+                              </HoverCardTrigger>
+                              <HoverCardContent className="w-72 z-50" side="top">
+                                <p className="text-xs text-muted-foreground">
+                                  Follow exits is always enabled for risk management. When the trader reduces or closes a position, you automatically sell the same percentage.
+                                </p>
+                              </HoverCardContent>
+                            </HoverCard>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
+
                 {executionTab === 'polycop' && (
                   <div className="space-y-6">
                     {adjustedCopySuitability?.executionDependent && (
@@ -4310,7 +4333,7 @@ export default function AnalyzeTrader() {
           </>
         )}
       </div>
-    </Layout>
+    </Layout >
   );
 }
 
