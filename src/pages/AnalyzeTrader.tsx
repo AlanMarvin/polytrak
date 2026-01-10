@@ -3942,21 +3942,105 @@ export default function AnalyzeTrader() {
                     </div>
                   </div>
                 )}
-                {/* Strategy Analysis Card (Shared) */}
-                {copyStrategy && (
-                  <div className="p-4 rounded-lg bg-background/30 border border-orange-500/30 mb-6">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Brain className="h-4 w-4 text-orange-400" />
-                      <span className="text-sm font-semibold text-orange-400">Strategy Analysis</span>
+                {/* PolyTrak AI Strategy Analysis Card (Shared) */}
+                {copyStrategy && trader && (
+                  <div className="p-5 rounded-xl bg-gradient-to-br from-orange-500/10 via-background/50 to-purple-500/10 border border-orange-500/40 mb-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 rounded-lg bg-orange-500/20">
+                          <Brain className="h-5 w-5 text-orange-400" />
+                        </div>
+                        <div>
+                          <span className="text-sm font-bold text-orange-400">PolyTrak AI Analysis</span>
+                          <p className="text-xs text-muted-foreground">Personalized copy trading strategy</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-orange-400">{copyStrategy.riskLevel}</div>
+                        <p className="text-xs text-muted-foreground">Strategy Profile</p>
+                      </div>
                     </div>
-                    <ul className="space-y-1.5">
-                      {copyStrategy.reasoning.map((reason, i) => (
-                        <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                          <span className="text-orange-400">-</span>
-                          {reason}
-                        </li>
-                      ))}
-                    </ul>
+
+                    {/* Key Metrics Summary */}
+                    <div className="grid grid-cols-3 gap-3 mb-4 p-3 rounded-lg bg-background/50 border border-border/50">
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground">Trade Size</p>
+                        <p className="text-lg font-bold text-primary">{copyStrategy.tradeSize}%</p>
+                      </div>
+                      <div className="text-center border-x border-border/50">
+                        <p className="text-xs text-muted-foreground">Copy %</p>
+                        <p className="text-lg font-bold text-primary">{copyStrategy.copyPercentage}%</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground">Est. Return</p>
+                        <p className={`text-lg font-bold ${copyStrategy.expectedMonthlyReturn >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          {copyStrategy.expectedMonthlyReturn > 0 ? '+' : ''}{copyStrategy.expectedMonthlyReturn}%
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* AI Reasoning Points */}
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">AI Reasoning</p>
+                      {copyStrategy.reasoning.map((reason, i) => {
+                        // Determine icon and color based on reason type
+                        const isWarning = reason.startsWith('Warning');
+                        const isOk = reason.startsWith('OK');
+                        const isNote = reason.startsWith('Note');
+
+                        let IconComponent = Zap;
+                        let colorClass = 'text-orange-400';
+                        let bgClass = 'bg-orange-500/10';
+
+                        if (isWarning) {
+                          IconComponent = AlertTriangle;
+                          colorClass = 'text-yellow-400';
+                          bgClass = 'bg-yellow-500/10';
+                        } else if (isOk) {
+                          IconComponent = CheckCircle;
+                          colorClass = 'text-green-400';
+                          bgClass = 'bg-green-500/10';
+                        } else if (isNote) {
+                          IconComponent = Info;
+                          colorClass = 'text-blue-400';
+                          bgClass = 'bg-blue-500/10';
+                        }
+
+                        // Clean the reason text (remove prefixes)
+                        const cleanReason = reason.replace(/^(Warning|OK|Note)\s*/, '').trim();
+
+                        return (
+                          <div key={i} className={`flex items-start gap-2 p-2 rounded-lg ${bgClass}`}>
+                            <IconComponent className={`h-4 w-4 mt-0.5 flex-shrink-0 ${colorClass}`} />
+                            <span className="text-sm text-foreground/90">{cleanReason}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Trader Stats Summary */}
+                    <div className="mt-4 pt-4 border-t border-border/50">
+                      <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                        <div>
+                          <p className="text-muted-foreground">Win Rate</p>
+                          <p className="font-semibold">{trader.winRate.toFixed(1)}%</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Sharpe</p>
+                          <p className="font-semibold">{sharpeRatio.toFixed(2)}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Positions</p>
+                          <p className="font-semibold">{trader.closedPositions}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Total PnL</p>
+                          <p className={`font-semibold ${trader.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            ${trader.pnl >= 1000 ? (trader.pnl / 1000).toFixed(1) + 'k' : trader.pnl.toFixed(0)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
 
