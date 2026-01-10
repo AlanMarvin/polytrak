@@ -66,23 +66,33 @@ export function useTraderAnalysis(address: string) {
     if (parts.length === 0) return null;
     const merged = Object.assign({}, ...parts);
 
-    const realized = merged.realizedPnl || 0;
-    const unrealized = merged.unrealizedPnl || 0;
-    const totalPnl = realized + unrealized;
+    // CORRECT PnL Calculation:
+    // 1. realizedPnl from /closed-positions = historical redeemed positions (wins + losses)
+    // 2. unrealizedPnl from /positions = current open positions (not yet resolved)
+    // 
+    // NOTE: totalPnlFromAllPositions from /positions is WRONG because:
+    //   - /positions only contains current holdings
+    //   - Redeemed winning positions disappear from /positions after redemption
+    //   - They're only in /closed-positions
+    //
+    // The closedPositionsSummary.realizedPnl already sums all closed position PnLs correctly.
+    const realizedFromClosed = merged.realizedPnl || 0;  // From closedPositionsSummary
+    const unrealizedFromOpen = merged.unrealizedPnl || 0; // From openPositions
 
-    // Provide safe defaults so the UI can render progressively without crashing.
+    // Total PnL = Realized (closed) + Unrealized (open)
+    const totalPnl = realizedFromClosed + unrealizedFromOpen;
+
     return {
       address,
       username: null,
       profileImage: null,
-      pnl: totalPnl, // Sum of Realized + Unrealized
-      pnlIncludingOpenPartial: totalPnl, // Approximation if partials aren't distinct
+      pnlIncludingOpenPartial: totalPnl,
       pnl24h: 0,
       pnl7d: 0,
       pnl30d: 0,
-      realizedPnl: realized,
-      realizedPnlOpenPartial: 0,
-      unrealizedPnl: unrealized,
+      realizedPnl: merged.realizedPnlOpenPartial || realizedFromClosed,
+      realizedPnlOpenPartial: merged.realizedPnlOpenPartial || 0,
+      unrealizedPnl: unrealizedFromOpen,
       winRate: 0,
       totalTrades: 0,
       trades30d: 0,
@@ -93,7 +103,7 @@ export function useTraderAnalysis(address: string) {
       positions: 0,
       closedPositions: 0,
       lastActive: new Date().toISOString(),
-      pnlHistory: [],
+      pnlHistory: merged.pnlHistory || [],
       dataReliability: {
         score: "low",
         warnings: [],
@@ -105,6 +115,8 @@ export function useTraderAnalysis(address: string) {
       openPositions: [],
       recentTrades: [],
       ...merged,
+      // CRITICAL: Our calculated PnL MUST override merged.pnl (which may be wrong from closedPositionsSummary)
+      pnl: totalPnl,
     };
   }, [
     enabled,

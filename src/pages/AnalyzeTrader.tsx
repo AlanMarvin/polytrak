@@ -23,6 +23,7 @@ import { savePublicAnalysis } from '@/hooks/usePublicRecentAnalyses';
 import { useTraderAnalysis } from '@/hooks/useTraderAnalysis';
 import { ThreeColorRing } from '@/components/ui/three-color-ring';
 import { PublicRecentAnalyses } from '@/components/analyze/PublicRecentAnalyses';
+import { TraderBadges } from '@/components/analyze/TraderBadges';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   HoverCard,
@@ -152,9 +153,13 @@ const generatePnlChartData = (traderData: TraderData, timeFilter: ChartTimeFilte
 
   if (filteredHistory.length === 0) {
     // No data for period - show flat line at current PnL
+    const startTs = cutoffTime || (now - 30 * 24 * 60 * 60 * 1000); // Default to 30d ago if no cutoff
+    const startStr = formatChartDate(new Date(startTs), timeFilter);
+    const nowStr = formatChartDate(new Date(now), timeFilter);
+
     return [
-      { date: 'Start', pnl: traderData.realizedPnl },
-      { date: 'Now', pnl: traderData.realizedPnl }
+      { date: startStr, pnl: traderData.realizedPnl },
+      { date: nowStr, pnl: traderData.realizedPnl }
     ];
   }
 
@@ -190,9 +195,9 @@ const formatChartDate = (date: Date, timeFilter: ChartTimeFilter): string => {
   if (timeFilter === '1D') {
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   } else if (timeFilter === '1W') {
-    return date.toLocaleDateString('en-US', { weekday: 'short' });
+    return date.toLocaleDateString('en-US', { weekday: 'short' }); // Mon, Tue
   }
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); // Nov 3, 2024
 };
 
 // Check if trader is inactive (no activity in last 30 days)
@@ -2409,7 +2414,13 @@ export default function AnalyzeTrader() {
                               </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="#333" opacity={0.3} />
-                            <XAxis dataKey="date" stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
+                            <XAxis
+                              dataKey="date"
+                              stroke="#888"
+                              fontSize={12}
+                              tickLine={false}
+                              axisLine={false}
+                            />
                             <YAxis
                               stroke="#888"
                               fontSize={12}
@@ -2661,6 +2672,13 @@ export default function AnalyzeTrader() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Trader Badges - Hashdive-style achievements */}
+            <TraderBadges
+              openPositions={trader.openPositions}
+              closedPositions={trader.closedPositions}
+              totalPositions={trader.positions + trader.closedPositions}
+            />
 
             {/* PnL Breakdown */}
             <Card className="glass-card mb-8">

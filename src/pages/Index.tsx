@@ -193,8 +193,8 @@ const Index = () => {
     },
     {
       step: '4',
-      title: 'Copy on TheTradeFox',
-      description: 'Use the recommended settings to start copy trading with confidence',
+      title: 'Copy on Your Platform',
+      description: 'Use the settings on TheTradeFox, PolyCop, or PolyGun to start copy trading with confidence',
       icon: Copy
     },
   ];
@@ -461,7 +461,7 @@ const Index = () => {
 
       {/* CTA Section */}
       <section className="container pb-16">
-        <div className="relative overflow-hidden rounded-2xl border border-primary/20 p-8 md:p-12">
+        <div className="relative overflow-hidden rounded-2xl border border-primary/20 py-16 px-8 md:py-20 md:px-12">
           {/* Background Video */}
           <video
             autoPlay
@@ -473,17 +473,17 @@ const Index = () => {
             <source src="/video/hero-bg.mp4" type="video/mp4" />
           </video>
           <div className="absolute inset-0 bg-black/70" />
-          <div className="relative text-center space-y-4 max-w-2xl mx-auto">
+          <div className="relative text-center space-y-6 max-w-2xl mx-auto">
             <h3 className="text-2xl md:text-3xl font-bold">
               Ready to copy traders with data, not guesswork?
             </h3>
             <p className="text-muted-foreground">
-              Analyze any Polymarket wallet and get AI-optimized settings for TheTradeFox copy trading.
+              Analyze any Polymarket wallet and get AI-optimized settings for copy trading on your favorite platform.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+            <div className="flex flex-col gap-3 justify-center items-center pt-4 max-w-sm mx-auto">
               <Button
                 size="lg"
-                className="min-w-[180px]"
+                className="w-full"
                 onClick={() => document.querySelector('input')?.focus()}
               >
                 <Search className="mr-2 h-4 w-4" />
@@ -493,9 +493,35 @@ const Index = () => {
                 href="https://thetradefox.com?ref=POLYTRAK"
                 target="_blank"
                 rel="noopener noreferrer"
+                className="w-full"
               >
-                <Button variant="outline" size="lg" className="min-w-[180px]">
+                <Button variant="outline" size="lg" className="w-full">
+                  <img src={tradeFoxLogo} alt="TheTradeFox" className="h-4 w-auto mr-2" />
                   Visit TheTradeFox
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </a>
+              <a
+                href={import.meta.env.VITE_POLYCOP_REFERRAL_URL || "https://t.me/PolyCop_BOT"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full"
+              >
+                <Button variant="outline" size="lg" className="w-full border-orange-500/50 hover:bg-orange-500/10 hover:border-orange-500">
+                  <img src={polycopLogo} alt="PolyCop" className="h-4 w-auto mr-2" />
+                  Visit PolyCop
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </a>
+              <a
+                href={import.meta.env.VITE_POLYGUN_REFERRAL_URL || "https://t.me/PolyGunSniperBot"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full"
+              >
+                <Button variant="outline" size="lg" className="w-full border-cyan-500/50 hover:bg-cyan-500/10 hover:border-cyan-500">
+                  <img src={polygunLogo} alt="PolyGun" className="h-4 w-auto mr-2" />
+                  Visit PolyGun
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </a>

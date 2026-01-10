@@ -324,17 +324,35 @@ export async function analyzeTrader(address: string, stage: 'profile' | 'openPos
     const trulyOpenPositions: any[] = [];
     const resolvedPositions: any[] = [];
     let unrealizedPnl = 0;
-    let realizedPnlOpenPartial = 0;
+    let realizedPnlFromPositions = 0;
     let totalInvested = 0;
     let totalCurrentValue = 0;
 
+    // CRITICAL: Calculate TOTAL PnL from ALL positions (both open and resolved)
+    // This is what Polymarket uses for their official PnL figure
+    let totalPnlFromAllPositions = 0;
+    let totalWins = 0;
+    let totalLosses = 0;
+
     positions.forEach((pos: any) => {
       const curPrice = pos.curPrice ?? pos.currentPrice ?? 0.5;
-      if (curPrice <= 0.001 || curPrice >= 0.999) resolvedPositions.push(pos);
-      else {
+      const positionCashPnl = pos.cashPnl || 0;
+      const positionRealizedPnl = pos.realizedPnl || 0;
+      const totalPositionPnl = positionCashPnl + positionRealizedPnl;
+
+      // Add to grand total
+      totalPnlFromAllPositions += totalPositionPnl;
+      if (totalPositionPnl > 0) totalWins++;
+      else if (totalPositionPnl < 0) totalLosses++;
+
+      if (curPrice <= 0.001 || curPrice >= 0.999) {
+        // Resolved position
+        resolvedPositions.push(pos);
+        realizedPnlFromPositions += positionCashPnl + positionRealizedPnl;
+      } else {
+        // Truly open position
         trulyOpenPositions.push(pos);
-        unrealizedPnl += pos.cashPnl || 0;
-        realizedPnlOpenPartial += pos.realizedPnl || 0;
+        unrealizedPnl += positionCashPnl;
         totalInvested += pos.initialValue || 0;
         totalCurrentValue += pos.currentValue || 0;
       }
@@ -345,9 +363,13 @@ export async function analyzeTrader(address: string, stage: 'profile' | 'openPos
       positions: trulyOpenPositions.length,
       resolvedPositions: resolvedPositions.length,
       unrealizedPnl,
-      realizedPnlOpenPartial,
+      realizedPnlOpenPartial: realizedPnlFromPositions,
       totalInvested,
       totalCurrentValue,
+      // NEW: Aggregate PnL from all positions endpoint
+      totalPnlFromAllPositions,
+      totalWins,
+      totalLosses,
       openPositions: trulyOpenPositions.map((pos: any) => ({
         id: pos.conditionId,
         marketTitle: pos.title || 'Unknown Market',
@@ -414,25 +436,41 @@ export async function analyzeTrader(address: string, stage: 'profile' | 'openPos
       maxItems: 50000, pageSize: 50, prioritizeRecent: true, endpointType: 'closed-positions'
     });
 
-    const finalPositions = new Map<string, any>();
-    closed.forEach((pos: any) => {
-      const key = `${pos.conditionId}-${pos.outcome}`;
-      const existing = finalPositions.get(key);
-      const posTime = pos.endDate ? new Date(pos.endDate).getTime() : 0;
-      const existTime = existing?.endDate ? new Date(existing.endDate).getTime() : 0;
-      if (!existing || posTime > existTime) finalPositions.set(key, pos);
-    });
-
     const now = Date.now();
     const day = 86400 * 1000;
+
+    // APPROACH 1: Sum ALL realizedPnl for accurate total (no deduplication)
     let realizedPnl = 0;
+    closed.forEach((pos: any) => {
+      realizedPnl += getClosedPositionPnl(pos);
+    });
+
+    // APPROACH 2: Deduplicate for pnlHistory and metrics (one entry per unique market position)
+    // This ensures stable metrics calculations (Sharpe, Profit Factor, Smart Score)
+    const uniquePositions = new Map<string, any>();
+    closed.forEach((pos: any) => {
+      const key = `${pos.conditionId}-${pos.outcome}`;
+      const existing = uniquePositions.get(key);
+      const posTime = pos.endDate ? new Date(pos.endDate).getTime() : (pos.timestamp ? pos.timestamp * 1000 : 0);
+      const existTime = existing?.endDate ? new Date(existing.endDate).getTime() : (existing?.timestamp ? existing.timestamp * 1000 : 0);
+      if (!existing || posTime > existTime) {
+        uniquePositions.set(key, pos);
+      }
+    });
+
     let wins = 0;
     const allClosedForHistory: any[] = [];
 
-    finalPositions.forEach((pos: any) => {
+    uniquePositions.forEach((pos: any) => {
       const pnl = getClosedPositionPnl(pos);
-      const timestamp = pos.endDate ? new Date(pos.endDate).getTime() : (pos.timestamp || 0) * 1000;
-      realizedPnl += pnl;
+
+      // Determine best timestamp
+      let timestamp = (pos.updatedAt ? new Date(pos.updatedAt).getTime() : 0);
+      if (!timestamp && pos.endDate) timestamp = new Date(pos.endDate).getTime();
+      if (!timestamp && pos.timestamp) timestamp = pos.timestamp * 1000;
+      if (timestamp > now) timestamp = now;
+      if (timestamp === 0) timestamp = now;
+
       if (pnl > 0) wins++;
       if (pnl !== 0) allClosedForHistory.push({ timestamp, pnl });
     });
@@ -454,13 +492,13 @@ export async function analyzeTrader(address: string, stage: 'profile' | 'openPos
 
     const data = {
       address: trimmedAddress,
-      realizedPnl,
+      realizedPnl,  // Sum of ALL records (accurate total)
       pnl24h,
       pnl7d,
       pnl30d,
       pnl: realizedPnl,
-      winRate: finalPositions.size > 0 ? (wins / finalPositions.size) * 100 : 0,
-      closedPositions: finalPositions.size,
+      winRate: uniquePositions.size > 0 ? (wins / uniquePositions.size) * 100 : 0,  // Based on unique positions
+      closedPositions: uniquePositions.size,  // Count unique positions
       pnlHistory: samplePnlHistory(pnlHistory, 150),
       summaryOnly: true,
     };
