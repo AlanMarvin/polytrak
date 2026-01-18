@@ -59,7 +59,7 @@ const KatyFooter = () => {
                             </a>
                             {/* WhatsApp */}
                             <a
-                                href="https://wa.me/39035301973"
+                                href="https://wa.me/393339338986"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="w-10 h-10 rounded-full bg-white/10 hover:bg-[#25D366] flex items-center justify-center transition-colors"
@@ -106,11 +106,11 @@ const KatyFooter = () => {
                                 </p>
                             </div>
                             <a
-                                href="tel:+39035301973"
+                                href="tel:+393339338986"
                                 className="flex items-center gap-3 text-gray-400 hover:text-white transition-colors"
                             >
                                 <Phone className="w-5 h-5 text-[#CE7777]" />
-                                <span className="katy-body text-sm">035 301973</span>
+                                <span className="katy-body text-sm">333 933 8986</span>
                             </a>
                         </div>
                     </div>

@@ -111,7 +111,7 @@ const KatyServizi = () => {
                         Vuoi saperne di più sui nostri trattamenti?
                     </p>
                     <a
-                        href="https://wa.me/39035301973?text=Ciao!%20Vorrei%20avere%20maggiori%20informazioni%20sui%20vostri%20servizi"
+                        href="https://wa.me/393339338986?text=Ciao!%20Vorrei%20avere%20maggiori%20informazioni%20sui%20vostri%20servizi"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="katy-btn-primary inline-flex items-center gap-2"

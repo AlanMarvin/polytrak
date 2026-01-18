@@ -70,8 +70,8 @@ const KatyHero = () => {
                         key={index}
                         onClick={() => setCurrentImageIndex(index)}
                         className={`w-2 h-2 rounded-full transition-all duration-300 ${index === currentImageIndex
-                                ? 'bg-[#CE7777] w-6'
-                                : 'bg-[#CE7777]/40 hover:bg-[#CE7777]/60'
+                            ? 'bg-[#CE7777] w-6'
+                            : 'bg-[#CE7777]/40 hover:bg-[#CE7777]/60'
                             }`}
                         aria-label={`Vai all'immagine ${index + 1}`}
                     />
@@ -132,7 +132,7 @@ const KatyHero = () => {
                     style={{ animationDelay: '0.8s' }}
                 >
                     <a
-                        href="https://wa.me/39035301973?text=Ciao!%20Vorrei%20prenotare%20un%20appuntamento%20al%20Centro%20Estetico%20Katy"
+                        href="https://wa.me/393339338986?text=Ciao!%20Vorrei%20prenotare%20un%20appuntamento%20al%20Centro%20Estetico%20Katy"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="katy-btn-whatsapp text-lg px-8 py-4"
@@ -144,7 +144,7 @@ const KatyHero = () => {
                     </a>
 
                     <a
-                        href="tel:+39035301973"
+                        href="tel:+393339338986"
                         className="katy-btn-gold text-lg px-8 py-4 flex items-center gap-2"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

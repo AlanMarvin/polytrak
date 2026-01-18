@@ -287,7 +287,7 @@ const KatyContatti = () => {
 
                             {/* Phone */}
                             <a
-                                href="tel:+39035301973"
+                                href="tel:+393339338986"
                                 className="bg-white rounded-2xl p-5 shadow-lg border border-[#E8C4C4]/30 katy-card-hover block"
                             >
                                 <div className="flex items-start gap-4">
@@ -297,7 +297,7 @@ const KatyContatti = () => {
                                     <div>
                                         <h4 className="katy-heading font-semibold text-[#2D2D2D] mb-1">Telefono</h4>
                                         <p className="katy-body text-lg font-medium text-[#CE7777]">
-                                            035 301973
+                                            333 933 8986
                                         </p>
                                     </div>
                                 </div>
@@ -331,7 +331,7 @@ const KatyContatti = () => {
 
                         {/* WhatsApp CTA */}
                         <a
-                            href="https://wa.me/39035301973?text=Ciao!%20Vorrei%20prenotare%20un%20appuntamento%20al%20Centro%20Estetico%20Katy"
+                            href="https://wa.me/393339338986?text=Ciao!%20Vorrei%20prenotare%20un%20appuntamento%20al%20Centro%20Estetico%20Katy"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="katy-btn-whatsapp w-full justify-center text-lg py-5"
