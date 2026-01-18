@@ -20,12 +20,12 @@ const EstFooter = () => {
                     {/* Brand column */}
                     <div className="lg:col-span-2">
                         <div className="flex items-center gap-3 mb-6">
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#C9A77C] to-[#C9A227] flex items-center justify-center">
-                                <span className="text-white font-bold text-xl est-heading">E</span>
-                            </div>
-                            <div>
-                                <h3 className="est-heading text-xl font-semibold">Esteticamente</h3>
-                                <p className="text-[#C9A77C] font-medium -mt-1 text-sm uppercase tracking-wider">Beauty & Nails</p>
+                            <div className="w-20 h-20 overflow-hidden">
+                                <img
+                                    src="/assets/esteticamente/logo.jpg"
+                                    alt="Esteticamente Beauty & Nails Logo"
+                                    className="w-full h-full object-contain"
+                                />
                             </div>
                         </div>
                         <p className="est-body text-[#E6D5C3] leading-relaxed mb-6 max-w-md">

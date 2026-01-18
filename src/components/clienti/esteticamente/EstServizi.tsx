@@ -22,8 +22,8 @@ const servizi = [
     {
         icon: Heart,
         title: 'Trattamenti Corpo',
-        description: 'Massaggi rilassanti, trattamenti rimodellanti e percorsi benessere su misura per te.',
-        features: ['Massaggi', 'Rimodellamento', 'Bendaggi', 'Scrub'],
+        description: 'Specializzati in Calco Metabolico Skulptur® per tonificare i tessuti e modellare il corpo con risultati visibili.',
+        features: ['Calco Metabolico', 'Modellamento', 'Tonificazione', 'Cellulite'],
     },
 ];
 

@@ -5,6 +5,8 @@ const galleryImages = [
     { src: '/assets/esteticamente/reception.jpg', alt: 'Reception Esteticamente Beauty & Nails' },
     { src: '/assets/esteticamente/nicol-portrait.jpg', alt: 'Nicol - Titolare' },
     { src: '/assets/esteticamente/gallery/laser-diodo.jpg', alt: 'Epilazione Laser Diodo' },
+    { src: '/assets/esteticamente/gallery/calco-metabolico-1.jpg', alt: 'Trattamento Calco Metabolico Skulptur' },
+    { src: '/assets/esteticamente/gallery/calco-metabolico-2.jpg', alt: 'Risultati Calco Metabolico' },
     { src: '/assets/esteticamente/gallery/giveaway.jpg', alt: 'Giveaway e Promozioni' },
     { src: '/assets/esteticamente/gallery/anniversario.jpg', alt: '1 Anno di Esteticamente' },
 ];

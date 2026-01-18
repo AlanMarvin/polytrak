@@ -33,8 +33,8 @@ const EstHeader = () => {
         <>
             <header
                 className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${isScrolled
-                        ? 'bg-[#FFFDF9]/95 backdrop-blur-md shadow-lg py-3'
-                        : 'bg-transparent py-5'
+                    ? 'bg-[#FFFDF9]/95 backdrop-blur-md shadow-lg py-3'
+                    : 'bg-transparent py-5'
                     }`}
             >
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -44,14 +44,12 @@ const EstHeader = () => {
                             onClick={() => scrollToSection('hero')}
                             className="flex items-center gap-3 group"
                         >
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#C9A77C] to-[#5D4E37] flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                                <span className="text-white font-bold text-xl est-heading">E</span>
-                            </div>
-                            <div className="hidden sm:block">
-                                <h1 className="est-heading text-xl font-semibold text-[#5D4E37]">
-                                    Esteticamente
-                                </h1>
-                                <p className="text-sm text-[#C9A77C] font-medium -mt-1">Beauty & Nails</p>
+                            <div className="w-16 h-16 md:w-20 md:h-20 overflow-hidden group-hover:scale-105 transition-transform">
+                                <img
+                                    src="/assets/esteticamente/logo.jpg"
+                                    alt="Esteticamente Beauty & Nails Logo"
+                                    className="w-full h-full object-contain"
+                                />
                             </div>
                         </button>
 
