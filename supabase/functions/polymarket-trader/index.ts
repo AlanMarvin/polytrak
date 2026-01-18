@@ -44,6 +44,12 @@ let reliabilityMetrics: ReliabilityMetrics = {
 };
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL_BY_STAGE: Record<string, number> = {
+  profile: 10 * 60 * 1000,
+  openPositions: 2 * 60 * 1000,
+  recentTrades: 15 * 60 * 1000,
+  closedPositionsSummary: 15 * 60 * 1000,
+};
 let supabaseAdmin:
   | ReturnType<typeof createClient>
   | null = null;
@@ -68,16 +74,20 @@ async function getCachedStage<T>(address: string, stage: string): Promise<T | nu
   if (!supabase) return null;
 
   try {
-    const { data, error } = await supabase
+    const result = await supabase
       .from("trader_analysis_cache")
       .select("data, updated_at")
       .eq("address", address)
       .eq("stage", stage)
       .maybeSingle();
 
+    const data = result.data as { data: unknown; updated_at: string } | null;
+    const error = result.error;
+
     if (error || !data?.data || !data?.updated_at) return null;
     const ageMs = Date.now() - new Date(data.updated_at).getTime();
-    if (ageMs > CACHE_TTL_MS) return null;
+    const ttlMs = CACHE_TTL_BY_STAGE[stage] ?? CACHE_TTL_MS;
+    if (ageMs > ttlMs) return null;
 
     return data.data as T;
   } catch {
@@ -90,8 +100,8 @@ async function setCachedStage(address: string, stage: string, value: unknown) {
   if (!supabase) return;
 
   try {
-    await supabase
-      .from("trader_analysis_cache")
+    await (supabase
+      .from("trader_analysis_cache") as unknown as { upsert: (data: Record<string, unknown>, opts: Record<string, string>) => Promise<unknown> })
       .upsert(
         {
           address,
@@ -319,6 +329,31 @@ function calculateReliability(metrics: ReliabilityMetrics, totalPositions: numbe
     hitApiLimit: metrics.hitOffsetLimit,
     dataCompleteness
   };
+}
+
+function getClosedPositionPnl(pos: any): number {
+  // Method 1: Use realizedPnl directly from API (what Polymarket returns)
+  const apiRealized = Number(pos?.realizedPnl ?? 0);
+  
+  // Method 2: Calculate from price difference - this is what some analytics sites use
+  // PnL = (curPrice - avgPrice) * (totalBought / avgPrice)
+  // This represents: (exit_price - entry_price) * shares_held
+  const avgPrice = Number(pos?.avgPrice ?? 0);
+  const curPrice = Number(pos?.curPrice ?? 0);
+  const totalBought = Number(pos?.totalBought ?? 0);
+  
+  let calculatedPnl = 0;
+  if (avgPrice > 0 && avgPrice < 1) {
+    const shares = totalBought / avgPrice;
+    calculatedPnl = (curPrice - avgPrice) * shares;
+  }
+  
+  // CRITICAL INSIGHT: The API's realizedPnl might include partial exits/entries
+  // that are already accounted for. We should use the API value directly.
+  // But if it seems too high, the issue may be cumulative counting.
+  
+  if (!Number.isFinite(apiRealized)) return 0;
+  return apiRealized;
 }
 
 serve(async (req) => {
@@ -599,7 +634,7 @@ serve(async (req) => {
       const allClosedForHistory: Array<{ timestamp: number; pnl: number }> = [];
 
       finalPositions.forEach((pos: any) => {
-        const pnl = pos.realizedPnl || 0;
+        const pnl = getClosedPositionPnl(pos);
         let timestamp: number;
         if (pos.endDate) timestamp = new Date(pos.endDate).getTime();
         else if (pos.timestamp) timestamp = pos.timestamp < 10000000000 ? pos.timestamp * 1000 : pos.timestamp;
@@ -740,6 +775,22 @@ serve(async (req) => {
     // Step 1: Group closed positions by asset (unique outcome token) and keep only the LATEST entry
     const finalPositions = new Map<string, any>();
     
+    // Debug: Log sample closed position structure and a few PnL values to understand the data
+    if (closed.length > 0) {
+      const sample = closed[0];
+      console.log(`Sample closed position keys: ${Object.keys(sample).join(', ')}`);
+      console.log(`Sample: conditionId=${sample.conditionId?.slice(0,20)}..., outcome=${sample.outcome}, realizedPnl=${sample.realizedPnl}, avgPrice=${sample.avgPrice}, curPrice=${sample.curPrice}, totalBought=${sample.totalBought}`);
+      
+      // Sample 5 positions to see PnL distribution
+      const samplePnls = closed.slice(0, 5).map((p: any) => ({
+        realizedPnl: p.realizedPnl,
+        avgPrice: p.avgPrice,
+        curPrice: p.curPrice,
+        totalBought: p.totalBought,
+      }));
+      console.log(`Sample 5 PnLs: ${JSON.stringify(samplePnls)}`);
+    }
+    
     // Count multi-entry groups for diagnostic logging
     const groupSizes = new Map<string, number>();
     closed.forEach((pos: any) => {
@@ -770,18 +821,29 @@ serve(async (req) => {
     
     console.log(`DEDUP: ${closed.length} raw closed entries -> ${finalPositions.size} unique final positions`);
     
-    // Step 2: Calculate realized PnL from FINAL position states only (closed/settled)
-    // NOTE: We keep open-position partial-exit realized PnL separate to match Polymarket/Hashdive style totals.
+    // Step 2: Calculate realized PnL using TWO methods for comparison
+    // Method A: Sum of API realizedPnl values
+    // Method B: Calculated from (curPrice - avgPrice) * shares
     let realizedPnlClosed = 0;
+    let calculatedPnlTotal = 0;
     let realizedPnlOpenPartial = 0;
     let positivePnl = 0;
     let negativePnl = 0;
     
     finalPositions.forEach((pos) => {
-      const pnl = pos.realizedPnl || 0;
+      const pnl = getClosedPositionPnl(pos);
       realizedPnlClosed += pnl;
       if (pnl > 0) positivePnl += pnl;
       else negativePnl += pnl;
+      
+      // Calculate Method B: (curPrice - avgPrice) * shares
+      const avgPrice = Number(pos?.avgPrice ?? 0);
+      const curPrice = Number(pos?.curPrice ?? 0);
+      const totalBought = Number(pos?.totalBought ?? 0);
+      if (avgPrice > 0 && avgPrice < 1) {
+        const shares = totalBought / avgPrice;
+        calculatedPnlTotal += (curPrice - avgPrice) * shares;
+      }
     });
 
     // Open positions can have partial exits; Polymarket often separates these from "closed PnL".
@@ -790,6 +852,11 @@ serve(async (req) => {
     });
     
     const realizedPnl = realizedPnlClosed;
+    console.log(
+      `PnL Methods: API_realizedPnl=${realizedPnlClosed.toFixed(2)}, ` +
+      `Calculated=(curPrice-avgPrice)*shares=${calculatedPnlTotal.toFixed(2)}, ` +
+      `Difference=${(realizedPnlClosed - calculatedPnlTotal).toFixed(2)}`
+    );
     console.log(
       `Realized PnL (closed)=${realizedPnlClosed.toFixed(2)}, ` +
       `Realized PnL (open partial)=${realizedPnlOpenPartial.toFixed(2)}, ` +
@@ -1036,7 +1103,7 @@ serve(async (req) => {
       address: trimmedAddress,
       username: profile?.name || profile?.username || profile?.pseudonym || null,
       profileImage: profile?.profileImage || profile?.profileImageOptimized || profile?.image || profile?.avatar || null,
-      pnl: totalPnl,
+      pnl: realizedPnl,
       pnlIncludingOpenPartial: totalPnlIncludingOpenPartial,
       pnl24h,
       pnl7d,
@@ -1089,7 +1156,7 @@ serve(async (req) => {
       })),
     };
 
-    console.log(`Returning: PnL=${totalPnl}, Realized=${realizedPnl}, Unrealized=${unrealizedPnl}, Open=${trulyOpenPositions.length}, Resolved=${resolvedPositions.length}, Closed=${closed.length}, Trades30d=${trades30d}, Positions30d=${positions30d}`);
+    console.log(`Returning: PnL=${realizedPnl}, Realized=${realizedPnl}, Unrealized=${unrealizedPnl}, Open=${trulyOpenPositions.length}, Resolved=${resolvedPositions.length}, Closed=${closed.length}, Trades30d=${trades30d}, Positions30d=${positions30d}`);
     console.log(`[stage=full] computed in ${Math.round(performance.now() - tAll)}ms`);
 
     return new Response(

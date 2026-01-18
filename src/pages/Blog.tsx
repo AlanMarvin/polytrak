@@ -4,8 +4,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { 
-  ExternalLink, Star, Zap, Brain, BarChart3, Users, 
+import {
+  ExternalLink, Star, Zap, Brain, BarChart3, Users,
   MessageSquare, Smartphone, Bell, ArrowRight, Calendar,
   Clock, User
 } from 'lucide-react';
@@ -64,15 +64,15 @@ const Blog = () => {
   // Extract Twitter handle from the @ format
   const getTwitterHandle = (handle: string) => handle.replace('@', '');
 
-  const ToolSection = ({ 
-    title, 
-    icon: Icon, 
-    tools, 
-    description 
-  }: { 
-    title: string; 
-    icon: React.ElementType; 
-    tools: typeof coreTools; 
+  const ToolSection = ({
+    title,
+    icon: Icon,
+    tools,
+    description
+  }: {
+    title: string;
+    icon: React.ElementType;
+    tools: typeof coreTools;
     description: string;
   }) => (
     <section className="mb-12">
@@ -90,7 +90,7 @@ const Blog = () => {
               <div className="flex items-start gap-4">
                 {/* Logo/Avatar */}
                 <a href={tool.url} target="_blank" rel="noopener noreferrer" className="shrink-0">
-                  <img 
+                  <img
                     src={`https://unavatar.io/twitter/${getTwitterHandle(tool.handle)}`}
                     alt={`${tool.name} logo`}
                     className="w-12 h-12 rounded-lg bg-muted object-cover"
@@ -99,20 +99,20 @@ const Blog = () => {
                     }}
                   />
                 </a>
-                
+
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <a 
-                      href={tool.url} 
-                      target="_blank" 
+                    <a
+                      href={tool.url}
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="font-semibold hover:text-primary transition-colors"
                     >
                       {tool.name}
                     </a>
-                    <a 
-                      href={`https://twitter.com/${getTwitterHandle(tool.handle)}`} 
-                      target="_blank" 
+                    <a
+                      href={`https://twitter.com/${getTwitterHandle(tool.handle)}`}
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="text-sm text-muted-foreground hover:text-primary transition-colors"
                     >
@@ -126,7 +126,7 @@ const Blog = () => {
                   </div>
                   <p className="text-muted-foreground text-sm">{tool.desc}</p>
                 </div>
-                
+
                 <a href={tool.url} target="_blank" rel="noopener noreferrer" className="shrink-0">
                   <Button variant="ghost" size="icon">
                     <ExternalLink className="h-4 w-4" />
@@ -168,7 +168,20 @@ const Blog = () => {
       {/* Blog Posts Navigation */}
       <div className="container py-8 max-w-4xl">
         <h2 className="text-lg font-semibold mb-4">Latest Articles</h2>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3">
+          <Link to="/blog/integrations">
+            <Card className="glass-card hover:border-primary/30 transition-colors h-full border-primary/40 bg-primary/5">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge className="bg-primary text-primary-foreground text-xs">New</Badge>
+                  <Badge variant="outline" className="text-xs">Integration</Badge>
+                </div>
+                <h3 className="font-semibold mb-1">Now Supporting PolyCop & PolyGun</h3>
+                <p className="text-sm text-muted-foreground mb-3">Unified fee analysis, net return estimates, and AI config for all 3 major bots.</p>
+                <span className="text-sm text-primary flex items-center gap-1">Read announcement <ArrowRight className="h-3 w-3" /></span>
+              </CardContent>
+            </Card>
+          </Link>
           <Card className="glass-card hover:border-primary/30 transition-colors">
             <CardContent className="p-4">
               <Badge variant="outline" className="mb-2">Guide</Badge>
@@ -212,13 +225,13 @@ const Blog = () => {
               <span>10 min read</span>
             </div>
           </div>
-          
+
           <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight">
             Polymarket Tools - The Complete No-BS Guide for 2025
           </h1>
-          
+
           <p className="text-xl text-muted-foreground leading-relaxed">
-            Tested every tool in the Polymarket ecosystem. Most are mediocre. Some actually make money. 
+            Tested every tool in the Polymarket ecosystem. Most are mediocre. Some actually make money.
             Here is what matters when you are trying to profit from prediction markets. No fluff, only what gives you an edge.
           </p>
         </header>
@@ -233,7 +246,7 @@ const Blog = () => {
               <div>
                 <h3 className="font-semibold mb-2">The Bottom Line</h3>
                 <p className="text-muted-foreground">
-                  Cut through the noise. Focus on execution. These are the tools that actually move your PnL. 
+                  Cut through the noise. Focus on execution. These are the tools that actually move your PnL.
                   Tools marked with <Star className="h-3 w-3 inline text-primary" /> are personally tested and recommended.
                 </p>
               </div>
@@ -263,36 +276,36 @@ const Blog = () => {
         <Separator className="mb-12" />
 
         {/* Tool Sections */}
-        <ToolSection 
-          title="Core Accounts - You Need These" 
+        <ToolSection
+          title="Core Accounts - You Need These"
           icon={Zap}
           tools={coreTools}
           description="These are the essential accounts to follow. The foundation of staying informed in the Polymarket ecosystem."
         />
 
-        <ToolSection 
-          title="AI Assistance" 
+        <ToolSection
+          title="AI Assistance"
           icon={Brain}
           tools={aiTools}
           description="AI assistants for research, market analysis, and filtering noise. Pick one that fits your style and save hours of manual work."
         />
 
-        <ToolSection 
-          title="Data & Analytics" 
+        <ToolSection
+          title="Data & Analytics"
           icon={BarChart3}
           tools={analyticsTools}
           description="Information is everything. These tools give you the data edge - whale tracking, alerts, smart scores, and portfolio analytics."
         />
 
-        <ToolSection 
-          title="Trading Terminals & Bots" 
+        <ToolSection
+          title="Trading Terminals & Bots"
           icon={Smartphone}
           tools={tradingTools}
           description="Execute trades faster with terminals and bots. Trade from Telegram, mobile, or advanced desktop interfaces."
         />
 
-        <ToolSection 
-          title="Communities" 
+        <ToolSection
+          title="Communities"
           icon={Users}
           tools={communities}
           description="Connect with other traders. Learn from winners. Network matters in prediction markets."
@@ -305,7 +318,7 @@ const Blog = () => {
           <h2 className="text-2xl font-bold mb-4">Final Thoughts</h2>
           <div className="prose prose-invert max-w-none">
             <p className="text-muted-foreground mb-4">
-              The Polymarket ecosystem has exploded with tools. Not all of them are worth your time. 
+              The Polymarket ecosystem has exploded with tools. Not all of them are worth your time.
               Focus on the ones that directly impact your trading edge:
             </p>
             <ul className="list-disc list-inside text-muted-foreground space-y-2 mb-4">

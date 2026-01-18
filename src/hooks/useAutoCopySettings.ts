@@ -7,10 +7,10 @@ export interface CopySettings {
   allocatedFunds: number;
   tradeSizePercent: number;
   copyPercentage: number;
-  
+
   // Exit mode
   exitMode: ExitMode;
-  
+
   // Advanced settings
   maxAmountPerMarket: number;
   minAmountPerMarket: number;
@@ -22,7 +22,11 @@ export interface CopySettings {
   // TradeFox uses a single max-slippage setting in cents (¢), not entry/exit %.
   maxSlippageCents: number;
   maxTimeUntilResolution: number | 'any';
-  
+
+  // Additional TradeFox Settings
+  fixedAmountPerTrade: number;
+  copyAsLimitOrders: boolean;
+
   // Auto-optimization
   isAutoOptimized: boolean;
 }
@@ -62,12 +66,14 @@ export const DEFAULT_COPY_SETTINGS: CopySettings = {
   maxAmountPerMarket: 500,
   minAmountPerMarket: 5,
   maxCopyAmountPerTrade: 50,
+  fixedAmountPerTrade: 0, // Default to 0 as we use percentage sizing
   minVolumePerMarket: 10000,
   minLiquidityPerMarket: 5000,
   marketPriceRangeMin: 25, // Risk-adjusted default
   marketPriceRangeMax: 75, // Risk-adjusted default
   maxSlippageCents: 4,
   maxTimeUntilResolution: 14, // 14 days default for event-focused copy
+  copyAsLimitOrders: false, // Default to market orders
   isAutoOptimized: true,
 };
 
@@ -85,7 +91,7 @@ export function useAutoCopySettings(
   return useMemo(() => {
     const settings = { ...DEFAULT_COPY_SETTINGS };
     const reasons: AutoCopyRecommendation['reasons'] = [];
-    
+
     if (!traderStats) {
       reasons.push({
         field: 'isAutoOptimized',
@@ -96,11 +102,21 @@ export function useAutoCopySettings(
 
     // Adjust allocation based on user budget
     settings.allocatedFunds = userBudget;
-    
+
     // === HIGH-FREQUENCY TRADER DETECTION & OVERRIDE ===
     // This is the critical rule that fixes the 2k liquidity + 60 days bug
     const isHighFrequency = (traderStats.tradeFrequency ?? 0) >= 20; // ~3+ trades/day
-    
+
+    // === 1. Allocation & Liquidity Scaling ===
+    // Scale max amount per market based on budget (diversification)
+    settings.maxAmountPerMarket = Math.min(Math.max(500, userBudget * 0.3), 5000);
+
+    // Scale minimum liquidity based on our own size to avoid slippage
+    if (userBudget > 1000) {
+      settings.minLiquidityPerMarket = Math.max(settings.minLiquidityPerMarket, userBudget * 5);
+      reasons.push({ field: 'minLiquidityPerMarket', reason: `High allocation ($${userBudget}) - increased liquidity requirement to avoid slippage` });
+    }
+
     if (isHighFrequency) {
       // Force strict settings for high-frequency traders
       settings.maxTimeUntilResolution = 14;
@@ -109,29 +125,44 @@ export function useAutoCopySettings(
       settings.marketPriceRangeMax = 75;
       settings.exitMode = 'proportional';
       settings.maxSlippageCents = 2;
-      
-      reasons.push({
-        field: 'maxTimeUntilResolution',
-        reason: 'High-frequency trader (~3+/day) - capped to 14 days to keep capital rotating',
-      });
-      reasons.push({
-        field: 'minLiquidityPerMarket',
-        reason: 'High-frequency trading compounds slippage - enforcing ≥$5k liquidity floor',
-      });
-      reasons.push({
-        field: 'marketPriceRangeMin',
-        reason: 'High-frequency trader - using risk-adjusted price range (25-75%)',
-      });
-      reasons.push({
-        field: 'exitMode',
-        reason: 'High-frequency + likely partial exits - proportional mode for tracking & risk control',
-      });
-      reasons.push({
-        field: 'maxSlippageCents',
-        reason: 'High-frequency trader - tighter max slippage (2¢) to preserve margins',
-      });
+      settings.copyAsLimitOrders = false; // Market orders needed for speed
+
+      reasons.push({ field: 'maxTimeUntilResolution', reason: 'High-frequency trader (~3+/day) - capped to 14 days to keep capital rotating' });
+      reasons.push({ field: 'minLiquidityPerMarket', reason: 'High-frequency trading compounds slippage - enforcing ≥$5k liquidity floor' });
+      reasons.push({ field: 'marketPriceRangeMin', reason: 'High-frequency trader - using risk-adjusted price range (25-75%)' });
+      reasons.push({ field: 'exitMode', reason: 'High-frequency + likely partial exits - proportional mode for tracking & risk control' });
+      reasons.push({ field: 'maxSlippageCents', reason: 'High-frequency trader - tighter max slippage (2¢) to preserve margins' });
+      reasons.push({ field: 'copyAsLimitOrders', reason: 'High-frequency - used market orders for execution speed' });
+    } else {
+      // === 2. Strategy-Specific Tuning (Non-HFT) ===
+
+      // "Sniper" - High Profit Factor, buying cheap
+      if ((traderStats.profitFactor ?? 0) > 2.0 && (traderStats.winRate ?? 0) < 0.6) {
+        settings.marketPriceRangeMin = 2;
+        settings.marketPriceRangeMax = 65;
+        reasons.push({ field: 'marketPriceRangeMin', reason: 'Sniper profile (High PF, Low WR) - monitoring cheap contracts (2¢+)' });
+      }
+      // "Farmer" - High Win Rate, buying expensive
+      else if ((traderStats.winRate ?? 0) > 0.8) {
+        settings.marketPriceRangeMin = 40;
+        settings.marketPriceRangeMax = 98;
+        reasons.push({ field: 'marketPriceRangeMax', reason: 'Farmer profile (High WR) - allowed to buy expensive contracts (up to 98¢)' });
+      }
+
+      // === 3. Limit Order Logic ===
+      // Use Limit Orders if liquidity is low OR if our size is large
+      const lowLiquidity = (traderStats.avgLiquidity ?? 20000) < 10000;
+      const largeSize = userBudget > 2000;
+
+      if (lowLiquidity || largeSize) {
+        settings.copyAsLimitOrders = true;
+        reasons.push({
+          field: 'copyAsLimitOrders',
+          reason: lowLiquidity ? 'Low market liquidity - limit orders safer' : 'Large allocation - limit orders prevent slippage'
+        });
+      }
     }
-    
+
     // === Exit Mode Selection (if not already set by high-frequency rule) ===
     if (!isHighFrequency) {
       if (traderStats.usesPartialExits) {
@@ -186,20 +217,26 @@ export function useAutoCopySettings(
     }
 
     // === Adaptive Max Copy Per Trade ===
-    // Allow 75 only if liquidity >= 20000
-    if (traderStats.avgLiquidity && traderStats.avgLiquidity >= 20000) {
-      settings.maxCopyAmountPerTrade = 75;
-      settings.minLiquidityPerMarket = Math.max(settings.minLiquidityPerMarket, 10000);
-      reasons.push({
-        field: 'maxCopyAmountPerTrade',
-        reason: 'High liquidity trader (≥$20k avg) - increased max copy amount to $75',
-      });
+    // Logic: Ensure we can actually fill our target % size
+    // Target trade size $ = allocatedFunds * (tradeSizePercent / 100)
+    // We add 50% buffer to Max Copy Amount to allow for some variance
+    const targetTradeSize = userBudget * (settings.tradeSizePercent / 100);
+    const adaptiveMax = Math.max(50, Math.ceil(targetTradeSize * 1.5));
+
+    // Cap at reasonable limits based on liquidity?
+    // If liquidity is high, allow higher max.
+    if ((traderStats.avgLiquidity ?? 0) >= 20000) {
+      settings.maxCopyAmountPerTrade = adaptiveMax;
+      reasons.push({ field: 'maxCopyAmountPerTrade', reason: `Scaled to 1.5x target trade size ($${targetTradeSize.toFixed(0)}) based on budget` });
     } else {
-      settings.maxCopyAmountPerTrade = 50;
-      reasons.push({
-        field: 'maxCopyAmountPerTrade',
-        reason: 'Standard liquidity - max copy amount capped at $50',
-      });
+      settings.maxCopyAmountPerTrade = Math.min(adaptiveMax, 100); // Cap at $100 for lower liquidity
+      if (adaptiveMax > 100) reasons.push({ field: 'maxCopyAmountPerTrade', reason: 'Capped at $100 due to moderate liquidity' });
+    }
+
+    // === Fixed Amount Fallback ===
+    if (userBudget < 200 && settings.fixedAmountPerTrade === 0) {
+      settings.fixedAmountPerTrade = 10;
+      reasons.push({ field: 'fixedAmountPerTrade', reason: 'Small budget - using fixed $10 per trade to ensure minimum execution size' });
     }
 
     // === Slippage Adjustment (if not already set by high-frequency rule) ===

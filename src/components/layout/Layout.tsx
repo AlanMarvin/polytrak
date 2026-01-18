@@ -20,7 +20,7 @@ export function Layout({ children }: LayoutProps) {
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Polytrak.io</h3>
               <p className="text-sm text-muted-foreground">
-                analytics + copy-trading config for thetradefox
+                Polymarket Analytics + Copy-Trading configuration for TheTradeFox, PolyGun, and PolyCop
               </p>
             </div>
 
@@ -94,18 +94,19 @@ export function Layout({ children }: LayoutProps) {
             </div>
           </div>
 
-          <div className="border-t border-border/50 mt-8 pt-6 text-center text-sm text-muted-foreground">
-            <p>© 2025 Polytrak.io. Use with{' '}
-              <a
-                href="https://thetradefox.com?ref=POLYTRAK"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline"
-              >
-                TheTradeFox.com
-              </a>
-              {' '}for automated copy trading.
-            </p>
+          <div className="border-t border-border/50 mt-8 pt-6 flex justify-end">
+            <a
+              href="https://www.producthunt.com/products/polytrak?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-polytrak"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <img
+                alt="PolyTrak - Polymarket analytics + copy-trading config for thetradefox | Product Hunt"
+                width="250"
+                height="54"
+                src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1059212&theme=dark&t=1767718064380"
+              />
+            </a>
           </div>
         </div>
       </footer>

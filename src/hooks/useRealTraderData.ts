@@ -151,40 +151,7 @@ export const useRealTraderData = (): UseRealTraderDataReturn => {
     }
   }, []);
 
-  // Calculate smart score based on various metrics
-  const calculateSmartScore = useCallback((data: RealTraderData): number => {
-    if (data.totalTrades < 10) return 30; // Need minimum activity
-
-    let score = 50; // Base score
-
-    // Win rate contribution (0-30 points)
-    if (data.winRate >= 70) score += 30;
-    else if (data.winRate >= 60) score += 20;
-    else if (data.winRate >= 50) score += 10;
-    else if (data.winRate < 40) score -= 20;
-
-    // PnL contribution (0-20 points)
-    if (data.pnl > 10000) score += 20;
-    else if (data.pnl > 1000) score += 15;
-    else if (data.pnl > 0) score += 10;
-    else if (data.pnl < -5000) score -= 15;
-
-    // Volume contribution (0-10 points)
-    if (data.volume > 50000) score += 10;
-    else if (data.volume > 10000) score += 5;
-
-    // Activity contribution (0-10 points)
-    if (data.positions30d > 20) score += 10;
-    else if (data.positions30d > 10) score += 5;
-
-    // Data reliability penalty
-    if (data.dataReliability.score === 'low') score -= 10;
-    else if (data.dataReliability.score === 'medium') score -= 5;
-
-    return Math.max(0, Math.min(100, score));
-  }, []);
-
-  // Calculate Sharpe ratio (simplified version)
+  // Calculate Sharpe ratio (annualized, simplified version)
   const calculateSharpeRatio = useCallback((data: RealTraderData): number => {
     if (data.pnlHistory.length < 10) return 0;
 
@@ -194,17 +161,78 @@ export const useRealTraderData = (): UseRealTraderDataReturn => {
     const stdDev = Math.sqrt(variance);
 
     // Assume risk-free rate of 0 for simplicity
-    return stdDev > 0 ? avgReturn / stdDev : 0;
+    if (stdDev <= 0) return 0;
+
+    const sharpe = avgReturn / stdDev;
+    const annualizationFactor = Math.sqrt(252);
+    return sharpe * annualizationFactor;
+  }, []);
+
+  // Calculate smart score based on risk-adjusted performance and efficiency
+  const calculateSmartScore = useCallback((data: RealTraderData, sharpeRatio: number): number => {
+    const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+    const normalize = (value: number, min: number, max: number) => {
+      if (max <= min) return 0;
+      return clamp((value - min) / (max - min), 0, 1);
+    };
+
+    const winRateScore = normalize(data.winRate, 40, 70);
+    const sharpeScore = normalize(sharpeRatio, 0, 6);
+
+    const totalTradesLog = Math.log10(data.totalTrades + 1);
+    const activityScore = normalize(totalTradesLog, Math.log10(10 + 1), Math.log10(300 + 1));
+    const recentActivityScore = normalize(data.positions30d, 3, 30);
+    const activityBlend = (activityScore * 0.6) + (recentActivityScore * 0.4);
+
+    const pnlScore = data.pnl > 0
+      ? normalize(Math.log10(data.pnl + 1), 0, Math.log10(100000 + 1))
+      : 0;
+    const pnl30dScore = data.pnl30d > 0
+      ? normalize(Math.log10(data.pnl30d + 1), 0, Math.log10(20000 + 1))
+      : 0;
+    const profitabilityScore = (pnlScore * 0.7) + (pnl30dScore * 0.3);
+    const lossPenalty = data.pnl < 0 ? normalize(-data.pnl, 0, 20000) : 0;
+
+    const grossProfit = data.pnlHistory.reduce((sum, p) => sum + (p.pnl > 0 ? p.pnl : 0), 0);
+    const grossLoss = data.pnlHistory.reduce((sum, p) => sum + (p.pnl < 0 ? Math.abs(p.pnl) : 0), 0);
+    const profitFactor = grossLoss > 0 ? grossProfit / grossLoss : (grossProfit > 0 ? 6 : 0);
+    const profitFactorScore = normalize(profitFactor, 1, 4);
+
+    const capitalBase = Math.max(1, data.totalInvested, data.volume);
+    const roi = data.pnl / capitalBase;
+    const roiScore = roi > 0 ? normalize(roi, 0, 0.25) : 0;
+    const roiPenalty = roi < 0 ? normalize(-roi, 0, 0.25) : 0;
+
+    const reliabilityScore = normalize(data.dataReliability.dataCompleteness, 50, 100);
+
+    let score = (
+      sharpeScore * 0.28 +
+      profitabilityScore * 0.22 +
+      profitFactorScore * 0.12 +
+      roiScore * 0.13 +
+      winRateScore * 0.15 +
+      activityBlend * 0.07 +
+      reliabilityScore * 0.03
+    ) * 100;
+
+    score -= (lossPenalty * 8 + roiPenalty * 8);
+
+    const sampleFactor = normalize(data.totalTrades, 10, 60);
+    score *= 0.6 + (sampleFactor * 0.4);
+
+    if (data.dataReliability.score === 'low') score *= 0.85;
+    else if (data.dataReliability.score === 'medium') score *= 0.93;
+
+    const curved = Math.pow(clamp(score, 0, 100) / 100, 0.9) * 100;
+    return Math.round(clamp(curved, 0, 100));
   }, []);
 
   // Determine copy suitability
-  const calculateCopySuitability = useCallback((data: RealTraderData): 'Low' | 'Medium' | 'High' => {
-    const score = calculateSmartScore(data);
-
-    if (score >= 80 && data.winRate >= 65 && data.pnl > 5000) return 'High';
-    if (score >= 60 && data.winRate >= 55 && data.pnl > 1000) return 'Medium';
+  const calculateCopySuitability = useCallback((data: RealTraderData, smartScore: number): 'Low' | 'Medium' | 'High' => {
+    if (smartScore >= 80 && data.winRate >= 65 && data.pnl > 5000) return 'High';
+    if (smartScore >= 60 && data.winRate >= 55 && data.pnl > 1000) return 'Medium';
     return 'Low';
-  }, [calculateSmartScore]);
+  }, []);
 
   // Fetch data for a single address
   const fetchTraderData = useCallback(async (address: string): Promise<RealTraderDataWithMeta | null> => {
@@ -270,9 +298,9 @@ export const useRealTraderData = (): UseRealTraderDataReturn => {
 
       if (error) throw error;
 
-      const smartScore = calculateSmartScore(data);
       const sharpeRatio = calculateSharpeRatio(data);
-      const copySuitability = calculateCopySuitability(data);
+      const smartScore = calculateSmartScore(data, sharpeRatio);
+      const copySuitability = calculateCopySuitability(data, smartScore);
 
       const result: RealTraderDataWithMeta = {
         ...data,
