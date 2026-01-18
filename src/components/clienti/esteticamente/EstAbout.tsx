@@ -41,7 +41,7 @@ const EstAbout = () => {
                                 <img
                                     src="/assets/esteticamente/nicol-portrait.jpg"
                                     alt="Nicol - Titolare di Esteticamente Beauty & Nails"
-                                    className="w-full h-auto object-cover aspect-[4/5]"
+                                    className="w-full h-auto"
                                 />
                             </div>
                         </div>

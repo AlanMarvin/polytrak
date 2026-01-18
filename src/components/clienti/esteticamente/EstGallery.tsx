@@ -47,26 +47,26 @@ const EstGallery = () => {
                     </p>
                 </div>
 
-                {/* Gallery grid */}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {/* Gallery masonry layout */}
+                <div className="columns-2 md:columns-3 gap-4 space-y-4">
                     {galleryImages.map((image, index) => (
-                        <button
-                            key={image.src}
-                            onClick={() => openLightbox(index)}
-                            className={`relative overflow-hidden rounded-2xl group cursor-pointer ${index === 0 ? 'col-span-2 row-span-2' : ''
-                                }`}
-                        >
-                            <img
-                                src={image.src}
-                                alt={image.alt}
-                                className={`w-full object-cover transition-transform duration-500 group-hover:scale-110 ${index === 0 ? 'h-80 md:h-[500px]' : 'h-40 md:h-60'
-                                    }`}
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-[#5D4E37]/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                            <div className="absolute bottom-4 left-4 right-4 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                <p className="est-body text-sm font-medium">{image.alt}</p>
-                            </div>
-                        </button>
+                        <div key={image.src} className="break-inside-avoid">
+                            <button
+                                onClick={() => openLightbox(index)}
+                                className="relative overflow-hidden rounded-2xl group cursor-pointer w-full shadow-md hover:shadow-xl transition-all duration-300"
+                            >
+                                <img
+                                    src={image.src}
+                                    alt={image.alt}
+                                    className="w-full h-auto transition-transform duration-500 group-hover:scale-105"
+                                    loading="lazy"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-[#5D4E37]/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                                <div className="absolute bottom-4 left-4 right-4 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                                    <p className="est-body text-xs font-medium leading-tight">{image.alt}</p>
+                                </div>
+                            </button>
+                        </div>
                     ))}
                 </div>
 
