@@ -21,6 +21,7 @@ import HowItWorks from "./pages/HowItWorks";
 import Recent from "./pages/Recent";
 import NotFound from "./pages/NotFound";
 import CentroKaty from "./pages/clienti/CentroKaty";
+import Esteticamente from "./pages/clienti/Esteticamente";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +53,8 @@ const App = () => (
               <Route path="/how-it-works" element={<HowItWorks />} />
               {/* Cliente: Centro Estetico Katy - Landing page isolata */}
               <Route path="/clienti/katy" element={<CentroKaty />} />
+              {/* Cliente: Esteticamente Beauty & Nails - Landing page isolata */}
+              <Route path="/clienti/esteticamente" element={<Esteticamente />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
