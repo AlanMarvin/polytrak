@@ -19,6 +19,7 @@ import Disclaimer from "./pages/Disclaimer";
 import HowItWorks from "./pages/HowItWorks";
 import Recent from "./pages/Recent";
 import NotFound from "./pages/NotFound";
+import CentroKaty from "./pages/clienti/CentroKaty";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +45,8 @@ const App = () => (
               <Route path="/contact" element={<Contact />} />
               <Route path="/disclaimer" element={<Disclaimer />} />
               <Route path="/how-it-works" element={<HowItWorks />} />
+              {/* Cliente: Centro Estetico Katy - Landing page isolata */}
+              <Route path="/clienti/katy" element={<CentroKaty />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
